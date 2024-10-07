@@ -31,7 +31,7 @@ VALUES
   --Transportation --
   ("Car Payment", 2),
   ("Car Warranty", 2),
-  ("Car Taxes", 7),
+  ("Car Taxes", 2),
   ("Gas", 2),
   ("Tires", 2),
   ("Maintenance", 2),
