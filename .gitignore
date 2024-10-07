@@ -1,2 +1,2 @@
 .DS_Store
-db/database.sqlite3
+api/db/database.sqlite3

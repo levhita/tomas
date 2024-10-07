@@ -4,6 +4,7 @@ CREATE TABLE
   account (
     id INTEGER NOT NULL,
     name TEXT NOT NULL,
+    note TEXT,
     type TEXT CHECK (type IN ('debit', 'credit')) NOT NULL DEFAULT 'debit',
     starting_amount NUMERIC NOT NULL DEFAULT 0,
     created_at NUMERIC DEFAULT CURRENT_TIMESTAMP,
@@ -16,8 +17,9 @@ CREATE TABLE
   category (
     id INTEGER NOT NULL,
     name TEXT NOT NULL,
-    parent_category_id INTEGER,
-    created_at NUMERIC DEFAULT CURRENT_TIMESTAMP,
+    note TEXT,
+    parent_category_id INTEGER DEFAULT null,
+    created_at NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     FOREIGN KEY (parent_category_id) REFERENCES category (id)
   );
@@ -29,12 +31,13 @@ CREATE TABLE
   "transaction" (
     id INTEGER NOT NULL,
     description TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
-    date NUMERIC DEFAULT CURRENT_TIMESTAMP,
+    note TEXT,
+    amount NUMERIC NOT NULL DEFAULT 0,
+    planned_date NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    exercised_date NUMERIC DEFAULT NULL,
     account_id INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
-    account INTEGER NOT NULL,
-    created_at NUMERIC DEFAULT CURRENT_TIMESTAMP,
+    created_at NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     FOREIGN KEY (account_id) REFERENCES account (id),
     FOREIGN KEY (category_id) REFERENCES category (id)
