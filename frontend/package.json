@@ -11,9 +11,11 @@
   "dependencies": {
     "@fullcalendar/core": "^6.1.15",
     "@fullcalendar/daygrid": "^6.1.15",
+    "@fullcalendar/interaction": "^6.1.15",
     "@fullcalendar/vue3": "^6.1.15",
     "@vitejs/plugin-basic-ssl": "^1.1.0",
-    "vue": "^3.5.10"
+    "vue": "^3.5.10",
+    "vuex": "^4.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
