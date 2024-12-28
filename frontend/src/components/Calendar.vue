@@ -6,7 +6,12 @@
     <div v-if="showTransactionDialog" class="transaction-dialog">
       <div class="dialog-content">
         <h3>Create New Transaction</h3>
-        <input v-model="newTransaction.title" placeholder="New Transaction" />
+        <input 
+          ref="transactionInput"
+          v-model="newTransaction.title" 
+          placeholder="New Transaction"
+          @keyup.enter="saveTransaction"
+        />
         <button @click="saveTransaction">Save</button>
         <button @click="showTransactionDialog=false">Cancel</button>
       </div>
@@ -28,6 +33,19 @@ export default defineComponent({
   },
   computed: {
     ...mapGetters(['transactions']),
+    calendarOptions() {
+      return {
+        plugins: [dayGridPlugin, interactionPlugin],
+        initialView: 'dayGridMonth',
+        dateClick: this.handleDateClick,
+        events: this.transactions,
+        headerToolbar: {
+          left: 'prev,next',
+          center: 'title',
+          right: 'dayGridWeek,dayGridMonth' // user can switch between the two
+        }
+      }
+    }
   },
   methods: {
     ...mapActions(['addTransaction', 'setTransactions']),
@@ -53,19 +71,18 @@ export default defineComponent({
       newTransaction: {
         title: '',
         date: null
-      },
-      calendarOptions: {
-        plugins: [dayGridPlugin, interactionPlugin],
-        initialView: 'dayGridMonth',
-        dateClick: this.handleDateClick,
-        events: this.transactions,
-        headerToolbar: {
-          left: 'prev,next',
-          center: 'title',
-          right: 'dayGridWeek,dayGridMonth' // user can switch between the two
-        }
       }
     };
+  },
+  watch: {
+    showTransactionDialog(newValue) {
+      if (newValue) {
+        // Use nextTick to ensure DOM is updated
+        this.$nextTick(() => {
+          this.$refs.transactionInput.focus();
+        });
+      }
+    }
   }
 });
 </script>
