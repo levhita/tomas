@@ -37,6 +37,7 @@ export default defineComponent({
 <style scoped>
 .calendar {
   height: 100vh;
-  width: 100%
+  width: 100%;
+  padding: 1rem;
 }
 </style>
