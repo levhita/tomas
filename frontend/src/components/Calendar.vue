@@ -13,6 +13,7 @@
           ref="transactionInput"
           v-model="newTransaction.description" 
           placeholder="Groceries, Rent, etc."
+          @keypress.enter="saveTransaction"
           />
         </div>
         <div class="form-group">
@@ -24,31 +25,45 @@
           placeholder="0.00"
           step="0.01"
           min="0"
+          @keypress.enter="saveTransaction"
           />
         </div>
-        <div class="form-group">
-          <label>Transaction Type</label>
-          <div class="radio-group">
-            <label class="radio-label">
+        
+        <details class="transaction-details" open>
+          <div class="form-group">
+            <label>Transaction Type</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input
+                type="radio"
+                v-model="newTransaction.isExpense"
+                :value="true"
+                name="transactionType"
+                />
+                Expense
+              </label>
+              <label class="radio-label">
+                <input
+                type="radio"
+                v-model="newTransaction.isExpense"
+                :value="false"
+                name="transactionType"
+                />
+                Income
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
               <input
-              type="radio"
-              v-model="newTransaction.isExpense"
-              :value="true"
-              name="transactionType"
+              ref="transactionExcercised"
+              type="checkbox"
+              v-model="newTransaction.exercised"
               />
-              Expense
-            </label>
-            <label class="radio-label">
-              <input
-              type="radio"
-              v-model="newTransaction.isExpense"
-              :value="false"
-              name="transactionType"
-              />
-              Income
+              Exercised (Amount already entered/exited the account)
             </label>
           </div>
-        </div>
+        </details>
         <button @click="saveTransaction">Save</button>
         <button @click="showTransactionDialog=false">Cancel</button>
       </div>
@@ -70,6 +85,9 @@ export default defineComponent({
   },
   computed: {
     ...mapGetters(['transactions']),
+    currentDate() {
+      return new Date().toISOString().split('T')[0];
+    },
     calendarOptions() {
       const events = this.transactions.map(transaction => ({
         title: `
@@ -110,7 +128,13 @@ export default defineComponent({
     },
     handleDateClick(arg) {
       this.newTransaction.date = arg.dateStr;
+      if (arg.dateStr<=this.currentDate) {
+        this.newTransaction.exercised = true;
+      } else {
+        this.newTransaction.exercised = false;
+      }
       this.showTransactionDialog = true;
+      console.log(this.transactions)
     },
     saveTransaction() {
       console.log(this.newTransaction);
@@ -119,7 +143,8 @@ export default defineComponent({
           description: this.newTransaction.description,
           amount: this.newTransaction.amount,
           date: this.newTransaction.date,
-          isExpense: this.newTransaction.isExpense
+          isExpense: this.newTransaction.isExpense,
+          exercised: this.newTransaction.exercised
         });
         this.newTransaction.description = '';
         this.showTransactionDialog = false;
@@ -133,7 +158,8 @@ export default defineComponent({
         description: '',
         amount: null,
         date: null,
-        isExpense: true
+        isExpense: true,
+        exercised: false
       }
     };
   },
@@ -193,5 +219,33 @@ input {
 button {
   margin: 5px;
   padding: 8px 16px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+
+.transaction-details {
+  margin: 16px 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.transaction-details summary {
+  cursor: pointer;
+  padding: 4px;
+  font-weight: 500;
+}
+
+.transaction-details .form-group {
+  margin-top: 12px;
 }
 </style>
