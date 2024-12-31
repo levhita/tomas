@@ -1,5 +1,3 @@
-// src/routes/transactions.ts
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db'); // Assuming db.js now exports better-sqlite3 instance
@@ -36,7 +34,16 @@ router.get('/:id', (req, res) => {
 
 // Create transaction
 router.post('/', (req, res) => {
-  const { description, amount, note = null, category_id = null } = req.body;
+  const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
+
+  if (date) {
+    const dateTimestamp = new Date(date).getTime();
+    if (isNaN(dateTimestamp)) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+  } else {
+    return res.status(400).json({ error: 'Date is required' });
+  }
 
   if (!description || amount === undefined) {
     return res.status(400).json({ error: 'Description and amount are required' });
@@ -44,11 +51,19 @@ router.post('/', (req, res) => {
 
   try {
     const insert = db.prepare(`
-      INSERT INTO "transaction" (description, amount, note, category_id)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO "transaction" (
+        description,
+        note,
+        amount,
+        date,
+        exercised,
+        account_id,
+        category_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = insert.run(description, amount, note, category_id);
+    const result = insert.run(description, note, amount, date, exercised, account_id, category_id);
 
     const newTransaction = db.prepare(`
       SELECT * FROM "transaction" 
@@ -63,17 +78,20 @@ router.post('/', (req, res) => {
 
 // Update transaction
 router.put('/:id', (req, res) => {
-  const { description, amount, note, category_id } = req.body;
+  const { description, note, amount, date, exercised, account_id, category_id } = req.body;
 
   try {
     const update = db.prepare(`
       UPDATE "transaction"
       SET description = ?,
-          amount = ?,
           note = ?,
+          amount = ?,
+          date = ?,
+          exercised = ?,
+          account_id = ?,
           category_id = ?
       WHERE id = ?
-    `).run(description, amount, note, category_id, req.params.id);
+    `).run(description, note, amount, date, exercised, account_id, category_id, req.params.id);
 
     if (update.changes === 0) {
       return res.status(404).json({ error: 'Transaction not found' });

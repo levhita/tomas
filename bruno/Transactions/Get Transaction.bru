@@ -1,0 +1,15 @@
+meta {
+  name: Get Transaction
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{server_url}}/transactions/:id
+  body: none
+  auth: none
+}
+
+params:path {
+  id: 1
+}

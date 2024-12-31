@@ -1,0 +1,23 @@
+meta {
+  name: Create Transaction
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{server_url}}/transactions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "description": "Some Transaction",
+    "note": "Just some random transaction",
+    "amount": 123.23,
+    "date": "2024-12-31",
+    "exercised": 1,
+    "account_id": 1,
+    "category_id": 1
+  }
+}

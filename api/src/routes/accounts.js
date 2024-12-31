@@ -1,5 +1,3 @@
-// src/routes/accounts.js
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -36,19 +34,19 @@ router.get('/:id', (req, res) => {
 
 // Create account
 router.post('/', (req, res) => {
-  const { name, note = null, balance = 0 } = req.body;
-
+  const { name, note = null, type = "debit", starting_amount = 0 } = req.body;
+  console.log(req.body);
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
   try {
     const insert = db.prepare(`
-      INSERT INTO account (name, note, balance)
-      VALUES (?, ?, ?)
+      INSERT INTO account (name, note, type, starting_amount)
+      VALUES (?, ?, ?, ?)
     `);
 
-    const result = insert.run(name, note, balance);
+    const result = insert.run(name, note, type, starting_amount);
 
     const newAccount = db.prepare(`
       SELECT * FROM account 
@@ -63,16 +61,17 @@ router.post('/', (req, res) => {
 
 // Update account
 router.put('/:id', (req, res) => {
-  const { name, note, balance } = req.body;
+  const { name, note, type, starting_amount } = req.body;
 
   try {
     const update = db.prepare(`
       UPDATE account
       SET name = ?,
           note = ?,
-          balance = ?
+          type = ?,
+          starting_amount = ?
       WHERE id = ?
-    `).run(name, note, balance, req.params.id);
+    `).run(name, note, type, starting_amount, req.params.id);
 
     if (update.changes === 0) {
       return res.status(404).json({ error: 'Account not found' });

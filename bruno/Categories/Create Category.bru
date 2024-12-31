@@ -1,0 +1,19 @@
+meta {
+  name: Create Category
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{server_url}}/categories
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Some Name",
+    "note": "Just some random category",
+    "parent_category_id": null
+  }
+}

@@ -33,7 +33,7 @@ CREATE TABLE
     description TEXT NOT NULL,
     note TEXT,
     amount NUMERIC NOT NULL DEFAULT 0,
-    "date" NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date" NUMERIC NOT NULL,
     exercised INTEGER DEFAULT FALSE,
     account_id INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
