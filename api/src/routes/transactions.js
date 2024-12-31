@@ -80,6 +80,15 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
 
+  if (date) {
+    const dateTimestamp = new Date(date).getTime();
+    if (isNaN(dateTimestamp)) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+  } else {
+    return res.status(400).json({ error: 'Date is required' });
+  }
+
   try {
     const update = db.prepare(`
       UPDATE "transaction"

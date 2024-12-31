@@ -1,0 +1,23 @@
+meta {
+  name: Update Category
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{server_url}}/categories/:id
+  body: json
+  auth: none
+}
+
+params:path {
+  id: 
+}
+
+body:json {
+  {
+    "name": "Some Name",
+    "note": "Just some random category",
+    "parent_category_id": null
+  }
+}

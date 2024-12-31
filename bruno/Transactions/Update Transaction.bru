@@ -1,0 +1,27 @@
+meta {
+  name: Update Transaction
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{server_url}}/transactions/:id
+  body: json
+  auth: none
+}
+
+params:path {
+  id: 12
+}
+
+body:json {
+  {
+    "description": "Updated Transaction",
+    "note": "this transaction was updated",
+    "amount": 123.45,
+    "date": "2024-12-31",
+    "exercised": 0,
+    "account_id": 2,
+    "category_id": 2
+  }
+}
