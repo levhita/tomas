@@ -118,7 +118,7 @@ VALUES
 INSERT INTO
   account (id, name, type)
 VALUES
-  (1, "Employee Account", "debit"),
+  (1, "Debit Card", "debit"),
   (2, "Savings", "debit"),
   (3, "Credit Card", "credit"),
-  (4, "Loan", "credit");
+  (4, "Car Loan", "credit");
