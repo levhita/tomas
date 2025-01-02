@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
       SELECT * FROM account 
       ORDER BY name ASC
     `).all();
-    res.json(accounts);
+    res.status(200).json(accounts);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch accounts' });
   }
@@ -26,7 +26,7 @@ router.get('/:id', (req, res) => {
     if (!account) {
       return res.status(404).json({ error: 'Account not found' });
     }
-    res.json(account);
+    res.status(200).json(account);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch account' });
   }
@@ -82,7 +82,7 @@ router.put('/:id', (req, res) => {
       WHERE id = ?
     `).get(req.params.id);
 
-    res.json(updated);
+    res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update account' });
   }
@@ -99,10 +99,9 @@ router.delete('/:id', (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
-
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete account' });
+    res.status(428).json({ error: 'Cannot delete account with transactions' });
   }
 });
 

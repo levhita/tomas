@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
       SELECT * FROM category 
       ORDER BY name ASC
     `).all();
-    res.json(categories);
+    res.status(200).json(categories);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
@@ -26,7 +26,7 @@ router.get('/:id', (req, res) => {
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
     }
-    res.json(category);
+    res.status(200).json(category);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch category' });
   }
@@ -81,7 +81,7 @@ router.put('/:id', (req, res) => {
       WHERE id = ?
     `).get(req.params.id);
 
-    res.json(updated);
+    res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update category' });
   }
@@ -101,7 +101,7 @@ router.delete('/:id', (req, res) => {
 
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete category' });
+    res.status(428).json({ error: 'Cannot delete category with transactions' });
   }
 });
 

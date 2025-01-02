@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
       SELECT * FROM "transaction" 
       ORDER BY created_at DESC
     `).all();
-    res.json(transactions);
+    res.status(200).json(transactions);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
@@ -26,7 +26,7 @@ router.get('/:id', (req, res) => {
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
-    res.json(transaction);
+    res.status(200).json(transaction);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch transaction' });
   }
@@ -111,7 +111,7 @@ router.put('/:id', (req, res) => {
       WHERE id = ?
     `).get(req.params.id);
 
-    res.json(updated);
+    res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update transaction' });
   }
