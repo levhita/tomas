@@ -1,13 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db'); // Assuming db.js now exports better-sqlite3 instance
+const db = require('../db');
 
 // Get all transactions
 router.get('/', (req, res) => {
   try {
     const transactions = db.prepare(`
-      SELECT * FROM "transaction" 
-      ORDER BY created_at DESC
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM "transaction" t
+      LEFT JOIN category c ON t.category_id = c.id 
+      LEFT JOIN account a ON t.account_id = a.id
+      ORDER BY t.created_at DESC
     `).all();
     res.status(200).json(transactions);
   } catch (err) {
@@ -19,8 +25,14 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const transaction = db.prepare(`
-      SELECT * FROM "transaction" 
-      WHERE id = ?
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM "transaction" t
+      LEFT JOIN category c ON t.category_id = c.id
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE t.id = ?
     `).get(req.params.id);
 
     if (!transaction) {
