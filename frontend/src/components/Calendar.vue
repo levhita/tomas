@@ -29,6 +29,42 @@
           />
         </div>
         
+        <div class="form-group">
+          <label for="categorySelect">Category</label>
+          <select 
+            id="categorySelect"
+            v-model="newTransaction.category_id"
+            required
+          >
+            <option value="">Select Category</option>
+            <option 
+              v-for="category in categoriesStore.categoriesByName" 
+              :key="category.id"
+              :value="category.id"
+            >
+              {{ category.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="accountSelect">Account</label>
+          <select 
+            id="accountSelect"
+            v-model="newTransaction.account_id"
+            required
+          >
+            <option value="">Select Account</option>
+            <option 
+              v-for="account in accountsStore.accountsByName" 
+              :key="account.id"
+              :value="account.id"
+            >
+              {{ account.name }}
+            </option>
+          </select>
+        </div>
+
         <details class="transaction-details" open>
           <div class="form-group">
             <label>Transaction Type</label>
@@ -73,7 +109,9 @@
 
 <script>
 import { defineComponent } from 'vue';
-// import { mapActions, mapGetters } from 'vuex';
+import { useTransactionsStore } from '../stores/transactions';
+import { useCategoriesStore } from '../stores/categories';
+import { useAccountsStore } from '../stores/accounts';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -83,17 +121,37 @@ export default defineComponent({
   components: {
     FullCalendar,
   },
+  setup() {
+    const transactionsStore = useTransactionsStore();
+    const categoriesStore = useCategoriesStore();
+    const accountsStore = useAccountsStore();
+    return { transactionsStore, categoriesStore, accountsStore };
+  },
+  data() {
+    return {
+      showTransactionDialog: false,
+      newTransaction: {
+        description: '',
+        amount: null,
+        date: null,
+        isExpense: true,
+        exercised: false,
+        category_id: '',
+        account_id: ''
+      }
+    };
+  },
   computed: {
-    ...mapGetters(['transactions']),
     currentDate() {
       return new Date().toISOString().split('T')[0];
     },
     calendarOptions() {
-      const events = this.transactions.map(transaction => ({
+      const events = this.transactionsStore.transactionsByDate.map(transaction => ({
+        id: transaction.id,
         title: `
-          <div class="event-title">
-            <div class="event-description">${transaction.description}</div>
-            <div class="event-amount">${this.formatAmount(transaction.amount, transaction.isExpense)}</div>
+          <div class="transaction-title">
+            <div class="transaction-description">${transaction.description}</div>
+            <div class="transaction-amount">${this.formatAmount(transaction.amount, transaction.isExpense)}</div>
           </div>
         `,
         date: transaction.date,
@@ -104,7 +162,7 @@ export default defineComponent({
         plugins: [dayGridPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
         dateClick: this.handleDateClick,
-        events: events,
+        events,
         headerToolbar: {
           left: 'prev,next',
           center: 'title',
@@ -113,11 +171,10 @@ export default defineComponent({
         eventContent: (arg) => {
           return { html: arg.event.title }
         }
-      }
+      };
     }
   },
   methods: {
-    ...mapActions(['addTransaction', 'setTransactions']),
     formatAmount(amount, isExpense) {
       if (isExpense) { amount = -amount };
       return new Intl.NumberFormat(undefined, {
@@ -136,32 +193,35 @@ export default defineComponent({
       this.showTransactionDialog = true;
       console.log(this.transactions)
     },
-    saveTransaction() {
-      console.log(this.newTransaction);
-      if (this.newTransaction.description) {
-        this.addTransaction({
-          description: this.newTransaction.description,
-          amount: this.newTransaction.amount,
-          date: this.newTransaction.date,
-          isExpense: this.newTransaction.isExpense,
-          exercised: this.newTransaction.exercised
-        });
-        this.newTransaction.description = '';
+    async saveTransaction() {
+      if (this.newTransaction.description && 
+          this.newTransaction.amount &&
+          this.newTransaction.category_id &&
+          this.newTransaction.account_id) {
+        await this.transactionsStore.addTransaction(this.newTransaction);
+        this.resetForm();
         this.showTransactionDialog = false;
       }
-    }
-  },
-  data() {
-    return {
-      showTransactionDialog: false,
-      newTransaction: {
+    },
+    
+    resetForm() {
+      this.newTransaction = {
         description: '',
         amount: null,
         date: null,
         isExpense: true,
-        exercised: false
-      }
-    };
+        exercised: false,
+        category_id: '',
+        account_id: ''
+      };
+    }
+  },
+  async mounted() {
+    await Promise.all([
+      this.transactionsStore.fetchTransactions(),
+      this.categoriesStore.fetchCategories(),
+      this.accountsStore.fetchAccounts()
+    ]);
   },
   watch: {
     showTransactionDialog(newValue) {
@@ -247,5 +307,17 @@ button {
 
 .transaction-details .form-group {
   margin-top: 12px;
+}
+
+select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.form-group {
+  margin-bottom: 16px;
 }
 </style>
