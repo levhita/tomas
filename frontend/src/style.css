@@ -4,18 +4,18 @@
     Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
-.event-title {
+.transaction-title {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.event-amount {
+.transaction-amount {
   font-weight: bold;
   text-align: right;
 }
 
-.event-description {
+.transaction-description {
   font-size: 0.9em;
 }
 
