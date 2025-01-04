@@ -2,38 +2,39 @@
   <div>
     <FullCalendar :options="calendarOptions" />
     
-    <!-- Transaction Creation Dialog -->
+    <!-- Transaction Creation/Edition Dialog -->
     <div v-if="showTransactionDialog" class="transaction-dialog">
       <div class="dialog-content">
-        <h3>Create New Transaction</h3>
+        <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
         
         <div class="form-group">
           <label for="transactionInput">Description</label>
           <input 
-          ref="transactionInput"
-          v-model="newTransaction.description" 
-          placeholder="Groceries, Rent, etc."
-          @keypress.enter="saveTransaction"
+            ref="transactionInput"
+            v-model="currentTransaction.description" 
+            placeholder="Groceries, Rent, etc."
+            @keypress.enter="saveTransaction"
           />
         </div>
+
         <div class="form-group">
           <label for="amountInput">Amount</label>
           <input 
-          id="amountInput"
-          type="number"
-          v-model.number="newTransaction.amount"
-          placeholder="0.00"
-          step="0.01"
-          min="0"
-          @keypress.enter="saveTransaction"
+            id="amountInput"
+            type="number"
+            v-model.number="currentTransaction.amount"
+            placeholder="0.00"
+            step="0.01"
+            min="0"
+            @keypress.enter="saveTransaction"
           />
         </div>
-        
+
         <div class="form-group">
           <label for="categorySelect">Category</label>
           <select 
             id="categorySelect"
-            v-model="newTransaction.category_id"
+            v-model="currentTransaction.category_id"
             required
           >
             <option value="">Select Category</option>
@@ -51,7 +52,7 @@
           <label for="accountSelect">Account</label>
           <select 
             id="accountSelect"
-            v-model="newTransaction.account_id"
+            v-model="currentTransaction.account_id"
             required
           >
             <option value="">Select Account</option>
@@ -65,43 +66,10 @@
           </select>
         </div>
 
-        <details class="transaction-details" open>
-          <div class="form-group">
-            <label>Transaction Type</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input
-                type="radio"
-                v-model="newTransaction.isExpense"
-                :value="true"
-                name="transactionType"
-                />
-                Expense
-              </label>
-              <label class="radio-label">
-                <input
-                type="radio"
-                v-model="newTransaction.isExpense"
-                :value="false"
-                name="transactionType"
-                />
-                Income
-              </label>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input
-              ref="transactionExcercised"
-              type="checkbox"
-              v-model="newTransaction.exercised"
-              />
-              Exercised (Amount already entered/exited the account)
-            </label>
-          </div>
-        </details>
-        <button @click="saveTransaction">Save</button>
-        <button @click="showTransactionDialog=false">Cancel</button>
+        <div class="button-group">
+          <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
+          <button @click="closeDialog">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -130,14 +98,16 @@ export default defineComponent({
   data() {
     return {
       showTransactionDialog: false,
-      newTransaction: {
+      isEditing: false,
+      currentTransaction: {
+        id: null,
         description: '',
         amount: null,
         date: null,
-        isExpense: true,
-        exercised: false,
         category_id: '',
-        account_id: ''
+        account_id: '',
+        isExpense: true,
+        exercised: false
       }
     };
   },
@@ -170,7 +140,8 @@ export default defineComponent({
         },
         eventContent: (arg) => {
           return { html: arg.event.title }
-        }
+        },
+        eventClick: this.handleEventClick
       };
     }
   },
@@ -184,35 +155,57 @@ export default defineComponent({
       }).format(amount);
     },
     handleDateClick(arg) {
-      this.newTransaction.date = arg.dateStr;
-      if (arg.dateStr<=this.currentDate) {
-        this.newTransaction.exercised = true;
-      } else {
-        this.newTransaction.exercised = false;
-      }
+      this.isEditing = false;
+      this.currentTransaction.date = arg.dateStr;
       this.showTransactionDialog = true;
-      console.log(this.transactions)
+    },
+    handleEventClick(info) {
+      const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
+      if (transaction) {
+        this.isEditing = true;
+        this.currentTransaction = { ...transaction };
+        this.showTransactionDialog = true;
+        this.$nextTick(() => {
+          this.$refs.transactionInput?.focus();
+        });
+      }
     },
     async saveTransaction() {
-      if (this.newTransaction.description && 
-          this.newTransaction.amount &&
-          this.newTransaction.category_id &&
-          this.newTransaction.account_id) {
-        await this.transactionsStore.addTransaction(this.newTransaction);
-        this.resetForm();
-        this.showTransactionDialog = false;
+      if (this.validateForm()) {
+        if (this.isEditing) {
+          await this.transactionsStore.updateTransaction(
+            this.currentTransaction.id,
+            this.currentTransaction
+          );
+        } else {
+          await this.transactionsStore.addTransaction(this.currentTransaction);
+        }
+        this.closeDialog();
       }
     },
-    
+    validateForm() {
+      return (
+        this.currentTransaction.description &&
+        this.currentTransaction.amount &&
+        this.currentTransaction.category_id &&
+        this.currentTransaction.account_id
+      );
+    },
+    closeDialog() {
+      this.showTransactionDialog = false;
+      this.isEditing = false;
+      this.resetForm();
+    },
     resetForm() {
-      this.newTransaction = {
+      this.currentTransaction = {
+        id: null,
         description: '',
         amount: null,
         date: null,
-        isExpense: true,
-        exercised: false,
         category_id: '',
-        account_id: ''
+        account_id: '',
+        isExpense: true,
+        exercised: false
       };
     }
   },
@@ -319,5 +312,18 @@ select {
 
 .form-group {
   margin-bottom: 16px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>
