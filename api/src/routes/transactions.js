@@ -47,6 +47,12 @@ router.get('/:id', (req, res) => {
 // Create transaction
 router.post('/', (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
+  console.log(req.body);
+
+  let exercisedValue = 0;
+  if (exercised) {
+    exercisedValue = 1;
+  }
 
   if (date) {
     const dateTimestamp = new Date(date).getTime();
@@ -75,7 +81,7 @@ router.post('/', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = insert.run(description, note, amount, date, exercised, account_id, category_id);
+    const result = insert.run(description, note, amount, date, exercisedValue, account_id, category_id);
 
     const newTransaction = db.prepare(`
       SELECT * FROM "transaction" 
@@ -84,6 +90,7 @@ router.post('/', (req, res) => {
 
     res.status(201).json(newTransaction);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to create transaction' });
   }
 });
