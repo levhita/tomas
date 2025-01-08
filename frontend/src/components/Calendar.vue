@@ -18,6 +18,16 @@
         </div>
 
         <div class="form-group">
+          <label for="dateInput">Date</label>
+          <input 
+            id="dateInput"
+            type="date"
+            v-model="currentTransaction.date"
+            required
+          />
+        </div>
+
+        <div class="form-group">
           <label for="amountInput">Amount</label>
           <input 
             id="amountInput"
@@ -66,8 +76,23 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label for="noteTextarea">Note</label>
+          <textarea
+            id="noteTextarea"
+            v-model="currentTransaction.note"
+            placeholder="Additional details..."
+            rows="3"
+          ></textarea>
+        </div>
+
         <div class="button-group">
           <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
+          <button v-if="isEditing" 
+                  @click="confirmDelete" 
+                  class="delete-button">
+            Delete
+          </button>
           <button @click="closeDialog">Cancel</button>
         </div>
       </div>
@@ -107,7 +132,8 @@ export default defineComponent({
         category_id: '',
         account_id: '',
         isExpense: true,
-        exercised: false
+        exercised: false,
+        note: ''
       }
     };
   },
@@ -132,6 +158,8 @@ export default defineComponent({
         plugins: [dayGridPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
         dateClick: this.handleDateClick,
+        editable: true, // Enable drag-and-drop
+        eventDrop: this.handleEventDrop, // Add drop handler
         events,
         headerToolbar: {
           left: 'prev,next',
@@ -170,6 +198,20 @@ export default defineComponent({
         });
       }
     },
+    async handleEventDrop(info) {
+      try {
+        const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
+        if (transaction) {
+          await this.transactionsStore.updateTransaction(transaction.id, {
+            ...transaction,
+            date: info.event.startStr
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update transaction date:', error);
+        info.revert(); // Revert the drag if update fails
+      }
+    },
     async saveTransaction() {
       if (this.validateForm()) {
         if (this.isEditing) {
@@ -188,7 +230,8 @@ export default defineComponent({
         this.currentTransaction.description &&
         this.currentTransaction.amount &&
         this.currentTransaction.category_id &&
-        this.currentTransaction.account_id
+        this.currentTransaction.account_id &&
+        this.currentTransaction.date
       );
     },
     closeDialog() {
@@ -205,8 +248,23 @@ export default defineComponent({
         category_id: '',
         account_id: '',
         isExpense: true,
-        exercised: false
+        exercised: false,
+        note: ''
       };
+    },
+    async confirmDelete() {
+      if (confirm('Are you sure you want to delete this transaction?')) {
+        await this.deleteTransaction();
+      }
+    },
+
+    async deleteTransaction() {
+      try {
+        await this.transactionsStore.deleteTransaction(this.currentTransaction.id);
+        this.closeDialog();
+      } catch (error) {
+        console.error('Failed to delete transaction:', error);
+      }
     }
   },
   async mounted() {
@@ -325,5 +383,50 @@ button {
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+}
+
+.delete-button:hover {
+  background-color: #c82333;
+}
+
+textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+input[type="date"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+.fc-event {
+  cursor: move;
+}
+
+.fc-event.fc-event-dragging {
+  opacity: 0.7;
 }
 </style>
