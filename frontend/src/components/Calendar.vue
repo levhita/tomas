@@ -7,6 +7,7 @@
       <div class="dialog-content">
         <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
         
+        <!-- Main fields -->
         <div class="form-group">
           <label for="transactionInput">Description</label>
           <input 
@@ -14,16 +15,6 @@
             v-model="currentTransaction.description" 
             placeholder="Groceries, Rent, etc."
             @keypress.enter="saveTransaction"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="dateInput">Date</label>
-          <input 
-            id="dateInput"
-            type="date"
-            v-model="currentTransaction.date"
-            required
           />
         </div>
 
@@ -40,51 +31,66 @@
           />
         </div>
 
-        <div class="form-group">
-          <label for="categorySelect">Category</label>
-          <select 
-            id="categorySelect"
-            v-model="currentTransaction.category_id"
-            required
-          >
-            <option value="">Select Category</option>
-            <option 
-              v-for="category in categoriesStore.categoriesByName" 
-              :key="category.id"
-              :value="category.id"
-            >
-              {{ category.name }}
-            </option>
-          </select>
-        </div>
+        <!-- Additional fields in details -->
+        <details open class="transaction-details">
+          <summary>Additional Details</summary>
+          
+          <div class="form-group">
+            <label for="dateInput">Date</label>
+            <input 
+              id="dateInput"
+              type="date"
+              v-model="currentTransaction.date"
+              required
+            />
+          </div>
 
-        <div class="form-group">
-          <label for="accountSelect">Account</label>
-          <select 
-            id="accountSelect"
-            v-model="currentTransaction.account_id"
-            required
-          >
-            <option value="">Select Account</option>
-            <option 
-              v-for="account in accountsStore.accountsByName" 
-              :key="account.id"
-              :value="account.id"
+          <div class="form-group">
+            <label for="categorySelect">Category</label>
+            <select 
+              id="categorySelect"
+              v-model="currentTransaction.category_id"
+              required
             >
-              {{ account.name }}
-            </option>
-          </select>
-        </div>
+              <option value="">Select Category</option>
+              <option 
+                v-for="category in categoriesStore.categoriesByName" 
+                :key="category.id"
+                :value="category.id"
+              >
+                {{ category.name }}
+              </option>
+            </select>
+          </div>
 
-        <div class="form-group">
-          <label for="noteTextarea">Note</label>
-          <textarea
-            id="noteTextarea"
-            v-model="currentTransaction.note"
-            placeholder="Additional details..."
-            rows="3"
-          ></textarea>
-        </div>
+          <div class="form-group">
+            <label for="accountSelect">Account</label>
+            <select 
+              id="accountSelect"
+              v-model="currentTransaction.account_id"
+              required
+            >
+              <option value="">Select Account</option>
+              <option 
+                v-for="account in accountsStore.accountsByName" 
+                :key="account.id"
+                :value="account.id"
+              >
+                {{ account.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="noteTextarea">Note</label>
+            <textarea
+              id="noteTextarea"
+              v-model="currentTransaction.note"
+              placeholder="Additional details..."
+              rows="3"
+            ></textarea>
+          </div>
+        </details>
 
         <div class="button-group">
           <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
@@ -345,8 +351,8 @@ button {
 
 .transaction-details {
   margin: 16px 0;
-  padding: 8px;
-  border: 1px solid #ddd;
+  padding: 12px 0px;
+  /*border: 1px solid #ddd;*/
   border-radius: 4px;
 }
 
@@ -354,6 +360,7 @@ button {
   cursor: pointer;
   padding: 4px;
   font-weight: 500;
+  margin-bottom: 8px;
 }
 
 .transaction-details .form-group {
