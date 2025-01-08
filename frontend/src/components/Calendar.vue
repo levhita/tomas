@@ -46,6 +46,16 @@
           </div>
 
           <div class="form-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="currentTransaction.exercised"
+              />
+              Transaction already exercised
+            </label>
+          </div>
+
+          <div class="form-group">
             <label for="categorySelect">Category</label>
             <select 
               id="categorySelect"
@@ -114,6 +124,7 @@ import { useAccountsStore } from '../stores/accounts';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import $moment from 'moment';
 
 export default defineComponent({
   name: 'CalendarComponent',
@@ -145,7 +156,7 @@ export default defineComponent({
   },
   computed: {
     currentDate() {
-      return new Date().toISOString().split('T')[0];
+      return $moment().format('YYYY-MM-DD');
     },
     calendarOptions() {
       const events = this.transactionsStore.transactionsByDate.map(transaction => ({
@@ -191,6 +202,10 @@ export default defineComponent({
     handleDateClick(arg) {
       this.isEditing = false;
       this.currentTransaction.date = arg.dateStr;
+      console.log(this.currentTransaction.date,this.currentDate);
+      if (this.currentTransaction.date <= this.currentDate) {
+        this.currentTransaction.exercised = true;
+        }
       this.showTransactionDialog = true;
     },
     handleEventClick(info) {
