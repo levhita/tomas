@@ -202,10 +202,9 @@ export default defineComponent({
     handleDateClick(arg) {
       this.isEditing = false;
       this.currentTransaction.date = arg.dateStr;
-      console.log(this.currentTransaction.date,this.currentDate);
       if (this.currentTransaction.date <= this.currentDate) {
         this.currentTransaction.exercised = true;
-        }
+      }
       this.showTransactionDialog = true;
     },
     handleEventClick(info) {

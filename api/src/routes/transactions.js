@@ -38,6 +38,8 @@ router.get('/:id', (req, res) => {
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
+
+    transaction.exercised = !!transaction.exercised;
     res.status(200).json(transaction);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch transaction' });
@@ -47,12 +49,7 @@ router.get('/:id', (req, res) => {
 // Create transaction
 router.post('/', (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
-  console.log(req.body);
-
-  let exercisedValue = 0;
-  if (exercised) {
-    exercisedValue = 1;
-  }
+  const exercisedValue = exercised ? 1 : 0;
 
   if (date) {
     const dateTimestamp = new Date(date).getTime();
@@ -84,10 +81,16 @@ router.post('/', (req, res) => {
     const result = insert.run(description, note, amount, date, exercisedValue, account_id, category_id);
 
     const newTransaction = db.prepare(`
-      SELECT * FROM "transaction" 
-      WHERE id = ?
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM "transaction" t
+      LEFT JOIN category c ON t.category_id = c.id
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE t.id = ?
     `).get(result.lastInsertRowid);
-
+    newTransaction.exercised = !!newTransaction.exercised;
     res.status(201).json(newTransaction);
   } catch (err) {
     console.error(err);
@@ -98,6 +101,7 @@ router.post('/', (req, res) => {
 // Update transaction
 router.put('/:id', (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
+  const exercisedValue = exercised ? 1 : 0;
 
   if (date) {
     const dateTimestamp = new Date(date).getTime();
@@ -119,17 +123,24 @@ router.put('/:id', (req, res) => {
           account_id = ?,
           category_id = ?
       WHERE id = ?
-    `).run(description, note, amount, date, exercised, account_id, category_id, req.params.id);
+    `).run(description, note, amount, date, exercisedValue, account_id, category_id, req.params.id);
 
     if (update.changes === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
     const updated = db.prepare(`
-      SELECT * FROM "transaction" 
-      WHERE id = ?
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM "transaction" t
+      LEFT JOIN category c ON t.category_id = c.id
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE t.id = ?
     `).get(req.params.id);
 
+    updated.exercised = !!updated.exercised;
     res.status(200).json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update transaction' });
