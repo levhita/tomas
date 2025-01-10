@@ -1,116 +1,86 @@
 <template>
   <div>
     <FullCalendar :options="calendarOptions" />
-    
+
     <!-- Transaction Creation/Edition Dialog -->
     <div v-if="showTransactionDialog" class="transaction-dialog">
       <div class="dialog-content">
-        <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
-        
+        <div class="row">
+          <div class="col-10">
+            <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
+          </div>
+          <div class="col-2 text-end">
+            <button type="button" class="btn-close" aria-label="Close" @click="closeDialog"></button>
+          </div>
+        </div>
         <!-- Main fields -->
-        <div class="form-group">
-          <label for="transactionInput">Description</label>
-          <input 
-            ref="transactionInput"
-            v-model="currentTransaction.description" 
-            placeholder="Groceries, Rent, etc."
-            @keypress.enter="saveTransaction"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="amountInput">Amount</label>
-          <input 
-            id="amountInput"
-            type="number"
-            v-model.number="currentTransaction.amount"
-            placeholder="0.00"
-            step="0.01"
-            min="0"
-            @keypress.enter="saveTransaction"
-          />
-        </div>
-
-        <!-- Additional fields in details -->
-        <details open class="transaction-details">
-          <summary>Additional Details</summary>
-          
-          <div class="form-group">
-            <label for="dateInput">Date</label>
-            <input 
-              id="dateInput"
-              type="date"
-              v-model="currentTransaction.date"
-              required
-            />
+        <form v-on:submit.prevent>
+          <div class="form-floating mb-3">
+            <input id="transactionInput" ref="transactionInput" v-model="currentTransaction.description"
+              class="form-control" placeholder="Groceries, Rent, etc." @keypress.enter="saveTransaction" />
+            <label for="transactionInput" class="form-label">Description</label>
           </div>
 
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                v-model="currentTransaction.exercised"
-              />
-              Transaction already exercised
-            </label>
+          <div class="form-floating mb-3">
+            <input id="amountInput" type="number" class="form-control" v-model.number="currentTransaction.amount"
+              placeholder="0.00" @keypress.enter="saveTransaction" />
+            <label for="amountInput" class="form-label">Amount</label>
           </div>
 
-          <div class="form-group">
-            <label for="categorySelect">Category</label>
-            <select 
-              id="categorySelect"
-              v-model="currentTransaction.category_id"
-              required
-            >
-              <option value="">Select Category</option>
-              <option 
-                v-for="category in categoriesStore.categoriesByName" 
-                :key="category.id"
-                :value="category.id"
-              >
-                {{ category.name }}
-              </option>
-            </select>
+          <div class="row mb-3">
+            <div class="col-6">
+              <div class="form-floating">
+                <select id="accountSelect" class="form-control" v-model="currentTransaction.account_id" required>
+                  <option value="">Select Account</option>
+                  <option v-for="account in accountsStore.accountsByName" :key="account.id" :value="account.id">
+                    {{ account.name }}
+                  </option>
+                </select>
+                <label for="accountSelect">Account</label>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-floating">
+                <select id="categorySelect" class="form-control" v-model="currentTransaction.category_id" required>
+                  <option value="">Select Category</option>
+                  <option v-for="category in categoriesStore.categoriesByName" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
+                <label for="categorySelect">Category</label>
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="accountSelect">Account</label>
-            <select 
-              id="accountSelect"
-              v-model="currentTransaction.account_id"
-              required
-            >
-              <option value="">Select Account</option>
-              <option 
-                v-for="account in accountsStore.accountsByName" 
-                :key="account.id"
-                :value="account.id"
-              >
-                {{ account.name }}
-              </option>
-            </select>
+          <div class="form-floating mb-3">
+            <input id="dateInput" type="date" class="form-control" v-model="currentTransaction.date" required />
+            <label for="dateInput" class="form-label">Date</label>
           </div>
 
-          <div class="form-group">
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" v-model="currentTransaction.exercised" />
+            <label class="form-check-label"> Transaction already exercised</label>
+          </div>
+
+          <div class="form-floating mb-3">
+            <textarea id="noteTextarea" class="form-control" v-model="currentTransaction.note"
+              placeholder="Additional details..." :style="{ 'min-height': '6rem' }"></textarea>
             <label for="noteTextarea">Note</label>
-            <textarea
-              id="noteTextarea"
-              v-model="currentTransaction.note"
-              placeholder="Additional details..."
-              rows="3"
-            ></textarea>
           </div>
-        </details>
+        </form>
 
-        <div class="button-group">
-          <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
-          <button v-if="isEditing" 
-                  @click="confirmDelete" 
-                  class="delete-button">
-            Delete
-          </button>
-          <button @click="closeDialog">Cancel</button>
+        <div class="row">
+          <div class="col-6">
+            <button class="btn btn-outline-danger" v-if="isEditing" @click="confirmDelete">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </div>
+          <div class="col-6 text-end">
+            <button class="btn btn-outline-secondary me-3" @click="closeDialog">Cancel</button>
+            <button class="btn btn-primary" @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
+          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -170,7 +140,7 @@ export default defineComponent({
         date: transaction.date,
         html: true
       }));
-      
+
       return {
         plugins: [dayGridPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
@@ -308,19 +278,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-
-.radio-group {
-  display: flex;
-  gap: 16px;
-  margin: 8px 0;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
 .transaction-dialog {
   position: fixed;
   top: 0;
@@ -338,109 +295,7 @@ export default defineComponent({
   background: white;
   padding: 20px;
   border-radius: 8px;
-  min-width: 300px;
-}
-
-input {
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
-}
-
-button {
-  margin: 5px;
-  padding: 8px 16px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
-}
-
-.transaction-details {
-  margin: 16px 0;
-  padding: 12px 0px;
-  /*border: 1px solid #ddd;*/
-  border-radius: 4px;
-}
-
-.transaction-details summary {
-  cursor: pointer;
-  padding: 4px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.transaction-details .form-group {
-  margin-top: 12px;
-}
-
-select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-top: 4px;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.button-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.delete-button {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-}
-
-.delete-button:hover {
-  background-color: #c82333;
-}
-
-textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
-}
-
-textarea:focus {
-  outline: none;
-  border-color: #0066cc;
-}
-
-input[type="date"] {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-top: 4px;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
+  min-width: 600px;
 }
 
 .fc-event {
