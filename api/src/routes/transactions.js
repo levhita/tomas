@@ -3,51 +3,53 @@ const router = express.Router();
 const db = require('../db');
 
 // Get all transactions
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const transactions = db.prepare(`
+    const [transactions] = await db.query(`
       SELECT 
         t.*,
         c.name as category_name,
         a.name as account_name
-      FROM "transaction" t
+      FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
       ORDER BY t.created_at DESC
-    `).all();
+    `);
     res.status(200).json(transactions);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
 // Get single transaction 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const transaction = db.prepare(`
+    const [transactions] = await db.query(`
       SELECT 
         t.*,
         c.name as category_name,
         a.name as account_name
-      FROM "transaction" t
+      FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    if (!transaction) {
+    if (transactions.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
-
-    transaction.exercised = !!transaction.exercised;
-    res.status(200).json(transaction);
+    // Force return a boolean value for exercised
+    transactions[0].exercised = !!transactions[0].exercised;
+    res.status(200).json(transactions[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transaction' });
   }
 });
 
 // Create transaction
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
@@ -65,8 +67,8 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const insert = db.prepare(`
-      INSERT INTO "transaction" (
+    const [result] = await db.query(`
+      INSERT INTO transaction (
         description,
         note,
         amount,
@@ -76,30 +78,30 @@ router.post('/', (req, res) => {
         category_id
       )
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    `, [description, note, amount, date, exercisedValue, account_id, category_id]);
 
-    const result = insert.run(description, note, amount, date, exercisedValue, account_id, category_id);
-
-    const newTransaction = db.prepare(`
+    const [transactions] = await db.query(`
       SELECT 
         t.*,
         c.name as category_name,
         a.name as account_name
-      FROM "transaction" t
+      FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `).get(result.lastInsertRowid);
-    newTransaction.exercised = !!newTransaction.exercised;
-    res.status(201).json(newTransaction);
+    `, [result.insertId]);
+
+    // Force return a boolean value for exercised
+    transactions[0].exercised = !!transactions[0].exercised;
+    res.status(201).json(transactions[0]);
   } catch (err) {
-    console.error(err);
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create transaction' });
   }
 });
 
 // Update transaction
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
@@ -113,8 +115,8 @@ router.put('/:id', (req, res) => {
   }
 
   try {
-    const update = db.prepare(`
-      UPDATE "transaction"
+    const [result] = await db.query(`
+      UPDATE transaction
       SET description = ?,
           note = ?,
           amount = ?,
@@ -123,45 +125,46 @@ router.put('/:id', (req, res) => {
           account_id = ?,
           category_id = ?
       WHERE id = ?
-    `).run(description, note, amount, date, exercisedValue, account_id, category_id, req.params.id);
+    `, [description, note, amount, date, exercisedValue, account_id, category_id, req.params.id]);
 
-    if (update.changes === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    const updated = db.prepare(`
+    const [accounts] = await db.query(`
       SELECT 
         t.*,
         c.name as category_name,
         a.name as account_name
-      FROM "transaction" t
+      FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    updated.exercised = !!updated.exercised;
-    res.status(200).json(updated);
+    accounts[0].exercised = !!accounts[0].exercised;
+    res.status(200).json(accounts[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update transaction' });
   }
 });
 
 // Delete transaction
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const result = db.prepare(`
-      DELETE FROM "transaction"
+    const [result] = await db.query(`
+      DELETE FROM transaction
       WHERE id = ?
-    `).run(req.params.id);
+    `, [req.params.id]);
 
-    if (result.changes === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
-
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete transaction' });
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Database error when deleting transaction' });
   }
 });
 

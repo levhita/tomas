@@ -69,9 +69,14 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function deleteTransaction(id) {
     try {
-      await fetch(`/api/transactions/${id}`, {
+      const response = await fetch(`/api/transactions/${id}`, {
         method: 'DELETE',
       });
+      if (!response.ok) {
+        const json = await response.json()
+        throw new Error(json.error);
+      }
+
       const index = transactions.value.findIndex(t => t.id === id);
       if (index !== -1) {
         transactions.value.splice(index, 1);

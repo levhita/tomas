@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `transaction`;
+
 DROP TABLE IF EXISTS account;
 
 CREATE TABLE
@@ -6,7 +8,7 @@ CREATE TABLE
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
-    `starting_ammount` DECIMAL(10, 2) NOT NULL DEFAULT '0',
+    `starting_amount` DECIMAL(10, 2) NOT NULL DEFAULT '0',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB;
@@ -25,8 +27,6 @@ CREATE TABLE
   );
 
 -- Transactions --
-DROP TABLE IF EXISTS `transaction`;
-
 CREATE TABLE
   `transaction` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,

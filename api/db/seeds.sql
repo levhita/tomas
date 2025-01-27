@@ -28,7 +28,7 @@ VALUES
   ("Property Taxes", 1),
   ("Home Repairs", 1),
   ("Managment Fees", 1),
-  --Transportation --
+  -- Transportation --
   ("Car Payment", 2),
   ("Car Warranty", 2),
   ("Car Taxes", 2),
