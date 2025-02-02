@@ -16,7 +16,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     return (id) => categories.value.find(c => c.id === id);
   });
 
-  const categoryHierarchy = computed(() => {
+  const categoryTree = computed(() => {
     const rootCategories = categories.value.filter(c => !c.parent_category_id);
     return rootCategories.map(category => ({
       ...category,
@@ -24,7 +24,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     }));
   });
 
-  // Helper function for hierarchy
+  // Helper function for Tree
   function getChildCategories(parentId) {
     return categories.value
       .filter(c => c.parent_category_id === parentId)
@@ -106,7 +106,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     // Getters
     categoriesByName,
     getCategoryById,
-    categoryHierarchy,
+    categoryTree,
     // Actions
     fetchCategories,
     addCategory,

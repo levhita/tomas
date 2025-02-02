@@ -1,116 +1,72 @@
 <template>
   <div>
     <FullCalendar :options="calendarOptions" />
-    
+
     <!-- Transaction Creation/Edition Dialog -->
     <div v-if="showTransactionDialog" class="transaction-dialog">
       <div class="dialog-content">
         <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
-        
+
         <!-- Main fields -->
-        <div class="form-group">
-          <label for="transactionInput">Description</label>
-          <input 
-            ref="transactionInput"
-            v-model="currentTransaction.description" 
-            placeholder="Groceries, Rent, etc."
-            @keypress.enter="saveTransaction"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="amountInput">Amount</label>
-          <input 
-            id="amountInput"
-            type="number"
-            v-model.number="currentTransaction.amount"
-            placeholder="0.00"
-            step="0.01"
-            min="0"
-            @keypress.enter="saveTransaction"
-          />
-        </div>
-
-        <!-- Additional fields in details -->
-        <details open class="transaction-details">
-          <summary>Additional Details</summary>
-          
+        <form @submit.prevent="handleSubmit">
           <div class="form-group">
-            <label for="dateInput">Date</label>
-            <input 
-              id="dateInput"
-              type="date"
-              v-model="currentTransaction.date"
-              required
-            />
+            <label for="transactionInput">Description</label>
+            <input ref="transactionInput" v-model="currentTransaction.description" placeholder="Groceries, Rent, etc."
+              @keypress.enter="saveTransaction" />
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                v-model="currentTransaction.exercised"
-              />
-              Transaction already exercised
-            </label>
+            <label for="amountInput">Amount</label>
+            <input id="amountInput" type="number" v-model.number="currentTransaction.amount" placeholder="0.00"
+              step="0.01" min="0" @keypress.enter="saveTransaction" />
           </div>
 
-          <div class="form-group">
-            <label for="categorySelect">Category</label>
-            <select 
-              id="categorySelect"
-              v-model="currentTransaction.category_id"
-              required
-            >
-              <option value="">Select Category</option>
-              <option 
-                v-for="category in categoriesStore.categoriesByName" 
-                :key="category.id"
-                :value="category.id"
-              >
-                {{ category.name }}
-              </option>
-            </select>
-          </div>
+          <!-- Additional fields in details -->
+          <details open class="transaction-details">
+            <summary>Additional Details</summary>
 
-          <div class="form-group">
-            <label for="accountSelect">Account</label>
-            <select 
-              id="accountSelect"
-              v-model="currentTransaction.account_id"
-              required
-            >
-              <option value="">Select Account</option>
-              <option 
-                v-for="account in accountsStore.accountsByName" 
-                :key="account.id"
-                :value="account.id"
-              >
-                {{ account.name }}
-              </option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label for="dateInput">Date</label>
+              <input id="dateInput" type="date" v-model="currentTransaction.date" required />
+            </div>
 
-          <div class="form-group">
-            <label for="noteTextarea">Note</label>
-            <textarea
-              id="noteTextarea"
-              v-model="currentTransaction.note"
-              placeholder="Additional details..."
-              rows="3"
-            ></textarea>
-          </div>
-        </details>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="currentTransaction.exercised" />
+                Transaction already exercised
+              </label>
+            </div>
 
-        <div class="button-group">
-          <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
-          <button v-if="isEditing" 
-                  @click="confirmDelete" 
-                  class="delete-button">
-            Delete
-          </button>
-          <button @click="closeDialog">Cancel</button>
-        </div>
+            <div class="form-group">
+              <label for="categorySelect">Category</label>
+              <CategorySelect v-model="currentTransaction.category_id" />
+            </div>
+
+            <div class="form-group">
+              <label for="accountSelect">Account</label>
+              <select id="accountSelect" v-model="currentTransaction.account_id" required>
+                <option value="">Select Account</option>
+                <option v-for="account in accountsStore.accountsByName" :key="account.id" :value="account.id">
+                  {{ account.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="noteTextarea">Note</label>
+              <textarea id="noteTextarea" v-model="currentTransaction.note" placeholder="Additional details..."
+                rows="3"></textarea>
+            </div>
+          </details>
+
+          <div class="button-group">
+            <button @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
+            <button v-if="isEditing" @click="confirmDelete" class="delete-button">
+              Delete
+            </button>
+            <button @click="closeDialog">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -125,11 +81,13 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import $moment from 'moment';
+import CategorySelect from './CategorySelect.vue'
 
 export default defineComponent({
   name: 'CalendarComponent',
   components: {
     FullCalendar,
+    CategorySelect,
   },
   setup() {
     const transactionsStore = useTransactionsStore();
@@ -170,7 +128,7 @@ export default defineComponent({
         date: transaction.date,
         html: true
       }));
-      
+
       return {
         plugins: [dayGridPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
@@ -308,7 +266,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-
 .radio-group {
   display: flex;
   gap: 16px;
@@ -321,6 +278,7 @@ export default defineComponent({
   gap: 4px;
   cursor: pointer;
 }
+
 .transaction-dialog {
   position: fixed;
   top: 0;
