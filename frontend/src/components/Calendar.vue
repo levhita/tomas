@@ -74,6 +74,7 @@
 
 <script>
 import { defineComponent } from 'vue';
+import moment from 'moment';
 import { useTransactionsStore } from '../stores/transactions';
 import { useCategoriesStore } from '../stores/categories';
 import { useAccountsStore } from '../stores/accounts';
@@ -160,6 +161,7 @@ export default defineComponent({
     handleDateClick(arg) {
       this.isEditing = false;
       this.currentTransaction.date = arg.dateStr;
+      console.log(this.currentTransaction.date);
       if (this.currentTransaction.date <= this.currentDate) {
         this.currentTransaction.exercised = true;
       }
@@ -180,9 +182,11 @@ export default defineComponent({
       try {
         const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
         if (transaction) {
+          // FullCalendar returns the date in local time, so we need to convert it to UTC
+          const newDate = moment(info.event.startStr).utc().format('YYYY-MM-DD');
           await this.transactionsStore.updateTransaction(transaction.id, {
             ...transaction,
-            date: info.event.startStr
+            date: newDate
           });
         }
       } catch (error) {
