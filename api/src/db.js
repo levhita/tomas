@@ -11,7 +11,8 @@ const db = mysql.createPool({
   connectionLimit: 10,
   maxIdle: 10,
   idleTimeout: 60000,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 });
 
 // Handle uncaught errors
