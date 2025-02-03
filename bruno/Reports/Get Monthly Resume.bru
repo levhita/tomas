@@ -1,0 +1,19 @@
+meta {
+  name: Get Monthly Resume
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{server_url}}/reports/monthly/:id?date=2025-01-01
+  body: none
+  auth: none
+}
+
+params:query {
+  date: 2025-01-01
+}
+
+params:path {
+  id: 4
+}

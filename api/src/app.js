@@ -8,6 +8,7 @@ var usersRouter = require('./routes/users');
 var transactionsRouter = require('./routes/transactions');
 var categoriesRouter = require('./routes/categories');
 var accountsRouter = require('./routes/accounts');
+var reportsRouter = require('./routes/reports');
 var app = express();
 
 app.use(logger('dev'));
@@ -21,5 +22,6 @@ app.use('/users', usersRouter);
 app.use('/transactions', transactionsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/accounts', accountsRouter);
+app.use('/reports', reportsRouter);
 
 module.exports = app;
