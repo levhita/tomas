@@ -140,6 +140,7 @@ export default defineComponent({
       return {
         plugins: [dayGridPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
+        firstDay: 1, // Start week on Monday
         dateClick: this.handleDateClick,
         editable: true, // Enable drag-and-drop
         eventDrop: this.handleEventDrop, // Add drop handler
@@ -276,6 +277,26 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.transaction-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+}
+
+.dialog-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 600px;
+}
+
 .fc-event {
   cursor: move;
 }
