@@ -1,5 +1,5 @@
 <script setup>
-import Navigation from './components/molecules/Navigation.vue'
+import Navigation from './components/Navigation.vue'
 
 </script>
 

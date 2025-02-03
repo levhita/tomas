@@ -2,9 +2,9 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import './style.css';
 import { createMemoryHistory, createRouter } from 'vue-router'
-import HomeView from './components/Views/HomeView.vue'
-import CalendarView from './components/Views/CalendarView.vue'
-import MonthlyView from './components/Views/MonthlyView.vue'
+import HomeView from './pages/HomeView.vue'
+import CalendarView from './pages/CalendarView.vue'
+import MonthlyView from './pages/MonthlyView.vue'
 import App from './App.vue';
 
 const router = createRouter({

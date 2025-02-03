@@ -6,5 +6,5 @@
 </template>
 
 <script setup>
-import Calendar from '../molecules/Calendar.vue'
+import Calendar from '../components/Calendar.vue'
 </script>
