@@ -25,7 +25,7 @@
 <script setup>
 import { computed } from 'vue'
 import moment from 'moment'
-import { useAccountsStore } from '../stores/accounts'
+import { useAccountsStore } from '../../stores/accounts'
 
 const props = defineProps(['accountId', 'currentDate'])
 const emit = defineEmits(['update:accountId', 'update:currentDate'])

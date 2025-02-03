@@ -17,7 +17,7 @@ import { ref, onMounted } from 'vue'
 import moment from 'moment'
 import Calendar from '../components/Calendar.vue'
 import Monthly from '../components/Monthly.vue'
-import DateAccountSelector from '../components/DateAccountSelector.vue'
+import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
 import { useAccountsStore } from '../stores/accounts'
 
 const accountsStore = useAccountsStore()
