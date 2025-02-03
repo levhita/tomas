@@ -1,11 +1,11 @@
 -- Clean Up --
 DROP TABLE IF EXISTS `transaction`;
 
-DROP TABLE IF EXISTS `totals`;
+DROP TABLE IF EXISTS `category`;
+
+DROP TABLE IF EXISTS `total`;
 
 DROP TABLE IF EXISTS `account`;
-
-DROP TABLE IF EXISTS `category`;
 
 -- Account --
 CREATE TABLE
@@ -14,7 +14,7 @@ CREATE TABLE
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
-    `starting_amount` DECIMAL(10, 2) NOT NULL DEFAULT '0',
+    `opening_date` DATE NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB;
@@ -28,10 +28,8 @@ CREATE TABLE
     `account_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
-  );
-
-ENGINE = InnoDB;
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`)
+  ) ENGINE = InnoDB;
 
 -- Categories --
 CREATE TABLE
@@ -39,13 +37,12 @@ CREATE TABLE
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
+    `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
     `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`)
-  );
-
-ENGINE = InnoDB;
+  ) ENGINE = InnoDB;
 
 -- Transactions --
 CREATE TABLE
@@ -62,6 +59,4 @@ CREATE TABLE
     PRIMARY KEY (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
     FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
-  );
-
-ENGINE = InnoDB;
+  ) ENGINE = InnoDB;

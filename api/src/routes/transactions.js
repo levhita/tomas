@@ -131,7 +131,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    const [accounts] = await db.query(`
+    const [transactions] = await db.query(`
       SELECT 
         t.*,
         c.name as category_name,
@@ -142,8 +142,8 @@ router.put('/:id', async (req, res) => {
       WHERE t.id = ?
     `, [req.params.id]);
 
-    accounts[0].exercised = !!accounts[0].exercised;
-    res.status(200).json(accounts[0]);
+    transactions[0].exercised = !!transactions[0].exercised;
+    res.status(200).json(transactions[0]);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update transaction' });
