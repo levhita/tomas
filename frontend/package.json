@@ -19,7 +19,8 @@
     "bootstrap-icons": "^1.11.3",
     "moment": "^2.30.1",
     "pinia": "^2.3.0",
-    "vue": "^3.5.10"
+    "vue": "^3.5.10",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",

@@ -41,12 +41,7 @@
             </div>
             <div class="col-6">
               <div class="form-floating">
-                <select id="categorySelect" class="form-control" v-model="currentTransaction.category_id" required>
-                  <option value="">Select Category</option>
-                  <option v-for="category in categoriesStore.categoriesByName" :key="category.id" :value="category.id">
-                    {{ category.name }}
-                  </option>
-                </select>
+                <CategorySelect v-model="currentTransaction.category_id" />
                 <label for="categorySelect">Category</label>
               </div>
             </div>
@@ -80,7 +75,6 @@
             <button class="btn btn-primary" @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -95,11 +89,13 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import $moment from 'moment';
+import CategorySelect from './inputs/CategorySelect.vue'
 
 export default defineComponent({
   name: 'CalendarComponent',
   components: {
     FullCalendar,
+    CategorySelect,
   },
   setup() {
     const transactionsStore = useTransactionsStore();
@@ -172,6 +168,7 @@ export default defineComponent({
     handleDateClick(arg) {
       this.isEditing = false;
       this.currentTransaction.date = arg.dateStr;
+      console.log(this.currentTransaction.date);
       if (this.currentTransaction.date <= this.currentDate) {
         this.currentTransaction.exercised = true;
       }
@@ -179,6 +176,7 @@ export default defineComponent({
     },
     handleEventClick(info) {
       const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
+
       if (transaction) {
         this.isEditing = true;
         this.currentTransaction = { ...transaction };
@@ -278,26 +276,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.transaction-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2;
-}
-
-.dialog-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 600px;
-}
-
 .fc-event {
   cursor: move;
 }

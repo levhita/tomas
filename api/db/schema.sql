@@ -1,44 +1,62 @@
-DROP TABLE IF EXISTS account;
+-- Clean Up --
+DROP TABLE IF EXISTS `transaction`;
 
+DROP TABLE IF EXISTS `category`;
+
+DROP TABLE IF EXISTS `total`;
+
+DROP TABLE IF EXISTS `account`;
+
+-- Account --
 CREATE TABLE
-  account (
-    id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    note TEXT,
-    type TEXT CHECK (type IN ('debit', 'credit')) NOT NULL DEFAULT 'debit',
-    starting_amount NUMERIC NOT NULL DEFAULT 0,
-    created_at NUMERIC DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
-  );
+  `account` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `note` TEXT NULL,
+    `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
+    `opening_date` DATE NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB;
 
-DROP TABLE IF EXISTS category;
-
+-- Totals --
 CREATE TABLE
-  category (
-    id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    note TEXT,
-    parent_category_id INTEGER DEFAULT null,
-    created_at NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    FOREIGN KEY (parent_category_id) REFERENCES category (id)
-  );
+  `total` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+    `date` DATE NOT NULL,
+    `account_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`)
+  ) ENGINE = InnoDB;
+
+-- Categories --
+CREATE TABLE
+  `category` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `note` TEXT NULL,
+    `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
+    `parent_category_id` INT UNSIGNED DEFAULT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`)
+  ) ENGINE = InnoDB;
 
 -- Transactions --
-DROP TABLE IF EXISTS "transaction";
-
 CREATE TABLE
-  "transaction" (
-    id INTEGER NOT NULL,
-    description TEXT NOT NULL,
-    note TEXT,
-    amount NUMERIC NOT NULL DEFAULT 0,
-    "date" NUMERIC NOT NULL,
-    exercised INTEGER DEFAULT FALSE,
-    account_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
-    created_at NUMERIC NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    FOREIGN KEY (account_id) REFERENCES account (id),
-    FOREIGN KEY (category_id) REFERENCES category (id)
-  );
+  `transaction` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `description` VARCHAR(255) NOT NULL,
+    `note` TEXT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+    `date` DATE NOT NULL,
+    `exercised` BOOLEAN DEFAULT FALSE,
+    `account_id` INT UNSIGNED NOT NULL,
+    `category_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
+    FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
+  ) ENGINE = InnoDB;

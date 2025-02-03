@@ -3,105 +3,110 @@ const router = express.Router();
 const db = require('../db');
 
 // Get all accounts
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const accounts = db.prepare(`
+    const [accounts] = await db.query(`
       SELECT * FROM account 
       ORDER BY name ASC
-    `).all();
+    `);
     res.status(200).json(accounts);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch accounts' });
   }
 });
 
 // Get single account
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const account = db.prepare(`
+    const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    if (!account) {
+    if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
-    res.status(200).json(account);
+    res.status(200).json(accounts[0]);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch account' });
   }
 });
 
 // Create account
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, note = null, type = "debit", starting_amount = 0 } = req.body;
-  console.log(req.body);
+
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
   try {
-    const insert = db.prepare(`
+    const [result] = await db.query(`
       INSERT INTO account (name, note, type, starting_amount)
       VALUES (?, ?, ?, ?)
-    `);
+    `, [name, note, type, starting_amount]);
 
-    const result = insert.run(name, note, type, starting_amount);
-
-    const newAccount = db.prepare(`
+    const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
-    `).get(result.lastInsertRowid);
+    `, [result.insertId]);
 
-    res.status(201).json(newAccount);
+    res.status(201).json(accounts[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create account' });
   }
 });
 
 // Update account
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, note, type, starting_amount } = req.body;
 
   try {
-    const update = db.prepare(`
+    const [result] = await db.query(`
       UPDATE account
       SET name = ?,
           note = ?,
           type = ?,
           starting_amount = ?
       WHERE id = ?
-    `).run(name, note, type, starting_amount, req.params.id);
+    `, [name, note, type, starting_amount, req.params.id]);
 
-    if (update.changes === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    const updated = db.prepare(`
+    const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    res.status(200).json(updated);
+    res.status(200).json(accounts[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update account' });
   }
 });
 
 // Delete account
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const result = db.prepare(`
+    const [result] = await db.query(`
       DELETE FROM account
       WHERE id = ?
-    `).run(req.params.id);
+    `, [req.params.id]);
 
-    if (result.changes === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
     res.status(204).send();
   } catch (err) {
-    res.status(428).json({ error: 'Cannot delete account with transactions' });
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(428).json({ error: 'Cannot delete account with transactions' });
+    }
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to delete account' });
   }
 });
 

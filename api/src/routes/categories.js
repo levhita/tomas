@@ -3,37 +3,39 @@ const router = express.Router();
 const db = require('../db');
 
 // Get all categories
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const categories = db.prepare(`
+    const [categories] = await db.query(`
       SELECT * FROM category 
       ORDER BY name ASC
-    `).all();
+    `);
     res.status(200).json(categories);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 });
 
 // Get single category
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const category = db.prepare(`
+    const [categories] = await db.query(`
       SELECT * FROM category 
       WHERE id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    if (!category) {
+    if (categories.length === 0) {
       return res.status(404).json({ error: 'Category not found' });
     }
-    res.status(200).json(category);
+    res.status(200).json(categories[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch category' });
   }
 });
 
 // Create category
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, note = null, parent_category_id = null } = req.body;
 
   if (!name) {
@@ -41,67 +43,72 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const insert = db.prepare(`
+    const [result] = await db.query(`
       INSERT INTO category (name, note, parent_category_id)
       VALUES (?, ?, ?)
-    `);
+    `, [name, note, parent_category_id]);
 
-    const result = insert.run(name, note, parent_category_id);
-
-    const newCategory = db.prepare(`
+    const [categories] = await db.query(`
       SELECT * FROM category 
       WHERE id = ?
-    `).get(result.lastInsertRowid);
+    `, [result.insertId]);
 
-    res.status(201).json(newCategory);
+    res.status(201).json(categories[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create category' });
   }
 });
 
 // Update category
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, note, parent_category_id } = req.body;
 
   try {
-    const update = db.prepare(`
+    const [result] = await db.query(`
       UPDATE category
       SET name = ?,
           note = ?,
           parent_category_id = ?
       WHERE id = ?
-    `).run(name, note, parent_category_id, req.params.id);
+    `, [name, note, parent_category_id, req.params.id]);
 
-    if (update.changes === 0) {
+    if (result.affectedRows === 0) {
+      console.error('Database error:', err);
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    const updated = db.prepare(`
+    const [categories] = await db.query(`
       SELECT * FROM category 
       WHERE id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    res.status(200).json(updated);
+    res.status(200).json(categories[0]);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update category' });
   }
 });
 
 // Delete category
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const result = db.prepare(`
+    const [result] = await db.query(`
       DELETE FROM category
       WHERE id = ?
-    `).run(req.params.id);
+    `, [req.params.id]);
 
-    if (result.changes === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Category not found' });
     }
 
     res.status(204).send();
   } catch (err) {
-    res.status(428).json({ error: 'Cannot delete category with transactions' });
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(428).json({ error: 'Cannot delete category with transactions' });
+    }
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to delete category' });
   }
 });
 
