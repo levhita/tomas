@@ -10,7 +10,7 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   maxIdle: 10,
-  idleTimeout: 60000,
+  idleTimeout: 120000,
   queueLimit: 0,
   dateStrings: true
 });

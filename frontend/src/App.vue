@@ -1,11 +1,13 @@
 <script setup>
-import CalendarComponent from './components/Calendar.vue'
+import Navigation from './components/molecules/Navigation.vue'
 
 </script>
 
 <template>
-  <CalendarComponent/>
+  <Navigation />
+  <main>
+    <RouterView />
+  </main>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

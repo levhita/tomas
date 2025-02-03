@@ -74,9 +74,9 @@
 
 <script>
 import { defineComponent } from 'vue';
-import { useTransactionsStore } from '../stores/transactions';
-import { useCategoriesStore } from '../stores/categories';
-import { useAccountsStore } from '../stores/accounts';
+import { useTransactionsStore } from '../../stores/transactions';
+import { useCategoriesStore } from '../../stores/categories';
+import { useAccountsStore } from '../../stores/accounts';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';

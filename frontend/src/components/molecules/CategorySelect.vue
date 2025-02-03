@@ -14,7 +14,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useCategoriesStore } from '../stores/categories';
+import { useCategoriesStore } from '../../stores/categories';
 
 const props = defineProps(['modelValue']);
 const emit = defineEmits(['update:modelValue']);
