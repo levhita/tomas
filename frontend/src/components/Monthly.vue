@@ -1,44 +1,28 @@
 <template>
-  <div class="monthly-report">
-    <div class="controls">
-      <select v-model="selectedAccount" @change="fetchReport">
-        <option v-for="account in accounts" :key="account.id" :value="account.id">
-          {{ account.name }}
-        </option>
-      </select>
-
-      <div class="month-nav">
-        <button @click="previousMonth">&lt;</button>
-        <span>{{ currentMonth }}</span>
-        <button @click="nextMonth">&gt;</button>
-      </div>
-    </div>
-
-    <div v-if="isLoading" class="loading">Loading...</div>
-
-    <div v-else-if="report" class="report-content">
-      <div class="totals">
-        <div class="total-item">
-          <h3>Projected</h3>
-          <span>{{ formatCurrency(report.total_projected) }}</span>
-        </div>
-        <div class="total-item">
-          <h3>Exercised</h3>
-          <span>{{ formatCurrency(report.total_exercised) }}</span>
-        </div>
-        <div class="total-item">
-          <h3>Pending</h3>
-          <span>{{ formatCurrency(report.total_projected - report.total_exercised) }}</span>
+  <div class="card">
+    <div class="card-body">
+      <div v-if="isLoading" class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
       </div>
+      <div v-else-if="report" class="report-content">
+        <div class="totals">
+          <div class="total-item">
+            <h3>Projected</h3>
+            <span>{{ formatCurrency(report.total_projected) }}</span>
+          </div>
+          <div class="total-item">
+            <h3>Exercised</h3>
+            <span>{{ formatCurrency(report.total_exercised) }}</span>
+          </div>
+        </div>
 
-      <div class="transactions">
-        <div v-for="transaction in report.transactions" :key="transaction.id" class="transaction-item">
-          <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
-          <div class="transaction-desc">{{ transaction.description }}</div>
-          <div class="transaction-amount">{{ formatCurrency(transaction.amount) }}</div>
-          <div class="transaction-status">
-            <input type="checkbox" v-model="transaction.exercised">
+        <div class="transactions">
+          <div v-for="transaction in report.transactions" :key="transaction.id" class="transaction-item">
+            <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
+            <div class="transaction-desc">{{ transaction.description }}</div>
+            <div class="transaction-amount">{{ formatCurrency(transaction.amount) }}</div>
           </div>
         </div>
       </div>
@@ -46,18 +30,26 @@
   </div>
 </template>
 
+
+
+
+
+
 <script>
-import { defineComponent } from 'vue';
-import moment from 'moment';
+import { watch, defineComponent } from 'vue';
 import { useReportsStore } from '../stores/reports';
-import { useAccountsStore } from '../stores/accounts';
+import moment from 'moment';
+
 
 export default defineComponent({
   name: 'MonthlyComponent',
   setup() {
     const reportsStore = useReportsStore();
-    const accountsStore = useAccountsStore();
-    return { reportsStore, accountsStore };
+    return { reportsStore };
+  },
+  props: {
+    accountId: Number,
+    currentDate: Object
   },
   data() {
     return {
@@ -71,10 +63,18 @@ export default defineComponent({
       return this.currentDate.format('MMMM YYYY');
     },
     report() {
+      console.log(this);
       return this.reportsStore.monthlyReport;
+    }
+  },
+  watch: {
+    accountId(newAccountId) {
+      this.selectedAccount = newAccountId;
+      this.fetchReport();
     },
-    accounts() {
-      return this.accountsStore.accounts;
+    currentDate(newDate) {
+      this.currentDate = newDate;
+      this.fetchReport();
     }
   },
   methods: {
@@ -95,21 +95,11 @@ export default defineComponent({
       } finally {
         this.isLoading = false;
       }
-    },
-    previousMonth() {
-      this.currentDate = this.currentDate.subtract(1, 'month');
-      this.fetchReport();
-    },
-    nextMonth() {
-      this.currentDate = this.currentDate.add(1, 'month');
-      this.fetchReport();
     }
   },
   async mounted() {
-    await this.accountsStore.fetchAccounts();
-    if (this.accounts.length > 0) {
-      this.selectedAccount = this.accounts[0].id;
-      await this.fetchReport();
+    if (this.selectedAccount) {
+      await fetchReport();
     }
   }
 });
