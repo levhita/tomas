@@ -29,3 +29,23 @@
 .checkbox-label input[type="checkbox"] {
   width: auto;
 }
+
+.split-view {
+  height: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.split-view>* {
+  flex: 1;
+}
+
+.split-view>.split-view-left {
+  outline: 1px solid red;
+  margin-right: 8px;
+}
+
+.split-view>.split-view-right {
+  outline: 1px solid green;
+  margin-left: 8px;
+}

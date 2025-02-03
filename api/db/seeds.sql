@@ -177,3 +177,8 @@ VALUES
     4,
     10
   );
+
+-- Income Taxes --
+-- Profesional services accounting --
+-- Remove so many categories  for gifts donations --
+-- Education in general is absent --

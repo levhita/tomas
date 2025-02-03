@@ -5,6 +5,9 @@
         <RouterLink to="/">Go to Home</RouterLink>
       </li>
       <li>
+        <RouterLink to="/split">Split View</RouterLink>
+      </li>
+      <li>
         <RouterLink to="/calendar">Calendar</RouterLink>
       </li>
       <li>

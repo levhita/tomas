@@ -18,7 +18,7 @@
           <div class="form-group">
             <label for="amountInput">Amount</label>
             <input id="amountInput" type="number" v-model.number="currentTransaction.amount" placeholder="0.00"
-              step="0.01" min="0" @keypress.enter="saveTransaction" />
+              @keypress.enter="saveTransaction" />
           </div>
 
           <!-- Additional fields in details -->
