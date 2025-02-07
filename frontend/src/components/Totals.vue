@@ -6,20 +6,20 @@
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
-      <div v-else-if="report" class="report-content">
+      <div v-else class="report-content">
         <div class="totals">
           <div class="total-item">
             <h3>Projected</h3>
-            <span>{{ formatCurrency(report.total_projected) }}</span>
+            <span>{{ formatCurrency(totals.projected) }}</span>
           </div>
           <div class="total-item">
             <h3>Exercised</h3>
-            <span>{{ formatCurrency(report.total_exercised) }}</span>
+            <span>{{ formatCurrency(totals.exercised) }}</span>
           </div>
         </div>
 
         <div class="transactions">
-          <div v-for="transaction in report.transactions" :key="transaction.id" class="transaction-item">
+          <div v-for="transaction in monthTransactions" :key="transaction.id" class="transaction-item">
             <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
             <div class="transaction-desc">{{ transaction.description }}</div>
             <div class="transaction-amount">{{ formatCurrency(transaction.amount) }}</div>
@@ -31,8 +31,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { useReportsStore } from '../stores/reports'
+import { ref, computed, watch } from 'vue'
+import { useTransactionsStore } from '../stores/transactions'
 import moment from 'moment'
 
 const props = defineProps({
@@ -40,9 +40,24 @@ const props = defineProps({
   selectedDate: String
 })
 
-const reportsStore = useReportsStore()
+const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
-const report = ref(null)
+
+const monthTransactions = computed(() => {
+  const start = moment(props.selectedDate).startOf('month')
+  const end = moment(props.selectedDate).endOf('month')
+
+  return transactionsStore.transactions.filter(t => {
+    const date = moment(t.date)
+    return t.account_id === props.accountId &&
+      date.isBetween(start, end, 'day', '[]')
+  })
+})
+
+const totals = computed(() => ({
+  projected: monthTransactions.value.reduce((sum, t) => sum + t.amount, 0),
+  exercised: monthTransactions.value.reduce((sum, t) => t.exercised ? sum + t.amount : sum, 0)
+}))
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
@@ -52,20 +67,16 @@ function formatDate(date) {
   return moment(date).format('MMM D')
 }
 
-async function fetchReport() {
-  if (!props.accountId) return
-  isLoading.value = true
-  try {
-    const data = await reportsStore.fetchMonthlyReport(props.accountId, props.selectedDate)
-    report.value = data;
-  } catch (error) {
-    console.error('Failed to fetch report:', error)
-  } finally {
-    isLoading.value = false
+watch([() => props.accountId, () => props.selectedDate], async () => {
+  if (props.accountId) {
+    isLoading.value = true
+    try {
+      await transactionsStore.fetchTransactions()
+    } finally {
+      isLoading.value = false
+    }
   }
-}
-
-watch([() => props.accountId, () => props.selectedDate], fetchReport)
+})
 </script>
 
 <style scoped>

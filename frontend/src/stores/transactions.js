@@ -17,9 +17,15 @@ export const useTransactionsStore = defineStore('transactions', () => {
   });
 
   // Actions
-  async function fetchTransactions() {
+  async function fetchTransactions(accountId, startDate, endDate) {
     try {
-      const response = await fetch('/api/transactions');
+      const params = new URLSearchParams();
+      if (accountId) params.append('accountId', accountId);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const url = `/api/transactions${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
       const data = await response.json();
       transactions.value = data;
     } catch (error) {

@@ -3,7 +3,7 @@
     <DateAccountSelector v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate" />
     <div class="row">
       <div class="col-4">
-        <Monthly :account-id="selectedAccount" :selected-date="selectedDate" />
+        <Totals :account-id="selectedAccount" :selected-date="selectedDate" />
       </div>
       <div class="col-8">
         <Calendar :account-id="selectedAccount" :selected-date="selectedDate" />
@@ -16,7 +16,7 @@
 import { ref, computed, onMounted } from 'vue'
 import moment from 'moment'
 import Calendar from '../components/Calendar.vue'
-import Monthly from '../components/Monthly.vue'
+import Totals from '../components/Totals.vue'
 import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
 import { useAccountsStore } from '../stores/accounts'
 

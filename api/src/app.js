@@ -22,6 +22,6 @@ app.use('/users', usersRouter);
 app.use('/transactions', transactionsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/accounts', accountsRouter);
-app.use('/reports', reportsRouter);
+// app.use('/reports', reportsRouter);
 
 module.exports = app;
