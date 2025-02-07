@@ -1,6 +1,6 @@
-# YAMO - Yet Another Money Organizer
+# YAMO - Yet Another Money Organizer and planification software for couples that love eachother
 
-Personal finance projection and expense tracking application.
+Personal and Home finance projection and expense tracking application.
 
 ## Features
 
