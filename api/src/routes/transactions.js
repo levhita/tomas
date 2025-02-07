@@ -15,6 +15,12 @@ router.get('/', async (req, res) => {
       LEFT JOIN account a ON t.account_id = a.id
       ORDER BY t.created_at DESC
     `);
+
+    // Force return a boolean value for exercised
+    for (let i = 0; i < transactions.length; i++) {
+      transactions[i].exercised = !!transactions[i].exercised;
+    };
+
     res.status(200).json(transactions);
   } catch (err) {
     console.error('Database error:', err);
@@ -142,6 +148,7 @@ router.put('/:id', async (req, res) => {
       WHERE t.id = ?
     `, [req.params.id]);
 
+    // Force return a boolean value for exercised
     transactions[0].exercised = !!transactions[0].exercised;
     res.status(200).json(transactions[0]);
   } catch (err) {
