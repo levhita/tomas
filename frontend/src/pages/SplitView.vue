@@ -1,19 +1,19 @@
 <template>
   <div class="container-fluid">
-    <DateAccountSelector v-model:accountId="selectedAccount" v-model:currentDate="currentDate" />
+    <DateAccountSelector v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate" />
     <div class="row">
       <div class="col-4">
-        <Monthly :account-id="selectedAccount" :current-date="currentDate" />
+        <Monthly :account-id="selectedAccount" :selected-date="selectedDate" />
       </div>
       <div class="col-8">
-        <Calendar :account-id="selectedAccount" :current-date="currentDate" />
+        <Calendar :account-id="selectedAccount" :selected-date="selectedDate" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import moment from 'moment'
 import Calendar from '../components/Calendar.vue'
 import Monthly from '../components/Monthly.vue'
@@ -22,7 +22,7 @@ import { useAccountsStore } from '../stores/accounts'
 
 const accountsStore = useAccountsStore()
 const selectedAccount = ref(null)
-const currentDate = ref(moment())
+const selectedDate = ref(moment().format('YYYY-MM-DD'))
 
 onMounted(async () => {
   await accountsStore.fetchAccounts()

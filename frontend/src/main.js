@@ -14,7 +14,8 @@ import App from './App.vue';
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
-    { path: '/', component: HomeView },
+    { path: '/', component: SplitView },
+    { path: '/home', component: HomeView },
     { path: '/split', component: SplitView },
     { path: '/calendar', component: CalendarView },
     { path: '/monthly', component: MonthlyView },

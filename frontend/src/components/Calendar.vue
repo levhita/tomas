@@ -1,13 +1,13 @@
 <template>
   <div>
-    <FullCalendar :options="calendarOptions" />
+    <FullCalendar ref="calendarRef" :options="calendarOptions" />
     <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
       @save="saveTransaction" @delete="deleteTransaction" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useCategoriesStore } from '../stores/categories'
@@ -15,8 +15,12 @@ import { useAccountsStore } from '../stores/accounts'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import $moment from 'moment'
+import moment from 'moment'
 
+const props = defineProps({
+  accountId: Number,
+  selectedDate: String
+})
 
 const emptyTransaction = {
   id: null,
@@ -36,7 +40,7 @@ const transactionsStore = useTransactionsStore()
 const categoriesStore = useCategoriesStore()
 const accountsStore = useAccountsStore()
 
-const currentDate = computed(() => $moment().format('YYYY-MM-DD'))
+const currentDate = computed(() => moment().format('YYYY-MM-DD'))
 
 const calendarOptions = computed(() => {
   const events = transactionsStore.transactionsByDate.map(transaction => ({
@@ -50,19 +54,23 @@ const calendarOptions = computed(() => {
     date: transaction.date,
     html: true
   }))
-
   return {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
+    initialDate: props.selectedDate,
     firstDay: 1, // Start week on Monday
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
     events,
     headerToolbar: {
-      left: 'prev,next',
-      center: 'title',
-      right: 'dayGridWeek,dayGridMonth' // user can switch between the two
+      left: '',
+      center: '',
+      right: '' // user can switch between the two
+
+      //left: 'prev,next today',
+      //center: 'title',
+      //right: 'dayGridWeek,dayGridMonth' // user can switch between the two
     },
     eventContent: (arg) => {
       return { html: arg.event.title }
@@ -70,6 +78,17 @@ const calendarOptions = computed(() => {
     eventClick: handleEventClick
   }
 })
+
+const calendarRef = ref(null)
+
+async function updateDate() {
+  if (calendarRef.value) {
+    const api = calendarRef.value.getApi()
+    api.gotoDate(props.selectedDate)
+  }
+}
+
+watch(() => props.selectedDate, updateDate)
 
 function formatAmount(amount, isExpense) {
   if (isExpense) { amount = -amount }
@@ -137,6 +156,8 @@ async function deleteTransaction(id) {
   }
 }
 
+
+// si no corro los 2 no jala XD hay que entender que pasa aqui
 async function onMounted() {
   await Promise.all([
     transactionsStore.fetchTransactions(),

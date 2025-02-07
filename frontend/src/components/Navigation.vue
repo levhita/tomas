@@ -10,7 +10,10 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav">
           <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/">Home</RouterLink>
+            <RouterLink class="nav-link" active-class="active" to="/">default view</RouterLink>
+          </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/home">Home</RouterLink>
           </li>
           <li class="nav-item">
             <RouterLink class="nav-link" active-class="active" to="/split">Split</RouterLink>

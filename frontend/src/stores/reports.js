@@ -28,8 +28,9 @@ export const useReportsStore = defineStore('reports', () => {
         const data = await response.json();
         throw new Error(data.error || 'Failed to fetch report');
       }
-      monthlyReport.value = await response.json();
+      return await response.json();
     } catch (err) {
+      // TODO: Handle error, probably date is out of range
       error.value = err.message;
       throw err;
     } finally {

@@ -30,78 +30,42 @@
   </div>
 </template>
 
+<script setup>
+import { ref, watch } from 'vue'
+import { useReportsStore } from '../stores/reports'
+import moment from 'moment'
 
+const props = defineProps({
+  accountId: Number,
+  selectedDate: String
+})
 
+const reportsStore = useReportsStore()
+const isLoading = ref(false)
+const report = ref(null)
 
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+}
 
+function formatDate(date) {
+  return moment(date).format('MMM D')
+}
 
-<script>
-import { watch, defineComponent } from 'vue';
-import { useReportsStore } from '../stores/reports';
-import moment from 'moment';
-
-
-export default defineComponent({
-  name: 'MonthlyComponent',
-  setup() {
-    const reportsStore = useReportsStore();
-    return { reportsStore };
-  },
-  props: {
-    accountId: Number,
-    currentDate: Object
-  },
-  data() {
-    return {
-      selectedAccount: null,
-      currentDate: moment(),
-      isLoading: false
-    };
-  },
-  computed: {
-    currentMonth() {
-      return this.currentDate.format('MMMM YYYY');
-    },
-    report() {
-      return this.reportsStore.monthlyReport;
-    }
-  },
-  watch: {
-    accountId(newAccountId) {
-      this.selectedAccount = newAccountId;
-      this.fetchReport();
-    },
-    currentDate(newDate) {
-      this.currentDate = newDate;
-      this.fetchReport();
-    }
-  },
-  methods: {
-    formatCurrency(amount) {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    },
-    formatDate(date) {
-      return moment(date).format('MMM D');
-    },
-    async fetchReport() {
-      if (!this.selectedAccount) return;
-      this.isLoading = true;
-      try {
-        await this.reportsStore.fetchMonthlyReport(
-          this.selectedAccount,
-          this.currentDate.format('YYYY-MM-DD')
-        );
-      } finally {
-        this.isLoading = false;
-      }
-    }
-  },
-  async mounted() {
-    if (this.selectedAccount) {
-      await fetchReport();
-    }
+async function fetchReport() {
+  if (!props.accountId) return
+  isLoading.value = true
+  try {
+    const data = await reportsStore.fetchMonthlyReport(props.accountId, props.selectedDate)
+    report.value = data;
+  } catch (error) {
+    console.error('Failed to fetch report:', error)
+  } finally {
+    isLoading.value = false
   }
-});
+}
+
+watch([() => props.accountId, () => props.selectedDate], fetchReport)
 </script>
 
 <style scoped>
