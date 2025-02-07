@@ -63,7 +63,6 @@ export default defineComponent({
       return this.currentDate.format('MMMM YYYY');
     },
     report() {
-      console.log(this);
       return this.reportsStore.monthlyReport;
     }
   },

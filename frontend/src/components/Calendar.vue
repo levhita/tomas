@@ -1,279 +1,156 @@
 <template>
   <div>
     <FullCalendar :options="calendarOptions" />
-
-    <!-- Transaction Creation/Edition Dialog -->
-    <div v-if="showTransactionDialog" class="transaction-dialog">
-      <div class="dialog-content">
-        <div class="row">
-          <div class="col-10">
-            <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
-          </div>
-          <div class="col-2 text-end">
-            <button type="button" class="btn-close" aria-label="Close" @click="closeDialog"></button>
-          </div>
-        </div>
-        <!-- Main fields -->
-        <form v-on:submit.prevent>
-          <div class="form-floating mb-3">
-            <input id="transactionInput" ref="transactionInput" v-model="currentTransaction.description"
-              class="form-control" placeholder="Groceries, Rent, etc." @keypress.enter="saveTransaction" />
-            <label for="transactionInput" class="form-label">Description</label>
-          </div>
-
-          <div class="form-floating mb-3">
-            <input id="amountInput" type="number" class="form-control" v-model.number="currentTransaction.amount"
-              placeholder="0.00" @keypress.enter="saveTransaction" />
-            <label for="amountInput" class="form-label">Amount</label>
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-6">
-              <div class="form-floating">
-                <select id="accountSelect" class="form-control" v-model="currentTransaction.account_id" required>
-                  <option value="">Select Account</option>
-                  <option v-for="account in accountsStore.accountsByName" :key="account.id" :value="account.id">
-                    {{ account.name }}
-                  </option>
-                </select>
-                <label for="accountSelect">Account</label>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="form-floating">
-                <CategorySelect v-model="currentTransaction.category_id" />
-                <label for="categorySelect">Category</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-floating mb-3">
-            <input id="dateInput" type="date" class="form-control" v-model="currentTransaction.date" required />
-            <label for="dateInput" class="form-label">Date</label>
-          </div>
-
-          <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input" v-model="currentTransaction.exercised" />
-            <label class="form-check-label"> Transaction already exercised</label>
-          </div>
-
-          <div class="form-floating mb-3">
-            <textarea id="noteTextarea" class="form-control" v-model="currentTransaction.note"
-              placeholder="Additional details..." :style="{ 'min-height': '6rem' }"></textarea>
-            <label for="noteTextarea">Note</label>
-          </div>
-        </form>
-
-        <div class="row">
-          <div class="col-6">
-            <button class="btn btn-outline-danger" v-if="isEditing" @click="confirmDelete">
-              <i class="bi bi-trash"></i> Delete
-            </button>
-          </div>
-          <div class="col-6 text-end">
-            <button class="btn btn-outline-secondary me-3" @click="closeDialog">Cancel</button>
-            <button class="btn btn-primary" @click="saveTransaction">{{ isEditing ? 'Update' : 'Save' }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
+      @save="saveTransaction" @delete="deleteTransaction" />
   </div>
 </template>
 
-<script>
-import { defineComponent } from 'vue';
-import { useTransactionsStore } from '../stores/transactions';
-import { useCategoriesStore } from '../stores/categories';
-import { useAccountsStore } from '../stores/accounts';
-import FullCalendar from '@fullcalendar/vue3';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import $moment from 'moment';
-import CategorySelect from './inputs/CategorySelect.vue'
+<script setup>
+import { ref, computed } from 'vue'
+import TransactionDialog from './inputs/TransactionDialog.vue'
+import { useTransactionsStore } from '../stores/transactions'
+import { useCategoriesStore } from '../stores/categories'
+import { useAccountsStore } from '../stores/accounts'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import $moment from 'moment'
 
-export default defineComponent({
-  name: 'CalendarComponent',
-  components: {
-    FullCalendar,
-    CategorySelect,
-  },
-  setup() {
-    const transactionsStore = useTransactionsStore();
-    const categoriesStore = useCategoriesStore();
-    const accountsStore = useAccountsStore();
-    return { transactionsStore, categoriesStore, accountsStore };
-  },
-  data() {
-    return {
-      showTransactionDialog: false,
-      isEditing: false,
-      currentTransaction: {
-        id: null,
-        description: '',
-        amount: null,
-        date: null,
-        category_id: '',
-        account_id: '',
-        isExpense: true,
-        exercised: false,
-        note: ''
-      }
-    };
-  },
-  computed: {
-    currentDate() {
-      return $moment().format('YYYY-MM-DD');
-    },
-    calendarOptions() {
-      const events = this.transactionsStore.transactionsByDate.map(transaction => ({
-        id: transaction.id,
-        title: `
-          <div class="transaction-title">
-            <div class="transaction-description">${transaction.description}</div>
-            <div class="transaction-amount">${this.formatAmount(transaction.amount, transaction.isExpense)}</div>
-          </div>
-        `,
-        date: transaction.date,
-        html: true
-      }));
 
-      return {
-        plugins: [dayGridPlugin, interactionPlugin],
-        initialView: 'dayGridMonth',
-        firstDay: 1, // Start week on Monday
-        dateClick: this.handleDateClick,
-        editable: true, // Enable drag-and-drop
-        eventDrop: this.handleEventDrop, // Add drop handler
-        events,
-        headerToolbar: {
-          left: 'prev,next',
-          center: 'title',
-          right: 'dayGridWeek,dayGridMonth' // user can switch between the two
-        },
-        eventContent: (arg) => {
-          return { html: arg.event.title }
-        },
-        eventClick: this.handleEventClick
-      };
-    }
-  },
-  methods: {
-    formatAmount(amount, isExpense) {
-      if (isExpense) { amount = -amount };
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'EUR', //TODO: Change to user's currency
-        currencyDisplay: "narrowSymbol"
-      }).format(amount);
-    },
-    handleDateClick(arg) {
-      this.isEditing = false;
-      this.currentTransaction.date = arg.dateStr;
-      console.log(this.currentTransaction.date);
-      if (this.currentTransaction.date <= this.currentDate) {
-        this.currentTransaction.exercised = true;
-      }
-      this.showTransactionDialog = true;
-    },
-    handleEventClick(info) {
-      const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
+const emptyTransaction = {
+  id: null,
+  description: '',
+  amount: null,
+  date: null,
+  category_id: '',
+  account_id: '',
+  isExpense: true,
+  exercised: false,
+  note: ''
+}
+const showTransactionDialog = ref(false)
+const currentTransaction = ref({ ...emptyTransaction })
+const isEditing = ref(false)
+const transactionsStore = useTransactionsStore()
+const categoriesStore = useCategoriesStore()
+const accountsStore = useAccountsStore()
 
-      if (transaction) {
-        this.isEditing = true;
-        this.currentTransaction = { ...transaction };
-        this.showTransactionDialog = true;
-        this.$nextTick(() => {
-          this.$refs.transactionInput?.focus();
-        });
-      }
-    },
-    async handleEventDrop(info) {
-      try {
-        const transaction = this.transactionsStore.getTransactionById(parseInt(info.event.id));
-        if (transaction) {
-          await this.transactionsStore.updateTransaction(transaction.id, {
-            ...transaction,
-            date: info.event.startStr
-          });
-        }
-      } catch (error) {
-        console.error('Failed to update transaction date:', error);
-        info.revert(); // Revert the drag if update fails
-      }
-    },
-    async saveTransaction() {
-      if (this.validateForm()) {
-        if (this.isEditing) {
-          await this.transactionsStore.updateTransaction(
-            this.currentTransaction.id,
-            this.currentTransaction
-          );
-        } else {
-          await this.transactionsStore.addTransaction(this.currentTransaction);
-        }
-        this.closeDialog();
-      }
-    },
-    validateForm() {
-      return (
-        this.currentTransaction.description &&
-        this.currentTransaction.amount &&
-        this.currentTransaction.category_id &&
-        this.currentTransaction.account_id &&
-        this.currentTransaction.date
-      );
-    },
-    closeDialog() {
-      this.showTransactionDialog = false;
-      this.isEditing = false;
-      this.resetForm();
-    },
-    resetForm() {
-      this.currentTransaction = {
-        id: null,
-        description: '',
-        amount: null,
-        date: null,
-        category_id: '',
-        account_id: '',
-        isExpense: true,
-        exercised: false,
-        note: ''
-      };
-    },
-    async confirmDelete() {
-      if (confirm('Are you sure you want to delete this transaction?')) {
-        await this.deleteTransaction();
-      }
-    },
+const currentDate = computed(() => $moment().format('YYYY-MM-DD'))
 
-    async deleteTransaction() {
-      try {
-        await this.transactionsStore.deleteTransaction(this.currentTransaction.id);
-        this.closeDialog();
-      } catch (error) {
-        console.error('Failed to delete transaction:', error);
-      }
-    }
-  },
-  async mounted() {
-    await Promise.all([
-      this.transactionsStore.fetchTransactions(),
-      this.categoriesStore.fetchCategories(),
-      this.accountsStore.fetchAccounts()
-    ]);
-  },
-  watch: {
-    showTransactionDialog(newValue) {
-      if (newValue) {
-        // Use nextTick to ensure DOM is updated
-        this.$nextTick(() => {
-          this.$refs.transactionInput.focus();
-        });
-      }
-    }
+const calendarOptions = computed(() => {
+  const events = transactionsStore.transactionsByDate.map(transaction => ({
+    id: transaction.id,
+    title: `
+      <div class="transaction-title">
+        <div class="transaction-description">${transaction.description}</div>
+        <div class="transaction-amount">${formatAmount(transaction.amount, transaction.isExpense)}</div>
+      </div>
+    `,
+    date: transaction.date,
+    html: true
+  }))
+
+  return {
+    plugins: [dayGridPlugin, interactionPlugin],
+    initialView: 'dayGridMonth',
+    firstDay: 1, // Start week on Monday
+    dateClick: handleDateClick,
+    editable: true, // Enable drag-and-drop
+    eventDrop: handleEventDrop, // Add drop handler
+    events,
+    headerToolbar: {
+      left: 'prev,next',
+      center: 'title',
+      right: 'dayGridWeek,dayGridMonth' // user can switch between the two
+    },
+    eventContent: (arg) => {
+      return { html: arg.event.title }
+    },
+    eventClick: handleEventClick
   }
-});
+})
+
+function formatAmount(amount, isExpense) {
+  if (isExpense) { amount = -amount }
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'EUR', //TODO: Change to user's currency
+    currencyDisplay: "narrowSymbol"
+  }).format(amount)
+}
+
+function handleDateClick(arg) {
+  isEditing.value = false
+  currentTransaction.value = { ...emptyTransaction };
+  currentTransaction.value.date = arg.dateStr
+  if (currentTransaction.value.date <= currentDate.value) {
+    currentTransaction.value.exercised = true
+  }
+  showTransactionDialog.value = true
+}
+
+function handleEventClick(info) {
+  const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+
+  if (transaction) {
+    isEditing.value = true
+    currentTransaction.value = { ...transaction }
+    showTransactionDialog.value = true
+  }
+}
+
+async function handleEventDrop(info) {
+  try {
+    const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+    if (transaction) {
+      await transactionsStore.updateTransaction(transaction.id, {
+        ...transaction,
+        date: info.event.startStr
+      })
+    }
+  } catch (error) {
+    console.error('Failed to update transaction date:', error)
+    info.revert() // Revert the drag if update fails
+  }
+}
+
+async function saveTransaction(transaction) {
+  try {
+    if (isEditing.value) {
+      await transactionsStore.updateTransaction(transaction.id, transaction)
+    } else {
+      await transactionsStore.addTransaction(transaction)
+    }
+    showTransactionDialog.value = false
+  } catch (error) {
+    console.error('Failed to save transaction:', error)
+  }
+}
+
+async function deleteTransaction(id) {
+  try {
+    await transactionsStore.deleteTransaction(id)
+    showTransactionDialog.value = false
+  } catch (error) {
+    console.error('Failed to delete transaction:', error)
+  }
+}
+
+async function onMounted() {
+  await Promise.all([
+    transactionsStore.fetchTransactions(),
+    categoriesStore.fetchCategories(),
+    accountsStore.fetchAccounts()
+  ])
+}
+onMounted(async () => {
+  await Promise.all([
+    transactionsStore.fetchTransactions(),
+    categoriesStore.fetchCategories(),
+    accountsStore.fetchAccounts()
+  ])
+})
 </script>
 
 <style scoped>
