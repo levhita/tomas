@@ -19,7 +19,8 @@ import moment from 'moment'
 
 const props = defineProps({
   accountId: Number,
-  selectedDate: String
+  selectedDate: String,
+  rangeType: String
 })
 
 const emptyTransaction = {
@@ -56,7 +57,7 @@ const calendarOptions = computed(() => {
   }))
   return {
     plugins: [dayGridPlugin, interactionPlugin],
-    initialView: 'dayGridMonth',
+    initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
     firstDay: 1, // Start week on Monday
     dateClick: handleDateClick,
@@ -88,7 +89,16 @@ async function updateDate() {
   }
 }
 
+async function updateView() {
+  console.log('updateView');
+  if (calendarRef.value) {
+    const api = calendarRef.value.getApi()
+    api.changeView(props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth')
+  }
+}
+
 watch(() => props.selectedDate, updateDate)
+watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
   if (isExpense) { amount = -amount }
@@ -157,21 +167,21 @@ async function deleteTransaction(id) {
 }
 
 
-// si no corro los 2 no jala XD hay que entender que pasa aqui
-async function onMounted() {
-  await Promise.all([
-    transactionsStore.fetchTransactions(),
-    categoriesStore.fetchCategories(),
-    accountsStore.fetchAccounts()
-  ])
-}
-onMounted(async () => {
-  await Promise.all([
-    transactionsStore.fetchTransactions(),
-    categoriesStore.fetchCategories(),
-    accountsStore.fetchAccounts()
-  ])
-})
+// // si no corro los 2 no jala XD hay que entender que pasa aqui
+// async function onMounted() {
+//   await Promise.all([
+//     transactionsStore.fetchTransactions(),
+//     categoriesStore.fetchCategories(),
+//     accountsStore.fetchAccounts()
+//   ])
+// }
+// onMounted(async () => {
+//   await Promise.all([
+//     transactionsStore.fetchTransactions(),
+//     categoriesStore.fetchCategories(),
+//     accountsStore.fetchAccounts()
+//   ])
+// })
 </script>
 
 <style scoped>

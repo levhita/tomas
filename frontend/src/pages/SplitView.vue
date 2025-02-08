@@ -1,12 +1,13 @@
 <template>
   <div class="container-fluid">
-    <DateAccountSelector ref="dateSelector" v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate" />
+    <DateAccountSelector ref="dateSelector" v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate"
+      v-model:rangeType="rangeType" />
     <div class="row">
       <div class="col-4">
         <Totals :account-id="selectedAccount" :start-date="startDate" :end-date="endDate" />
       </div>
       <div class="col-8">
-        <Calendar :account-id="selectedAccount" :selected-date="selectedDate" />
+        <Calendar :account-id="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
       </div>
     </div>
   </div>
@@ -28,6 +29,7 @@ const selectedDate = ref(moment().format('YYYY-MM-DD'))
 const dateSelector = ref(null)
 const startDate = computed(() => dateSelector.value?.startDate)
 const endDate = computed(() => dateSelector.value?.endDate)
+const rangeType = ref('monthly')
 
 watch(
   [() => selectedAccount.value, startDate, endDate],

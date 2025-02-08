@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import moment from 'moment'
 import AccountSelect from './AccountSelect.vue'
 
@@ -38,7 +38,7 @@ const props = defineProps({
   selectedDate: String
 })
 
-const emit = defineEmits(['update:accountId', 'update:selectedDate'])
+const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])
 const rangeType = ref('monthly')
 
 const selectedPeriod = computed(() => {
@@ -73,6 +73,10 @@ function nextPeriod() {
     .format('YYYY-MM-DD')
   emit('update:selectedDate', newDate)
 }
+
+watch(rangeType, (newType) => {
+  emit('update:rangeType', newType)
+})
 
 defineExpose({ startDate, endDate })
 </script>
