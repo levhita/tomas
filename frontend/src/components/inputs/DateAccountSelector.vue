@@ -1,16 +1,15 @@
 <template>
   <div class="toolbar bg-light border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center gap-3">
-        <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 
-        <div class="btn-group" role="group">
-          <input type="radio" class="btn-check" name="range" id="monthly" value="monthly" v-model="rangeType">
-          <label class="btn btn-outline-primary" for="monthly">Monthly</label>
+      <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 
-          <input type="radio" class="btn-check" name="range" id="weekly" value="weekly" v-model="rangeType">
-          <label class="btn btn-outline-primary" for="weekly">Weekly</label>
-        </div>
+      <div class="btn-group" role="group">
+        <input type="radio" class="btn-check" name="range" id="monthly" value="monthly" v-model="rangeType">
+        <label class="btn btn-outline-primary" for="monthly">Monthly</label>
+
+        <input type="radio" class="btn-check" name="range" id="weekly" value="weekly" v-model="rangeType">
+        <label class="btn btn-outline-primary" for="weekly">Weekly</label>
       </div>
 
       <div class="btn-group">

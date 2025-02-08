@@ -19,7 +19,7 @@
         </div>
 
         <div class="transactions">
-          <div v-for="transaction in monthTransactions" :key="transaction.id" class="transaction-item">
+          <div v-for="transaction in rangeTransactions" :key="transaction.id" class="transaction-item">
             <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
             <div class="transaction-desc">{{ transaction.description }}</div>
             <div class="transaction-amount">{{ formatCurrency(transaction.amount) }}</div>
@@ -44,17 +44,18 @@ const props = defineProps({
 const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
 
-const monthTransactions = computed(() => {
+const rangeTransactions = computed(() => {
   return transactionsStore.transactions.filter(t => {
     const date = moment(t.date)
+    console.log({ accountId: props.accountId, startDate: props.startDate, endDate: props.endDate })
     return t.account_id === props.accountId &&
       date.isBetween(props.startDate, props.endDate, 'day', '[]')
   })
 })
 
 const totals = computed(() => ({
-  projected: monthTransactions.value.reduce((sum, t) => sum + t.amount, 0),
-  exercised: monthTransactions.value.reduce((sum, t) => t.exercised ? sum + t.amount : sum, 0)
+  projected: rangeTransactions.value.reduce((sum, t) => sum + t.amount, 0),
+  exercised: rangeTransactions.value.reduce((sum, t) => t.exercised ? sum + t.amount : sum, 0)
 }))
 
 function formatCurrency(amount) {
@@ -66,34 +67,4 @@ function formatDate(date) {
 }
 </script>
 
-<style scoped>
-.monthly-report {
-  padding: 20px;
-}
-
-.controls {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.month-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.totals {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.transaction-item {
-  display: grid;
-  grid-template-columns: 100px 1fr auto 50px;
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-}
-</style>
+<style scoped></style>

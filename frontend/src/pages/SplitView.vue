@@ -1,14 +1,12 @@
 <template>
-  <div class="container-fluid">
-    <DateAccountSelector ref="dateSelector" v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate"
-      v-model:rangeType="rangeType" />
-    <div class="row">
-      <div class="col-4">
-        <Totals :account-id="selectedAccount" :start-date="startDate" :end-date="endDate" />
-      </div>
-      <div class="col-8">
-        <Calendar :account-id="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
-      </div>
+  <DateAccountSelector ref="dateSelector" v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate"
+    v-model:rangeType="rangeType" />
+  <div class="row flex-grow-1 w-100">
+    <div class="col-4">
+      <Totals class="totals" :account-id="selectedAccount" :start-date="startDate" :end-date="endDate" />
+    </div>
+    <div class="col-8 pb-1">
+      <Calendar :account-id="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
     </div>
   </div>
 </template>
