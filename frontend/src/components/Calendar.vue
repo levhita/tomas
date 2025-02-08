@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, h } from 'vue'
+import { ref, computed, watch } from 'vue'
 import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useCategoriesStore } from '../stores/categories'
@@ -58,7 +58,7 @@ const calendarOptions = computed(() => {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
-    firstDay: 0, // Start week on Sunday
+    firstDay: 0, // Start week on Sunday, this should probably be a user setting
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
