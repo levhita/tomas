@@ -31,26 +31,24 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
 import moment from 'moment'
 
 const props = defineProps({
   accountId: Number,
-  selectedDate: String
+  startDate: String,
+  endDate: String
 })
 
 const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
 
 const monthTransactions = computed(() => {
-  const start = moment(props.selectedDate).startOf('month')
-  const end = moment(props.selectedDate).endOf('month')
-
   return transactionsStore.transactions.filter(t => {
     const date = moment(t.date)
     return t.account_id === props.accountId &&
-      date.isBetween(start, end, 'day', '[]')
+      date.isBetween(props.startDate, props.endDate, 'day', '[]')
   })
 })
 
@@ -66,17 +64,6 @@ function formatCurrency(amount) {
 function formatDate(date) {
   return moment(date).format('MMM D')
 }
-
-watch([() => props.accountId, () => props.selectedDate], async () => {
-  if (props.accountId) {
-    isLoading.value = true
-    try {
-      await transactionsStore.fetchTransactions()
-    } finally {
-      isLoading.value = false
-    }
-  }
-})
 </script>
 
 <style scoped>
