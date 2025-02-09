@@ -1,12 +1,12 @@
 <template>
-  <DateAccountSelector ref="dateSelector" v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate"
+  <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
     v-model:rangeType="rangeType" />
   <div class="row flex-grow-1 w-100">
     <div class="col-4">
-      <Totals class="totals" :account-id="selectedAccount" :start-date="startDate" :end-date="endDate" />
+      <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate" />
     </div>
     <div class="col-8 pb-1">
-      <Calendar :account-id="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
+      <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
     </div>
   </div>
 </template>
@@ -22,26 +22,32 @@ import { useAccountsStore } from '../stores/accounts'
 
 const accountsStore = useAccountsStore()
 const transactionsStore = useTransactionsStore()
-const selectedAccount = ref(null)
+
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
-const dateSelector = ref(null)
-const startDate = computed(() => dateSelector.value?.startDate)
-const endDate = computed(() => dateSelector.value?.endDate)
+const dateAccountSelector = ref(null)
+const startDate = computed(() => dateAccountSelector.value?.startDate)
+const endDate = computed(() => dateAccountSelector.value?.endDate)
+
 const rangeType = ref('monthly')
 
+const accountId = ref(null)
+const selectedAccount = computed(() => accountsStore.getAccountById(accountId.value))
+
+
 watch(
-  [() => selectedAccount.value, startDate, endDate],
-  async ([newAccount, start, end]) => {
-    if (newAccount && start && end) {
-      await transactionsStore.fetchTransactions(newAccount, start, end)
+  [() => accountId.value, startDate, endDate],
+  async ([accountId, start, end]) => {
+    if (accountId && start && end) {
+      await transactionsStore.fetchTransactions(accountId, start, end)
     }
   }
 )
 
+// Update onMounted to set full account object
 onMounted(async () => {
   await accountsStore.fetchAccounts()
   if (accountsStore.accountsByName.length > 0) {
-    selectedAccount.value = accountsStore.accountsByName[0].id
+    accountId.value = accountsStore.accountsByName[0].id
   }
 })
 </script>

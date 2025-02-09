@@ -9,18 +9,18 @@
 import { ref, computed, watch } from 'vue'
 import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
-import { useCategoriesStore } from '../stores/categories'
-import { useAccountsStore } from '../stores/accounts'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import moment from 'moment'
 
 const props = defineProps({
-  accountId: Number,
+  account: Object,
   selectedDate: String,
   rangeType: String
 })
+
+const accountId = computed(() => props.account?.id)
 
 const emptyTransaction = {
   id: null,
@@ -28,7 +28,7 @@ const emptyTransaction = {
   amount: null,
   date: null,
   category_id: '',
-  account_id: '',
+  account_id: accountId,
   isExpense: true,
   exercised: false,
   note: ''
@@ -37,13 +37,11 @@ const showTransactionDialog = ref(false)
 const currentTransaction = ref({ ...emptyTransaction })
 const isEditing = ref(false)
 const transactionsStore = useTransactionsStore()
-const categoriesStore = useCategoriesStore()
-const accountsStore = useAccountsStore()
 
 const currentDate = computed(() => moment().format('YYYY-MM-DD'))
 
 const calendarOptions = computed(() => {
-  const events = transactionsStore.transactionsByDate.map(transaction => ({
+  const events = transactionsStore.transactions.map(transaction => ({
     id: transaction.id,
     title: `
       <div class="transaction-title">
@@ -115,8 +113,8 @@ function handleDateClick(arg) {
   showTransactionDialog.value = true
 }
 
-function handleEventClick(info) {
-  const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+async function handleEventClick(info) {
+  const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
 
   if (transaction) {
     isEditing.value = true
@@ -127,7 +125,7 @@ function handleEventClick(info) {
 
 async function handleEventDrop(info) {
   try {
-    const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+    const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
     if (transaction) {
       await transactionsStore.updateTransaction(transaction.id, {
         ...transaction,

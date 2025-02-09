@@ -5,6 +5,13 @@ export const useTransactionsStore = defineStore('transactions', () => {
   // State
   const transactions = ref([]);
 
+  // Getters
+  const transactionsByDate = computed(() => {
+    return [...transactions.value].sort((a, b) => {
+      return new Date(a.date) - new Date(b.date)
+    })
+  })
+
   // Actions
   async function fetchTransactions(accountId, startDate, endDate) {
     try {
@@ -110,7 +117,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     // State
     transactions,
     // Getters
-
+    transactionsByDate,
     // Actions
     fetchTransactions,
     fetchTransactionById,
