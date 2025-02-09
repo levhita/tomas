@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
       params.push(startDate, endDate);
     }
 
-    query += ` ORDER BY t.date DESC`;
+    query += ` ORDER BY t.date ASC`;
 
     const [transactions] = await db.query(query, params);
 
