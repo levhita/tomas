@@ -5,17 +5,6 @@ export const useTransactionsStore = defineStore('transactions', () => {
   // State
   const transactions = ref([]);
 
-  // Getters
-  const transactionsByDate = computed(() => {
-    return transactions.value.sort((a, b) =>
-      new Date(b.date) - new Date(a.date)
-    );
-  });
-
-  const getTransactionById = computed(() => {
-    return (id) => transactions.value.find(t => t.id === id);
-  });
-
   // Actions
   async function fetchTransactions(accountId, startDate, endDate) {
     try {
@@ -30,6 +19,30 @@ export const useTransactionsStore = defineStore('transactions', () => {
       transactions.value = data;
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  }
+
+  async function fetchTransactionById(id) {
+    try {
+      const response = await fetch(`/api/transactions/${id}`);
+      if (!response.ok) {
+        const json = await response.json();
+        throw new Error(json.error);
+      }
+      const transaction = await response.json();
+
+      // Update transaction in local state if exists
+      const index = transactions.value.findIndex(t => t.id === id);
+      if (index !== -1) {
+        transactions.value[index] = transaction;
+      } else {
+        transactions.value.push(transaction);
+      }
+
+      return transaction;
+    } catch (error) {
+      console.error('Error fetching transaction:', error);
       throw error;
     }
   }
@@ -97,10 +110,10 @@ export const useTransactionsStore = defineStore('transactions', () => {
     // State
     transactions,
     // Getters
-    transactionsByDate,
-    getTransactionById,
+
     // Actions
     fetchTransactions,
+    fetchTransactionById,
     addTransaction,
     updateTransaction,
     deleteTransaction,
