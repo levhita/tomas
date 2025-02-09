@@ -19,9 +19,11 @@ import Totals from '../components/Totals.vue'
 import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
+import { useCategoriesStore } from '../stores/categories'
 
-const accountsStore = useAccountsStore()
-const transactionsStore = useTransactionsStore()
+const categoriesStore = useCategoriesStore();
+const accountsStore = useAccountsStore();
+const transactionsStore = useTransactionsStore();
 
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
 const dateAccountSelector = ref(null)
@@ -45,7 +47,8 @@ watch(
 
 // Update onMounted to set full account object
 onMounted(async () => {
-  await accountsStore.fetchAccounts()
+  await useCategoriesStore().fetchCategories();
+  await accountsStore.fetchAccounts();
   if (accountsStore.accountsByName.length > 0) {
     accountId.value = accountsStore.accountsByName[0].id
   }
