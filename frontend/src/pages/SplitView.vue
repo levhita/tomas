@@ -1,33 +1,56 @@
 <template>
-  <div class="container-fluid">
-    <DateAccountSelector v-model:accountId="selectedAccount" v-model:selectedDate="selectedDate" />
-    <div class="row">
-      <div class="col-4">
-        <Monthly :account-id="selectedAccount" :selected-date="selectedDate" />
-      </div>
-      <div class="col-8">
-        <Calendar :account-id="selectedAccount" :selected-date="selectedDate" />
-      </div>
+  <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
+    v-model:rangeType="rangeType" />
+  <div class="row flex-grow-1 w-100">
+    <div class="col-4">
+      <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate" />
+    </div>
+    <div class="col-8 pb-1">
+      <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import moment from 'moment'
 import Calendar from '../components/Calendar.vue'
-import Monthly from '../components/Monthly.vue'
+import Totals from '../components/Totals.vue'
 import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
+import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
+import { useCategoriesStore } from '../stores/categories'
 
-const accountsStore = useAccountsStore()
-const selectedAccount = ref(null)
+const categoriesStore = useCategoriesStore();
+const accountsStore = useAccountsStore();
+const transactionsStore = useTransactionsStore();
+
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
+const dateAccountSelector = ref(null)
+const startDate = computed(() => dateAccountSelector.value?.startDate)
+const endDate = computed(() => dateAccountSelector.value?.endDate)
 
+const rangeType = ref('monthly')
+
+const accountId = ref(null)
+const selectedAccount = computed(() => accountsStore.getAccountById(accountId.value))
+
+
+watch(
+  [() => accountId.value, startDate, endDate],
+  async ([accountId, start, end]) => {
+    if (accountId && start && end) {
+      await transactionsStore.fetchTransactions(accountId, start, end)
+    }
+  }
+)
+
+// Update onMounted to set full account object
 onMounted(async () => {
-  await accountsStore.fetchAccounts()
+  await useCategoriesStore().fetchCategories();
+  await accountsStore.fetchAccounts();
   if (accountsStore.accountsByName.length > 0) {
-    selectedAccount.value = accountsStore.accountsByName[0].id
+    accountId.value = accountsStore.accountsByName[0].id
   }
 })
 </script>

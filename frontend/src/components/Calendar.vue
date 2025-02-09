@@ -1,26 +1,26 @@
 <template>
-  <div>
-    <FullCalendar ref="calendarRef" :options="calendarOptions" />
-    <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
-      @save="saveTransaction" @delete="deleteTransaction" />
-  </div>
+  <FullCalendar ref="calendarRef" :options="calendarOptions" />
+
+  <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
+    @save="saveTransaction" @delete="deleteTransaction" />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
-import { useCategoriesStore } from '../stores/categories'
-import { useAccountsStore } from '../stores/accounts'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import moment from 'moment'
 
 const props = defineProps({
-  accountId: Number,
-  selectedDate: String
+  account: Object,
+  selectedDate: String,
+  rangeType: String
 })
+
+const accountId = computed(() => props.account?.id)
 
 const emptyTransaction = {
   id: null,
@@ -28,7 +28,7 @@ const emptyTransaction = {
   amount: null,
   date: null,
   category_id: '',
-  account_id: '',
+  account_id: accountId,
   isExpense: true,
   exercised: false,
   note: ''
@@ -37,13 +37,11 @@ const showTransactionDialog = ref(false)
 const currentTransaction = ref({ ...emptyTransaction })
 const isEditing = ref(false)
 const transactionsStore = useTransactionsStore()
-const categoriesStore = useCategoriesStore()
-const accountsStore = useAccountsStore()
 
 const currentDate = computed(() => moment().format('YYYY-MM-DD'))
 
 const calendarOptions = computed(() => {
-  const events = transactionsStore.transactionsByDate.map(transaction => ({
+  const events = transactionsStore.transactions.map(transaction => ({
     id: transaction.id,
     title: `
       <div class="transaction-title">
@@ -56,9 +54,9 @@ const calendarOptions = computed(() => {
   }))
   return {
     plugins: [dayGridPlugin, interactionPlugin],
-    initialView: 'dayGridMonth',
+    initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
-    firstDay: 1, // Start week on Monday
+    firstDay: 0, // Start week on Sunday, this should probably be a user setting
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
@@ -66,12 +64,9 @@ const calendarOptions = computed(() => {
     headerToolbar: {
       left: '',
       center: '',
-      right: '' // user can switch between the two
-
-      //left: 'prev,next today',
-      //center: 'title',
-      //right: 'dayGridWeek,dayGridMonth' // user can switch between the two
+      right: ''
     },
+    height: '100%',
     eventContent: (arg) => {
       return { html: arg.event.title }
     },
@@ -88,7 +83,16 @@ async function updateDate() {
   }
 }
 
+async function updateView() {
+  console.log('updateView');
+  if (calendarRef.value) {
+    const api = calendarRef.value.getApi()
+    api.changeView(props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth')
+  }
+}
+
 watch(() => props.selectedDate, updateDate)
+watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
   if (isExpense) { amount = -amount }
@@ -109,8 +113,8 @@ function handleDateClick(arg) {
   showTransactionDialog.value = true
 }
 
-function handleEventClick(info) {
-  const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+async function handleEventClick(info) {
+  const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
 
   if (transaction) {
     isEditing.value = true
@@ -121,7 +125,7 @@ function handleEventClick(info) {
 
 async function handleEventDrop(info) {
   try {
-    const transaction = transactionsStore.getTransactionById(parseInt(info.event.id))
+    const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
     if (transaction) {
       await transactionsStore.updateTransaction(transaction.id, {
         ...transaction,
@@ -155,46 +159,9 @@ async function deleteTransaction(id) {
     console.error('Failed to delete transaction:', error)
   }
 }
-
-
-// si no corro los 2 no jala XD hay que entender que pasa aqui
-async function onMounted() {
-  await Promise.all([
-    transactionsStore.fetchTransactions(),
-    categoriesStore.fetchCategories(),
-    accountsStore.fetchAccounts()
-  ])
-}
-onMounted(async () => {
-  await Promise.all([
-    transactionsStore.fetchTransactions(),
-    categoriesStore.fetchCategories(),
-    accountsStore.fetchAccounts()
-  ])
-})
 </script>
 
 <style scoped>
-.transaction-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2;
-}
-
-.dialog-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 600px;
-}
-
 .fc-event {
   cursor: move;
 }

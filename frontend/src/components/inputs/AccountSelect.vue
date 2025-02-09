@@ -1,5 +1,6 @@
 <template>
-  <select class="form-control" :value="modelValue" @change="$emit('update:modelValue', $event.target.value)" required>
+  <select class="form-control" :value="modelValue" @change="$emit('update:modelValue', Number($event.target.value))"
+    required>
     <option value="">Select Account</option>
     <option v-for="account in accountsByName" :key="account.id" :value="account.id">
       {{ account.name }}
