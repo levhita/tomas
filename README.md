@@ -61,6 +61,11 @@ mysql -u root -p < schema.sql
 
 ## Development
 
+We try to abide to GitFlow
+
+The development branch is `develop`, all PRs must point there.
+`main` is used for production releases and hotfixes.
+
 Start Backend server
 ```bash
 cd api
