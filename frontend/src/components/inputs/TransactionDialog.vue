@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import AccountSelect from './AccountSelect.vue'
 import CategorySelect from './CategorySelect.vue'
 
@@ -80,6 +80,16 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save', 'delete'])
 const transaction = ref({ ...props.transaction })
+const transactionInput = ref(null)
+
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    // Focus description input when dialog opens
+    nextTick(() => {
+      transactionInput.value?.focus()
+    })
+  }
+})
 
 watch(() => props.transaction, (newVal) => {
   transaction.value = { ...newVal }

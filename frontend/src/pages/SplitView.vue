@@ -3,7 +3,8 @@
     v-model:rangeType="rangeType" />
   <div class="row flex-grow-1 w-100">
     <div class="col-4">
-      <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate" />
+      <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
+        @edit-transaction="showTransactionDialog" />
     </div>
     <div class="col-8 pb-1">
       <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"

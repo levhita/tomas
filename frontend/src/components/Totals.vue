@@ -45,9 +45,16 @@
       </thead>
       <tbody>
         <tr v-for="transaction in rangeTransactions" :key="transaction.id">
-          <td>{{ transaction.description }}</td>
+          <td>
+            <span class="description-button" @click="$emit('edit-transaction', { transaction, editing: true })">
+              {{ transaction.description }} </span>
+          </td>
           <td class="text-end text-nowrap">{{ moment(transaction.date).date() }}</td>
-          <td class="text-end text-nowrap ps-2">{{ formatCurrency(transaction.amount) }}</td>
+          <td class="text-end text-nowrap ps-2">
+            <span class="amount-button" @click="$emit('edit-transaction', { transaction, editing: true })">
+              {{ formatCurrency(transaction.amount) }}
+            </span>
+          </td>
           <td class="text-center">
             <span class="exercised-toggle" @click="toggleExercised(transaction)">
               {{ transaction.exercised ? 'Yes' : 'No' }}
@@ -69,6 +76,8 @@ const props = defineProps({
   startDate: String,
   endDate: String
 })
+
+const emit = defineEmits(['edit-transaction'])
 
 const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
@@ -122,13 +131,17 @@ async function toggleExercised(transaction) {
 </script>
 
 <style scoped>
-.exercised-toggle {
+.exercised-toggle,
+.description-button,
+.amount-button:hover {
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
 }
 
-.exercised-toggle:hover {
+.exercised-toggle:hover,
+.description-button:hover,
+.amount-button:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 </style>
