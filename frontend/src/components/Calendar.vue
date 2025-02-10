@@ -31,9 +31,6 @@ const emptyTransaction = {
   exercised: false,
   note: ''
 }
-const showTransactionDialog = ref(false)
-const currentTransaction = ref({ ...emptyTransaction })
-const isEditing = ref(false)
 const transactionsStore = useTransactionsStore()
 
 const selectedDate = computed(() => moment().format('YYYY-MM-DD'))
@@ -44,7 +41,7 @@ const calendarOptions = computed(() => {
     title: `
       <div class="transaction-title">
         <div class="transaction-description">${transaction.description}</div>
-        <div class="transaction-amount">${formatAmount(transaction.amount, transaction.isExpense)}</div>
+        <div class="transaction-amount text-end">${formatAmount(transaction.amount, transaction.isExpense)}</div>
       </div>
     `,
     date: transaction.date,
