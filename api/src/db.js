@@ -10,9 +10,12 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   maxIdle: 10,
-  idleTimeout: 0,
+  idleTimeout: 120000,
   queueLimit: 0,
-  dateStrings: true
+  dateStrings: true,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  decimalNumbers: true,
 });
 
 // Handle uncaught errors

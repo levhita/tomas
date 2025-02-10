@@ -4,8 +4,10 @@ const db = require('../db');
 
 // Get all transactions
 router.get('/', async (req, res) => {
+  const { accountId, startDate, endDate } = req.query;
+
   try {
-    const [transactions] = await db.query(`
+    let query = `
       SELECT 
         t.*,
         c.name as category_name,
@@ -13,14 +15,25 @@ router.get('/', async (req, res) => {
       FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
-      ORDER BY t.created_at DESC
-    `);
+      WHERE 1=1
+    `;
+    const params = [];
 
-    // Force return a boolean value for exercised
-    for (let i = 0; i < transactions.length; i++) {
-      transactions[i].exercised = !!transactions[i].exercised;
-    };
+    if (accountId) {
+      query += ` AND t.account_id = ?`;
+      params.push(accountId);
+    }
 
+    if (startDate && endDate) {
+      query += ` AND t.date BETWEEN ? AND ?`;
+      params.push(startDate, endDate);
+    }
+
+    query += ` ORDER BY t.date ASC`;
+
+    const [transactions] = await db.query(query, params);
+
+    transactions.forEach(t => t.exercised = !!t.exercised);
     res.status(200).json(transactions);
   } catch (err) {
     console.error('Database error:', err);
@@ -59,17 +72,28 @@ router.post('/', async (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
-  if (date) {
-    const dateTimestamp = new Date(date).getTime();
-    if (isNaN(dateTimestamp)) {
-      return res.status(400).json({ error: 'Invalid date' });
-    }
-  } else {
-    return res.status(400).json({ error: 'Date is required' });
+  // Validate required fields
+  const requiredFields = {
+    description: description,
+    amount: amount,
+    date: date,
+    account_id: account_id
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([field]) => field);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missingFields.join(', ')}`
+    });
   }
 
-  if (!description || amount === undefined) {
-    return res.status(400).json({ error: 'Description and amount are required' });
+  // Validate date format
+  const dateTimestamp = new Date(date).getTime();
+  if (isNaN(dateTimestamp)) {
+    return res.status(400).json({ error: 'Invalid date format' });
   }
 
   try {
@@ -111,13 +135,28 @@ router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
-  if (date) {
-    const dateTimestamp = new Date(date).getTime();
-    if (isNaN(dateTimestamp)) {
-      return res.status(400).json({ error: 'Invalid date' });
-    }
-  } else {
-    return res.status(400).json({ error: 'Date is required' });
+  // Validate required fields
+  const requiredFields = {
+    description: description,
+    amount: amount,
+    date: date,
+    account_id: account_id
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([field]) => field);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missingFields.join(', ')}`
+    });
+  }
+
+  // Validate date format
+  const dateTimestamp = new Date(date).getTime();
+  if (isNaN(dateTimestamp)) {
+    return res.status(400).json({ error: 'Invalid date format' });
   }
 
   try {

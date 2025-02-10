@@ -1,10 +1,19 @@
-.split-view {
+.fc .fc-header-toolbar {
+  display: none;
+}
+
+main {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  height: 100%;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
-.split-view>div {
-  flex: 1;
-  overflow: auto;
+.totals {
+  margin-left: 1rem;
 }

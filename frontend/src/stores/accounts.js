@@ -16,14 +16,6 @@ export const useAccountsStore = defineStore('accounts', () => {
     return (id) => accounts.value.find(a => a.id === id);
   });
 
-  const debitAccounts = computed(() => {
-    return accounts.value.filter(a => a.type === 'debit');
-  });
-
-  const creditAccounts = computed(() => {
-    return accounts.value.filter(a => a.type === 'credit');
-  });
-
   const totalBalance = computed(() => {
     return accounts.value.reduce((sum, account) => {
       return sum + (account.type === 'debit' ? account.starting_amount : -account.starting_amount);
@@ -102,8 +94,6 @@ export const useAccountsStore = defineStore('accounts', () => {
     // Getters
     accountsByName,
     getAccountById,
-    debitAccounts,
-    creditAccounts,
     totalBalance,
     // Actions
     fetchAccounts,

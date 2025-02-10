@@ -1,16 +1,25 @@
 <template>
   <div class="toolbar bg-light border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
+
       <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 
+      <div class="btn-group" role="group">
+        <input type="radio" class="btn-check" name="range" id="monthly" value="monthly" v-model="rangeType">
+        <label class="btn btn-outline-primary" for="monthly">Monthly</label>
+
+        <input type="radio" class="btn-check" name="range" id="weekly" value="weekly" v-model="rangeType">
+        <label class="btn btn-outline-primary" for="weekly">Weekly</label>
+      </div>
+
       <div class="btn-group">
-        <button class="btn btn-outline-primary" @click="previousMonth">
+        <button class="btn btn-outline-primary" @click="previousPeriod">
           <i class="bi bi-chevron-left"></i>
         </button>
         <button class="btn btn-outline-primary" disabled>
-          {{ selectedMonth }}
+          {{ selectedPeriod }}
         </button>
-        <button class="btn btn-outline-primary" @click="nextMonth">
+        <button class="btn btn-outline-primary" @click="nextPeriod">
           <i class="bi bi-chevron-right"></i>
         </button>
       </div>
@@ -19,7 +28,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import moment from 'moment'
 import AccountSelect from './AccountSelect.vue'
 
@@ -28,17 +37,45 @@ const props = defineProps({
   selectedDate: String
 })
 
-const emit = defineEmits(['update:accountId', 'update:selectedDate'])
+const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])
+const rangeType = ref('monthly')
 
-const selectedMonth = computed(() => moment(props.selectedDate).format('MMMM YYYY'))
+const selectedPeriod = computed(() => {
+  if (rangeType.value === 'weekly') {
+    return `Week of ${moment(props.selectedDate).startOf('week').format('MMM D')}`
+  }
+  return moment(props.selectedDate).format('MMMM YYYY')
+})
 
-function previousMonth() {
-  const newDate = moment(props.selectedDate).subtract(1, 'month').format('YYYY-MM-DD')
+const startDate = computed(() => {
+  return moment(props.selectedDate)
+    .startOf(rangeType.value === 'weekly' ? 'week' : 'month')
+    .format('YYYY-MM-DD')
+})
+
+const endDate = computed(() => {
+  return moment(props.selectedDate)
+    .endOf(rangeType.value === 'weekly' ? 'week' : 'month')
+    .format('YYYY-MM-DD')
+})
+
+function previousPeriod() {
+  const newDate = moment(props.selectedDate)
+    .subtract(1, rangeType.value === 'weekly' ? 'week' : 'month')
+    .format('YYYY-MM-DD')
   emit('update:selectedDate', newDate)
 }
 
-function nextMonth() {
-  const newDate = moment(props.selectedDate).add(1, 'month').format('YYYY-MM-DD')
+function nextPeriod() {
+  const newDate = moment(props.selectedDate)
+    .add(1, rangeType.value === 'weekly' ? 'week' : 'month')
+    .format('YYYY-MM-DD')
   emit('update:selectedDate', newDate)
 }
+
+watch(rangeType, (newType) => {
+  emit('update:rangeType', newType)
+})
+
+defineExpose({ startDate, endDate })
 </script>
