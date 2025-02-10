@@ -34,10 +34,14 @@
 
         <div class="btn-group w-100 h-100 mb-3" role="group">
           <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType">
-          <label class="btn btn-outline-primary" for="expense"><i class="bi bi-box-arrow-up"></i> Expense</label>
+          <label class="btn btn-outline-primary" for="expense">
+            {{ isDebitAccount ? 'Expense' : 'Payment' }}
+          </label>
 
           <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType">
-          <label class="btn btn-outline-primary" for="income"><i class="bi bi-box-arrow-in-down"></i> Income</label>
+          <label class="btn btn-outline-primary" for="income">
+            {{ isDebitAccount ? 'Income' : 'Charge' }}
+          </label>
         </div>
 
         <div class="form-check mb-3">
@@ -81,9 +85,10 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import AccountSelect from './AccountSelect.vue'
 import CategorySelect from './CategorySelect.vue'
+import { useAccountsStore } from '../../stores/accounts'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -101,6 +106,17 @@ const descriptionInput = ref(null)
 const amountInput = ref(null)
 const amount = ref(0)
 const transactionType = ref('expense')
+
+const accountsStore = useAccountsStore()
+const isDebitAccount = computed(() => {
+  const account = accountsStore.getAccountById(transaction.value.account_id)
+  return account?.type === 'debit'
+})
+
+// Watch for account changes to update labels
+watch(() => transaction.value.account_id, () => {
+  // No need to do anything here, computed property will update automatically
+})
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
