@@ -72,17 +72,28 @@ router.post('/', async (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
-  if (date) {
-    const dateTimestamp = new Date(date).getTime();
-    if (isNaN(dateTimestamp)) {
-      return res.status(400).json({ error: 'Invalid date' });
-    }
-  } else {
-    return res.status(400).json({ error: 'Date is required' });
+  // Validate required fields
+  const requiredFields = {
+    description: description,
+    amount: amount,
+    date: date,
+    account_id: account_id
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([field]) => field);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missingFields.join(', ')}`
+    });
   }
 
-  if (!description || amount === undefined) {
-    return res.status(400).json({ error: 'Description and amount are required' });
+  // Validate date format
+  const dateTimestamp = new Date(date).getTime();
+  if (isNaN(dateTimestamp)) {
+    return res.status(400).json({ error: 'Invalid date format' });
   }
 
   try {
@@ -124,13 +135,28 @@ router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
-  if (date) {
-    const dateTimestamp = new Date(date).getTime();
-    if (isNaN(dateTimestamp)) {
-      return res.status(400).json({ error: 'Invalid date' });
-    }
-  } else {
-    return res.status(400).json({ error: 'Date is required' });
+  // Validate required fields
+  const requiredFields = {
+    description: description,
+    amount: amount,
+    date: date,
+    account_id: account_id
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([field]) => field);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missingFields.join(', ')}`
+    });
+  }
+
+  // Validate date format
+  const dateTimestamp = new Date(date).getTime();
+  if (isNaN(dateTimestamp)) {
+    return res.status(400).json({ error: 'Invalid date format' });
   }
 
   try {

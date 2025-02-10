@@ -54,7 +54,7 @@ CREATE TABLE
     `date` DATE NOT NULL,
     `exercised` BOOLEAN DEFAULT FALSE,
     `account_id` INT UNSIGNED NOT NULL,
-    `category_id` INT UNSIGNED NOT NULL,
+    `category_id` INT UNSIGNED NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
