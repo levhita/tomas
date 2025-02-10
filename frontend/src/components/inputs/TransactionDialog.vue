@@ -16,10 +16,33 @@
           <label for="transactionInput">Description</label>
         </div>
 
-        <div class="form-floating mb-3">
-          <input id="amountInput" ref="amountInput" type="number" class="form-control"
-            v-model.number="transaction.amount" placeholder="0.00" step="0.01" required />
-          <label for="amountInput">Amount</label>
+        <div class="row mb-3">
+          <div class="col-7">
+            <div class="form-floating">
+              <input id="amountInput" ref="amountInput" type="number" class="form-control" v-model.number="amount"
+                placeholder="0.00" step="0.01" required />
+              <label for="amountInput">Amount</label>
+            </div>
+          </div>
+          <div class="col-5">
+            <div class="form-floating">
+              <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required />
+              <label for="dateInput" class="form-label">Date</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group w-100 h-100 mb-3" role="group">
+          <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType">
+          <label class="btn btn-outline-primary" for="expense"><i class="bi bi-box-arrow-up"></i> Expense</label>
+
+          <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType">
+          <label class="btn btn-outline-primary" for="income"><i class="bi bi-box-arrow-in-down"></i> Income</label>
+        </div>
+
+        <div class="form-check mb-3">
+          <input type="checkbox" class="form-check-input" v-model="transaction.exercised" />
+          <label class="form-check-label">Already exercised</label>
         </div>
 
         <div class="row mb-3">
@@ -35,16 +58,6 @@
               <label>Category</label>
             </div>
           </div>
-        </div>
-
-        <div class="form-floating mb-3">
-          <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required />
-          <label for="dateInput" class="form-label">Date</label>
-        </div>
-
-        <div class="form-check mb-3">
-          <input type="checkbox" class="form-check-input" v-model="transaction.exercised" />
-          <label class="form-check-label">Already exercised</label>
         </div>
 
         <div class="form-floating mb-3">
@@ -86,6 +99,8 @@ const emit = defineEmits(['update:modelValue', 'save', 'delete'])
 const transaction = ref({ ...props.transaction })
 const descriptionInput = ref(null)
 const amountInput = ref(null)
+const amount = ref(0)
+const transactionType = ref('expense')
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
@@ -101,10 +116,16 @@ watch(() => props.modelValue, (newVal) => {
 
 watch(() => props.transaction, (newVal) => {
   transaction.value = { ...newVal }
+  amount.value = Math.abs(newVal.amount || 0)
+  transactionType.value = newVal.amount >= 0 ? 'income' : 'expense'
 })
 
 function save() {
-  emit('save', transaction.value)
+  const signedAmount = transactionType.value === 'expense' ? -Math.abs(amount.value) : Math.abs(amount.value)
+  emit('save', {
+    ...transaction.value,
+    amount: signedAmount
+  })
   close()
 }
 
@@ -139,7 +160,7 @@ function close() {
   padding: 2rem;
   border-radius: 8px;
   width: 100%;
-  max-width: 500px;
+  max-width: 700px;
   max-height: 90vh;
   overflow-y: auto;
 }
