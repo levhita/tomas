@@ -1,13 +1,9 @@
 <template>
   <FullCalendar ref="calendarRef" :options="calendarOptions" />
-
-  <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
-    @save="saveTransaction" @delete="deleteTransaction" />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -19,6 +15,8 @@ const props = defineProps({
   selectedDate: String,
   rangeType: String
 })
+
+const emit = defineEmits(['show-transaction', 'update-transaction'])
 
 const accountId = computed(() => props.account?.id)
 
@@ -38,7 +36,7 @@ const currentTransaction = ref({ ...emptyTransaction })
 const isEditing = ref(false)
 const transactionsStore = useTransactionsStore()
 
-const currentDate = computed(() => moment().format('YYYY-MM-DD'))
+const selectedDate = computed(() => moment().format('YYYY-MM-DD'))
 
 const calendarOptions = computed(() => {
   const events = transactionsStore.transactions.map(transaction => ({
@@ -84,7 +82,6 @@ async function updateDate() {
 }
 
 async function updateView() {
-  console.log('updateView');
   if (calendarRef.value) {
     const api = calendarRef.value.getApi()
     api.changeView(props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth')
@@ -104,22 +101,18 @@ function formatAmount(amount, isExpense) {
 }
 
 function handleDateClick(arg) {
-  isEditing.value = false
-  currentTransaction.value = { ...emptyTransaction };
-  currentTransaction.value.date = arg.dateStr
-  if (currentTransaction.value.date <= currentDate.value) {
-    currentTransaction.value.exercised = true
+  const transaction = {
+    ...emptyTransaction,
+    date: arg.dateStr,
+    exercised: arg.dateStr <= selectedDate.value
   }
-  showTransactionDialog.value = true
+  emit('show-transaction', { transaction, editing: false })
 }
 
 async function handleEventClick(info) {
   const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
-
   if (transaction) {
-    isEditing.value = true
-    currentTransaction.value = { ...transaction }
-    showTransactionDialog.value = true
+    emit('show-transaction', { transaction, editing: true })
   }
 }
 
@@ -127,7 +120,7 @@ async function handleEventDrop(info) {
   try {
     const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
     if (transaction) {
-      await transactionsStore.updateTransaction(transaction.id, {
+      emit('update-transaction', {
         ...transaction,
         date: info.event.startStr
       })
@@ -135,28 +128,6 @@ async function handleEventDrop(info) {
   } catch (error) {
     console.error('Failed to update transaction date:', error)
     info.revert() // Revert the drag if update fails
-  }
-}
-
-async function saveTransaction(transaction) {
-  try {
-    if (isEditing.value) {
-      await transactionsStore.updateTransaction(transaction.id, transaction)
-    } else {
-      await transactionsStore.addTransaction(transaction)
-    }
-    showTransactionDialog.value = false
-  } catch (error) {
-    console.error('Failed to save transaction:', error)
-  }
-}
-
-async function deleteTransaction(id) {
-  try {
-    await transactionsStore.deleteTransaction(id)
-    showTransactionDialog.value = false
-  } catch (error) {
-    console.error('Failed to delete transaction:', error)
   }
 }
 </script>
