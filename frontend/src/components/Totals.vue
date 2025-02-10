@@ -46,12 +46,15 @@
       <tbody>
         <tr v-for="transaction in rangeTransactions" :key="transaction.id">
           <td>
-            <span class="description-button" @click="$emit('edit-transaction', { transaction, editing: true })">
-              {{ transaction.description }} </span>
+            <span class="description-button"
+              @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'description' })">
+              {{ transaction.description }}
+            </span>
           </td>
           <td class="text-end text-nowrap">{{ moment(transaction.date).date() }}</td>
           <td class="text-end text-nowrap ps-2">
-            <span class="amount-button" @click="$emit('edit-transaction', { transaction, editing: true })">
+            <span class="amount-button"
+              @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'amount' })">
               {{ formatCurrency(transaction.amount) }}
             </span>
           </td>

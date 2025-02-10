@@ -11,14 +11,14 @@
       </div>
       <form @submit.prevent="save">
         <div class="form-floating mb-3">
-          <input id="transactionInput" ref="transactionInput" v-model="transaction.description" class="form-control"
+          <input id="transactionInput" ref="descriptionInput" v-model="transaction.description" class="form-control"
             placeholder="Groceries, Rent, etc." required />
           <label for="transactionInput">Description</label>
         </div>
 
         <div class="form-floating mb-3">
-          <input id="amountInput" type="number" class="form-control" v-model.number="transaction.amount"
-            placeholder="0.00" step="0.01" required />
+          <input id="amountInput" ref="amountInput" type="number" class="form-control"
+            v-model.number="transaction.amount" placeholder="0.00" step="0.01" required />
           <label for="amountInput">Amount</label>
         </div>
 
@@ -75,18 +75,26 @@ import CategorySelect from './CategorySelect.vue'
 const props = defineProps({
   modelValue: Boolean,
   transaction: Object,
-  isEditing: Boolean
+  isEditing: Boolean,
+  focusOn: {
+    type: String,
+    default: 'description'
+  }
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'delete'])
 const transaction = ref({ ...props.transaction })
-const transactionInput = ref(null)
+const descriptionInput = ref(null)
+const amountInput = ref(null)
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    // Focus description input when dialog opens
     nextTick(() => {
-      transactionInput.value?.focus()
+      if (props.focusOn === 'amount') {
+        amountInput.value?.focus()
+      } else {
+        descriptionInput.value?.focus()
+      }
     })
   }
 })

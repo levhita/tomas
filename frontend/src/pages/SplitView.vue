@@ -14,7 +14,7 @@
   </div>
 
   <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
-    @save="saveTransaction" @delete="deleteTransaction" />
+    :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction" />
 </template>
 
 <script setup>
@@ -45,10 +45,12 @@ const selectedAccount = computed(() => accountsStore.getAccountById(accountId.va
 const showDialog = ref(false)
 const currentTransaction = ref({})
 const isEditing = ref(false)
+const dialogFocusTarget = ref('description')
 
-function showTransactionDialog({ transaction, editing }) {
+function showTransactionDialog({ transaction, editing, focusOn = 'description' }) {
   currentTransaction.value = transaction
   isEditing.value = editing
+  dialogFocusTarget.value = focusOn
   showDialog.value = true
 }
 
