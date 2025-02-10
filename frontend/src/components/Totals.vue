@@ -45,10 +45,24 @@
       </thead>
       <tbody>
         <tr v-for="transaction in rangeTransactions" :key="transaction.id">
-          <td>{{ transaction.description }}</td>
+          <td>
+            <span class="description-button"
+              @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'description' })">
+              {{ transaction.description }}
+            </span>
+          </td>
           <td class="text-end text-nowrap">{{ moment(transaction.date).date() }}</td>
-          <td class="text-end text-nowrap ps-2">{{ formatCurrency(transaction.amount) }}</td>
-          <td class="text-center">{{ transaction.exercised ? 'Yes' : 'No' }}</td>
+          <td class="text-end text-nowrap ps-2">
+            <span class="amount-button"
+              @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'amount' })">
+              {{ formatCurrency(transaction.amount) }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="exercised-toggle" @click="toggleExercised(transaction)">
+              {{ transaction.exercised ? 'Yes' : 'No' }}
+            </span>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -65,6 +79,8 @@ const props = defineProps({
   startDate: String,
   endDate: String
 })
+
+const emit = defineEmits(['edit-transaction'])
 
 const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
@@ -104,6 +120,31 @@ function sum(transactions) {
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
+
+async function toggleExercised(transaction) {
+  try {
+    await transactionsStore.updateTransaction(transaction.id, {
+      ...transaction,
+      exercised: !transaction.exercised
+    })
+  } catch (error) {
+    console.error('Failed to toggle exercised:', error)
+  }
+}
 </script>
 
-<style scoped></style>
+<style scoped>
+.exercised-toggle,
+.description-button,
+.amount-button:hover {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.exercised-toggle:hover,
+.description-button:hover,
+.amount-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+</style>
