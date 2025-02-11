@@ -12,7 +12,7 @@
       <form @submit.prevent="save">
         <div class="form-floating mb-3">
           <input id="transactionInput" ref="descriptionInput" v-model="transaction.description" class="form-control"
-            placeholder="Groceries, Rent, etc." required />
+            placeholder="Groceries, Rent, etc." required @keyup.esc="close" />
           <label for="transactionInput">Description</label>
         </div>
 
@@ -20,7 +20,7 @@
           <div class="col-7">
             <div class="form-floating">
               <input id="amountInput" ref="amountInput" type="number" class="form-control" v-model.number="amount"
-                placeholder="0.00" step="0.01" required />
+                placeholder="0.00" step="0.01" required @keyup.esc="close" />
               <label for="amountInput">Amount</label>
             </div>
           </div>
@@ -71,10 +71,20 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center">
-          <button v-if="isEditing" type="button" class="btn btn-danger" @click="confirmDelete">
-            Delete
-          </button>
-          <div class="d-flex gap-2 ms-auto">
+          <div>
+            <button v-if="isEditing" type="button" class="btn btn-danger me-2" @click="confirmDelete">
+              Delete
+            </button>
+            <div v-if="isEditing" class="btn-group">
+              <button type="button" class="btn btn-secondary" @click="duplicate">
+                <i class="bi bi-files"></i> Duplicate
+              </button>
+              <button type="button" class="btn btn-secondary" @click="duplicateNextMonth">
+                <i class="bi bi-calendar-plus"></i> Next Month
+              </button>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
             <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
             <button type="submit" class="btn btn-primary">Save</button>
           </div>
@@ -89,6 +99,7 @@ import { ref, watch, nextTick, computed } from 'vue'
 import AccountSelect from './AccountSelect.vue'
 import CategorySelect from './CategorySelect.vue'
 import { useAccountsStore } from '../../stores/accounts'
+import moment from 'moment'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -100,7 +111,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'delete'])
+const emit = defineEmits(['update:modelValue', 'save', 'delete', 'duplicate'])
 const transaction = ref({ ...props.transaction })
 const descriptionInput = ref(null)
 const amountInput = ref(null)
@@ -123,8 +134,10 @@ watch(() => props.modelValue, (newVal) => {
     nextTick(() => {
       if (props.focusOn === 'amount') {
         amountInput.value?.focus()
+        amountInput.value?.select()
       } else {
         descriptionInput.value?.focus()
+        descriptionInput.value?.select()
       }
     })
   }
@@ -132,8 +145,15 @@ watch(() => props.modelValue, (newVal) => {
 
 watch(() => props.transaction, (newVal) => {
   transaction.value = { ...newVal }
-  amount.value = Math.abs(newVal.amount || 0)
-  transactionType.value = newVal.amount >= 0 ? 'income' : 'expense'
+  // Only update transactionType if we have an amount
+  if (newVal?.amount !== undefined) {
+    amount.value = Math.abs(newVal.amount || 0)
+    transactionType.value = newVal.amount >= 0 ? 'income' : 'expense'
+  } else {
+    // Default to expense for new transactions
+    transactionType.value = 'expense'
+    amount.value = 0
+  }
 })
 
 function save() {
@@ -150,6 +170,24 @@ function confirmDelete() {
     emit('delete', props.transaction.id)
     close()
   }
+}
+
+function duplicate() {
+  emit('duplicate', {
+    ...transaction.value,
+    id: undefined
+  })
+  close()
+}
+
+function duplicateNextMonth() {
+  const nextMonth = moment(transaction.value.date).add(1, 'month').format('YYYY-MM-DD')
+  emit('duplicate', {
+    ...transaction.value,
+    id: undefined,
+    date: nextMonth
+  })
+  close()
 }
 
 function close() {

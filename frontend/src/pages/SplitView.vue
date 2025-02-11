@@ -14,7 +14,8 @@
   </div>
 
   <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
-    :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction" />
+    :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
+    @duplicate="duplicateTransaction" />
 </template>
 
 <script setup>
@@ -80,11 +81,22 @@ async function updateTransaction(transaction) {
   await transactionsStore.updateTransaction(transaction.id, transaction)
 }
 
+async function duplicateTransaction(transaction) {
+  try {
+    await transactionsStore.addTransaction(transaction)
+    showDialog.value = false
+  } catch (error) {
+    console.error('Failed to duplicate transaction:', error)
+  }
+}
+
 watch(
   [() => accountId.value, startDate, endDate],
   async ([accountId, start, end]) => {
     if (accountId && start && end) {
-      await transactionsStore.fetchTransactions(accountId, start, end)
+      const extendedStart = moment(start).subtract(1, 'week').format('YYYY-MM-DD')
+      const extendedEnd = moment(end).add(1, 'week').format('YYYY-MM-DD')
+      await transactionsStore.fetchTransactions(accountId, extendedStart, extendedEnd)
     }
   }
 )
