@@ -21,15 +21,15 @@ const emit = defineEmits(['show-transaction', 'update-transaction'])
 const accountId = computed(() => props.account?.id)
 
 const emptyTransaction = {
-  id: null,
-  description: '',
-  amount: null,
-  date: null,
-  category_id: '',
+  //id: null,
+  //description: '',
+  //amount: null,
+  //date: null,
+  //category_id: '',
   account_id: accountId,
   isExpense: true,
   exercised: false,
-  note: ''
+  //note: ''
 }
 const transactionsStore = useTransactionsStore()
 
