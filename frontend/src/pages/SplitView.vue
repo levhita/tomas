@@ -1,8 +1,8 @@
 <template>
   <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
     v-model:rangeType="rangeType" />
-  <div class="row flex-grow-1 w-100 ps-2">
-    <div class="col-4 overflow-scroll">
+  <div class="row w-100 ps-2">
+    <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 160px)' }">
       <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
         @edit-transaction="showTransactionDialog" />
     </div>

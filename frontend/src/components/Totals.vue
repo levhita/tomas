@@ -10,14 +10,14 @@
       <div class="form-check form-switch">
         <input class="form-check-input" type="checkbox" id="includeBalanceSwitch" v-model="includePreviousBalance">
         <label class="form-check-label" for="includeBalanceSwitch">
-          Include Previous Balance
+          Roll Balance
         </label>
       </div>
     </div>
     <table class="table">
       <thead>
         <tr>
-          <th></th>
+          <th>/</th>
           <th class="text-end">Projected</th>
           <th class="text-end">Exercised</th>
           <th class="text-end">Pending</th>

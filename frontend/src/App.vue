@@ -5,7 +5,7 @@ import Navigation from './components/Navigation.vue'
 
 <template>
   <Navigation />
-  <main>
+  <main :style="{ height: 'calc(100vh - 56px)' }">
     <RouterView />
   </main>
 </template>
