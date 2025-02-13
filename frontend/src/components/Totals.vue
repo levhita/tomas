@@ -9,32 +9,32 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Description</th>
-          <th>Projected</th>
-          <th>Exercised</th>
-          <th>Pending</th>
+          <th></th>
+          <th class="text-end">Projected</th>
+          <th class="text-end">Exercised</th>
+          <th class="text-end">Pending</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>{{ incomeString }}</th>
-          <td class="text-end">{{ formatCurrency(totals.income_projected) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.income_exercised) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.income_projected - totals.income_exercised) }}
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_projected - totals.income_exercised) }}
           </td>
         </tr>
         <tr>
           <th>{{ outcomeString }}</th>
-          <td class="text-end">{{ formatCurrency(totals.outcome_projected) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.outcome_exercised) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.outcome_projected - totals.outcome_exercised) }}
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_projected - totals.outcome_exercised) }}
           </td>
         </tr>
         <tr>
           <th>Totals</th>
-          <td class="text-end">{{ formatCurrency(totals.projected) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.exercised) }}</td>
-          <td class="text-end">{{ formatCurrency(totals.projected - totals.exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(totals.projected - totals.exercised) }}</td>
         </tr>
       </tbody>
     </table>
@@ -44,7 +44,7 @@
       <thead class="thead-dark">
         <tr>
           <th class="text-start">Description</th>
-          <th class="text-end">Date</th>
+          <th class="text-end">Day</th>
           <th class="text-end">Amount</th>
           <th class="text-end">Exercised</th>
         </tr>
@@ -142,7 +142,7 @@ async function toggleExercised(transaction) {
 <style scoped>
 .exercised-toggle,
 .description-button,
-.amount-button:hover {
+.amount-button {
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
