@@ -5,7 +5,15 @@
     </div>
   </div>
   <div v-else class="report-content">
-    <h3>{{ props.account?.name }} ({{ props.account?.type }})</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>{{ props.account?.name }} ({{ props.account?.type }})</h3>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="includeBalanceSwitch" v-model="includePreviousBalance">
+        <label class="form-check-label" for="includeBalanceSwitch">
+          Include Previous Balance
+        </label>
+      </div>
+    </div>
     <table class="table">
       <thead>
         <tr>
@@ -16,6 +24,14 @@
         </tr>
       </thead>
       <tbody>
+        <tr v-if="showPreviousBalance">
+          <th>Previous Balance</th>
+          <td class="text-end text-nowrap">{{ formatCurrency(previousBalance.projected_balance) }}</td>
+          <td class="text-end text-nowrap">{{ formatCurrency(previousBalance.exercised_balance) }}</td>
+          <td class="text-end text-nowrap">
+            {{ formatCurrency(previousBalance.projected_balance - previousBalance.exercised_balance) }}
+          </td>
+        </tr>
         <tr>
           <th>{{ incomeString }}</th>
           <td class="text-end text-nowrap">{{ formatCurrency(totals.income_projected) }}</td>
@@ -76,14 +92,23 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
+import { useAccountsStore } from '../stores/accounts'
 import moment from 'moment'
 
 const props = defineProps({
   account: Object,
   startDate: String,
   endDate: String
+})
+
+const accountsStore = useAccountsStore()
+const previousBalance = ref({})
+
+// Add computed for previous month's end date
+const previousMonthEnd = computed(() => {
+  return moment(props.startDate).subtract(1, 'day').format('YYYY-MM-DD')
 })
 
 const emit = defineEmits(['edit-transaction'])
@@ -108,17 +133,33 @@ const outcomeTransactions = computed(() =>
   rangeTransactions.value.filter(t => t.amount < 0)
 )
 
-const totals = computed(() => ({
-  income_projected: sum(incomeTransactions.value),
-  income_exercised: sum(incomeTransactions.value.filter(t => t.exercised)),
-  outcome_projected: sum(outcomeTransactions.value),
-  outcome_exercised: sum(outcomeTransactions.value.filter(t => t.exercised)),
-  projected: sum(rangeTransactions.value),
-  exercised: sum(rangeTransactions.value.filter(t => t.exercised))
-}))
+const includePreviousBalance = ref(true)
+
+// Update totals computation to use the toggle
+const totals = computed(() => {
+  const baseProjectedBalance = includePreviousBalance.value ?
+    (previousBalance.value?.projected_balance || 0) : 0
+
+  const baseExercisedBalance = includePreviousBalance.value ?
+    (previousBalance.value?.exercised_balance || 0) : 0
+  return {
+    income_projected: sum(incomeTransactions.value),
+    income_exercised: sum(incomeTransactions.value.filter(t => t.exercised)),
+    outcome_projected: sum(outcomeTransactions.value),
+    outcome_exercised: sum(outcomeTransactions.value.filter(t => t.exercised)),
+    projected: baseProjectedBalance + sum(rangeTransactions.value),
+    exercised: baseExercisedBalance + sum(rangeTransactions.value.filter(t => t.exercised))
+  }
+})
+
+// Update previous balance row visibility
+const showPreviousBalance = computed(() =>
+  includePreviousBalance.value && previousBalance.value?.exercised_balance !== undefined
+)
 
 const incomeString = computed(() => props.account?.type === 'credit' ? 'Charge' : 'Income');
 const outcomeString = computed(() => props.account?.type === 'credit' ? 'Payment' : 'Expense');
+
 function sum(transactions) {
   return transactions.reduce((total, t) => total + t.amount, 0)
 }
@@ -137,6 +178,22 @@ async function toggleExercised(transaction) {
     console.error('Failed to toggle exercised:', error)
   }
 }
+
+// Fetch previous balance when account or dates change
+watch(
+  [() => props.account?.id, previousMonthEnd],
+  async ([accountId, date]) => {
+    if (accountId && date) {
+      try {
+        const balance = await accountsStore.fetchAccountBalance(accountId, date)
+        previousBalance.value = balance;
+      } catch (error) {
+        console.error('Failed to fetch previous balance:', error)
+      }
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -152,5 +209,14 @@ async function toggleExercised(transaction) {
 .description-button:hover,
 .amount-button:hover {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+.form-check-input {
+  cursor: pointer;
+}
+
+.form-check-label {
+  cursor: pointer;
+  user-select: none;
 }
 </style>

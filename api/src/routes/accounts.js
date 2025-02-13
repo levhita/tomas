@@ -35,7 +35,7 @@ router.get('/:id', async (req, res) => {
 
 
 // Get account balance up to date
-router.get('/balance/:id', async (req, res) => {
+router.get('/:id/balance', async (req, res) => {
   const { id } = req.params;
   const { upToDate } = req.query;
 
