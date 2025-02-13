@@ -10,25 +10,31 @@
       <thead>
         <tr>
           <th>Description</th>
-          <th>Exercised</th>
           <th>Projected</th>
+          <th>Exercised</th>
+          <th>Pending</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>{{ incomeString }}</th>
-          <td class="text-end">{{ formatCurrency(totals.income_exercised) }}</td>
           <td class="text-end">{{ formatCurrency(totals.income_projected) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.income_exercised) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.income_projected - totals.income_exercised) }}
+          </td>
         </tr>
         <tr>
           <th>{{ outcomeString }}</th>
-          <td class="text-end">{{ formatCurrency(totals.outcome_exercised) }}</td>
           <td class="text-end">{{ formatCurrency(totals.outcome_projected) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.outcome_exercised) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.outcome_projected - totals.outcome_exercised) }}
+          </td>
         </tr>
         <tr>
           <th>Totals</th>
-          <td class="text-end">{{ formatCurrency(totals.exercised) }}</td>
           <td class="text-end">{{ formatCurrency(totals.projected) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.exercised) }}</td>
+          <td class="text-end">{{ formatCurrency(totals.projected - totals.exercised) }}</td>
         </tr>
       </tbody>
     </table>

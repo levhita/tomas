@@ -14,7 +14,6 @@ CREATE TABLE
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
-    `opening_date` DATE NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB;
