@@ -1,0 +1,19 @@
+meta {
+  name: Get Balance up to a date
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{server_url}}/accounts/balance/:id?upToDate=2025-02-28
+  body: none
+  auth: none
+}
+
+params:query {
+  upToDate: 2025-02-28
+}
+
+params:path {
+  id: 1
+}

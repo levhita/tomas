@@ -19,8 +19,7 @@
         <div class="row mb-3">
           <div class="col-7">
             <div class="form-floating">
-              <input id="amountInput" ref="amountInput" type="number" class="form-control" v-model.number="amount"
-                placeholder="0.00" step="0.01" required @keyup.esc="close" />
+              <CurrencyInput id="amountInput" ref="amountInput" v-model="amount" required @keyup.esc="close" />
               <label for="amountInput">Amount</label>
             </div>
           </div>
@@ -98,6 +97,7 @@
 import { ref, watch, nextTick, computed } from 'vue'
 import AccountSelect from './AccountSelect.vue'
 import CategorySelect from './CategorySelect.vue'
+import CurrencyInput from './CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
 import moment from 'moment'
 
@@ -133,8 +133,7 @@ watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     nextTick(() => {
       if (props.focusOn === 'amount') {
-        amountInput.value?.focus()
-        amountInput.value?.select()
+        amountInput.value?.selectAll()
       } else {
         descriptionInput.value?.focus()
         descriptionInput.value?.select()

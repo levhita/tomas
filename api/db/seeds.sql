@@ -123,12 +123,12 @@ VALUES
   ("Subscriptions", 15, "expense");
 
 INSERT INTO
-  account (id, name, type, opening_date)
+  account (id, name, type)
 VALUES
-  (1, "Debit Card", "debit", "2025-01-01"),
-  (2, "Savings", "debit", "2025-01-01"),
-  (3, "Credit Card", "credit", "2025-01-01"),
-  (4, "Car Loan", "credit", "2025-01-01");
+  (1, "Debit Card", "debit"),
+  (2, "Savings", "debit"),
+  (3, "Credit Card", "credit"),
+  (4, "Car Loan", "credit");
 
 INSERT INTO
   transaction (

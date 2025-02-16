@@ -88,6 +88,20 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  async function fetchAccountBalance(id, upToDate) {
+    try {
+      const response = await fetch(`/api/accounts/${id}/balance?upToDate=${upToDate}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching account balance:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     accounts,
@@ -100,5 +114,6 @@ export const useAccountsStore = defineStore('accounts', () => {
     addAccount,
     updateAccount,
     deleteAccount,
+    fetchAccountBalance,
   };
 });
