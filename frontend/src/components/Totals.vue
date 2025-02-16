@@ -55,7 +55,24 @@
       </tbody>
     </table>
 
-    <h4>Transactions</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4>Transactions</h4>
+      <div class="d-flex gap-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="showExercisedSwitch" v-model="showOnlyExercised">
+          <label class="form-check-label" for="showExercisedSwitch">
+            Only Exercised
+          </label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="invertOrderSwitch" v-model="invertOrder">
+          <label class="form-check-label" for="invertOrderSwitch">
+            Reverse
+          </label>
+        </div>
+      </div>
+    </div>
+
     <table class="transactions table">
       <thead class="thead-dark">
         <tr>
@@ -66,7 +83,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="transaction in rangeTransactions" :key="transaction.id">
+        <tr v-for="transaction in transactionList" :key="transaction.id">
           <td>
             <span class="description-button"
               @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'description' })">
@@ -116,15 +133,27 @@ const emit = defineEmits(['edit-transaction'])
 const transactionsStore = useTransactionsStore()
 const isLoading = ref(false)
 
+const invertOrder = ref(false)
+const showOnlyExercised = ref(false)
+
+// Separate base transactions from filtered transactions
 const rangeTransactions = computed(() => {
   const rangeTransactions = transactionsStore.transactionsByDate.filter(t => {
-    const date = moment(t.date) // do we really need moment, dates are garanted to be in ISO format
+    const date = moment(t.date) // do we really need moment, dates are guaranted to be in ISO format
     return t.account_id === props.account.id &&
       date.isBetween(props.startDate, props.endDate, 'day', '[]')
   })
   return rangeTransactions;
 })
 
+const transactionList = computed(() => {
+  const transactions = showOnlyExercised.value ?
+    rangeTransactions.value.filter(t => t.exercised) :
+    rangeTransactions.value;
+  return invertOrder.value ? [...transactions].reverse() : transactions
+})
+
+// Use baseTransactions for totals calculations
 const incomeTransactions = computed(() =>
   rangeTransactions.value.filter(t => t.amount >= 0)
 )
