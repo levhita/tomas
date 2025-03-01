@@ -2,10 +2,10 @@ spec:
   name: yamo
   services:
     - name: app
-      github:
+      git:
         branch: digital-ocean-2
+        repo_clone_url: https://github.com/levhita/yamo.git
         deploy_on_push: true
-        repo: levhita/yamo
       build_command: |
         cd frontend && npm install && npm run build && cd ../api && npm install
       run_command: cd api && npm start
