@@ -1,7 +1,7 @@
 spec:
   name: yamo
   services:
-    - name: api_static_website
+    - name: apiStaticWebsite
       github:
         branch: digital-ocean-2
         repo: levhita/yamo
