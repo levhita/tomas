@@ -3,13 +3,13 @@ spec:
   services:
     - name: app
       github:
-        branch: apps-s-1vcpu-0.5gb
+        branch: digital-ocean-2
         deploy_on_push: true
         repo: levhita/yamo
       dockerfile_path: Dockerfile
       http_port: 3000
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: apps-s-1vcpu-0.5gb
       envs:
         - key: YAMO_MYSQL_HOST
           scope: RUN_TIME
