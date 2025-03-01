@@ -24,6 +24,11 @@
           <li class="nav-item">
             <RouterLink class="nav-link" active-class="active" to="/monthly">Monthly</RouterLink>
           </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/settings">
+              <i class="bi bi-gear"></i> Settings
+            </RouterLink>
+          </li>
         </ul>
       </div>
     </div>

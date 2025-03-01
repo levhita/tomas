@@ -9,6 +9,7 @@ import HomeView from './pages/HomeView.vue';
 import CalendarView from './pages/CalendarView.vue';
 import MonthlyView from './pages/MonthlyView.vue';
 import SplitView from './pages/SplitView.vue';
+import SettingsView from './pages/SettingsView.vue';
 import App from './App.vue';
 
 const router = createRouter({
@@ -19,6 +20,7 @@ const router = createRouter({
     { path: '/split', component: SplitView },
     { path: '/calendar', component: CalendarView },
     { path: '/monthly', component: MonthlyView },
+    { path: '/settings', component: SettingsView },
   ],
 });
 
