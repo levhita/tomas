@@ -18,14 +18,10 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
-
-// Prefix all API routes with /api
-app.use('/api', [
-  accountsRouter,
-  categoriesRouter,
-  transactionsRouter
-]);
+app.use('/api/users', usersRouter);
+app.use('/api/transactions', transactionsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/accounts', accountsRouter);
 
 // Serve static files from public directory
 app.use(express.static('public'));
