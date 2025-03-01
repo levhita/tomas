@@ -17,8 +17,11 @@ RUN npm install --production
 # Copy backend files
 COPY api/ .
 
-# Copy built frontend files
+# Copy built frontend files to root path
 COPY --from=frontend-builder /frontend/dist ./public
+
+# Add API base path configuration
+ENV API_BASE_PATH=/api
 
 EXPOSE 3000
 CMD ["npm", "start"]

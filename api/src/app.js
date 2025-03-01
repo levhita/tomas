@@ -1,14 +1,15 @@
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-var transactionsRouter = require('./routes/transactions');
-var categoriesRouter = require('./routes/categories');
-var accountsRouter = require('./routes/accounts');
-var app = express();
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const transactionsRouter = require('./routes/transactions');
+const categoriesRouter = require('./routes/categories');
+const accountsRouter = require('./routes/accounts');
+//const workspaceRouter = require('./routes/workspace');
+const app = express();
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -18,8 +19,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.use('/transactions', transactionsRouter);
-app.use('/categories', categoriesRouter);
-app.use('/accounts', accountsRouter);
+
+// Prefix all API routes with /api
+app.use('/api', [
+  accountsRouter,
+  categoriesRouter,
+  transactionsRouter
+]);
+
+// Serve static files from public directory
+app.use(express.static('public'));
+
+// Always return index.html for any non-api routes (for SPA routing)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile('public/index.html', { root: '.' });
+  }
+});
 
 module.exports = app;
