@@ -93,5 +93,22 @@ Start production server:
 cd api
 npm start
 ```
+
+## Deploy to DigitalOcean
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/levhita/yamo/tree/develop)
+
+This will deploy:
+- A single App Platform instance running both frontend and backend
+- Requires external MySQL database credentials (not included)
+- Automatically deploys from the `develop` branch
+
+### Environment Variables Required
+- `YAMO_MYSQL_HOST`: MySQL server hostname
+- `YAMO_MYSQL_USER`: Database username
+- `YAMO_MYSQL_PASSWORD`: Database password
+- `YAMO_MYSQL_DATABASE`: Database name
+- `YAMO_MYSQL_PORT`: Database port (default: 3306)
+
 # License
 General Public License v3, check LICENSE.md for details
