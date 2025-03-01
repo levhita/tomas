@@ -6,7 +6,9 @@ spec:
         branch: digital-ocean-2
         repo: levhita/yamo
         deploy_on_push: true
+      build_mode: DOCKERFILE
       dockerfile_path: Dockerfile
+      source_dir: /
       envs:
         - key: YAMO_MYSQL_HOST
           scope: RUN_TIME
@@ -31,4 +33,3 @@ spec:
         initial_delay_seconds: 30
       routes:
         - path: /
-      source_dir: /
