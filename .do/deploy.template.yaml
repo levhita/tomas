@@ -6,10 +6,9 @@ spec:
         branch: digital-ocean-2
         deploy_on_push: true
         repo: levhita/yamo
-      dockerfile_path: Dockerfile
-      http_port: 3000
-      instance_count: 1
-      instance_size_slug: apps-s-1vcpu-0.5gb
+      build_command: |
+        cd frontend && npm install && npm run build && cd ../api && npm install
+      run_command: cd api && npm start
       envs:
         - key: YAMO_MYSQL_HOST
           scope: RUN_TIME
@@ -26,3 +25,12 @@ spec:
         - key: YAMO_MYSQL_PORT
           scope: RUN_TIME
           value: "3306"
+      http_port: 3000
+      instance_count: 1
+      instance_size_slug: basic-xxs
+      health_check:
+        http_path: /
+        initial_delay_seconds: 30
+      routes:
+        - path: /
+      source_dir: /
