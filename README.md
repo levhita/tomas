@@ -96,7 +96,7 @@ npm start
 
 ## Deploy to DigitalOcean
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/levhita/yamo/tree/digital-ocean-2)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/levhita/yamo/tree/develop)
 
 This will deploy:
 - A single App Platform instance running both frontend and backend
