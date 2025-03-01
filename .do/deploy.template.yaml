@@ -1,41 +1,36 @@
-name: yamo
-services:
-  - name: app
-    github:
-      branch: develop
-      deploy_on_push: true
-      repo: levhita/yamo
-    dockerfile_path: Dockerfile
-    http_port: 3000
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    envs:
-      - key: YAMO_MYSQL_HOST
-        scope: RUN_TIME
-        type: SECRET
-      - key: YAMO_MYSQL_USER
-        scope: RUN_TIME
-        type: SECRET
-      - key: YAMO_MYSQL_PASSWORD
-        scope: RUN_TIME
-        type: SECRET
-      - key: YAMO_MYSQL_DATABASE
-        scope: RUN_TIME
-        type: SECRET
-      - key: YAMO_MYSQL_PORT
-        scope: RUN_TIME
-        value: "3306"
-
-static_sites:
-  - name: frontend-static
-    github:
-      repo: levhita/yamo
-      branch: develop
-      deploy_on_push: true
-    source_dir: frontend
-    output_dir: dist
-    build_command: npm run build
-    envs:
-      - key: VITE_API_URL
-        scope: BUILD_TIME
-        value: ${app.HOSTNAME}
+spec:
+  name: yamo
+  services:
+    - name: app
+      github:
+        branch: develop
+        repo: levhita/yamo
+        deploy_on_push: true
+      dockerfile_path: Dockerfile
+      source_dir: /
+      envs:
+        - key: YAMO_MYSQL_HOST
+          scope: RUN_TIME
+        - key: YAMO_MYSQL_USER
+          scope: RUN_TIME
+        - key: YAMO_MYSQL_PASSWORD
+          scope: RUN_TIME
+          type: SECRET
+        - key: YAMO_MYSQL_DATABASE
+          scope: RUN_TIME
+        - key: YAMO_MYSQL_PORT
+          scope: RUN_TIME
+          value: "3306"
+      http_port: 3000
+      instance_count: 1
+      instance_size_slug: "basic-xxs"
+      # Add HTTPS configuration
+      routes:
+        - path: /
+      health_check:
+        http_path: /api/health
+        initial_delay_seconds: 30
+        period_seconds: 60
+        timeout_seconds: 5
+        success_threshold: 1
+        failure_threshold: 3

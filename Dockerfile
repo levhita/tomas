@@ -6,7 +6,7 @@ RUN npm install
 COPY frontend/ .
 RUN npm run build
 
-# Build backend and serve frontend
+# Build and run backend
 FROM node:18-alpine
 WORKDIR /app
 
@@ -17,8 +17,11 @@ RUN npm install --production
 # Copy backend files
 COPY api/ .
 
-# Copy built frontend files to public directory
-COPY --from=frontend-builder /frontend/dist /app/public
+# Copy built frontend files to root path
+COPY --from=frontend-builder /frontend/dist ./public
+
+# Add API base path configuration
+ENV API_BASE_PATH=/api
 
 EXPOSE 3000
 CMD ["npm", "start"]
