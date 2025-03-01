@@ -28,8 +28,9 @@ spec:
       # Add HTTPS configuration
       routes:
         - path: /
-          preserve_path_prefix: true
-      https_redirect: true
+          service_name: api_static_website
+          service_port: 3000
+          protocol: HTTPS
       health_check:
         http_path: /api/health
         initial_delay_seconds: 30
