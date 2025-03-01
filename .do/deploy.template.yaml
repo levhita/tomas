@@ -24,14 +24,11 @@ spec:
           value: "3306"
       http_port: 3000
       instance_count: 1
-      instance_size_slug: basic-xxs
+      instance_size_slug: "basic-xxs"
       # Add HTTPS configuration
       routes:
         - path: /
           preserve_path_prefix: true
-      cors:
-        allow_origins:
-          - *
       https_redirect: true
       health_check:
         http_path: /api/health
