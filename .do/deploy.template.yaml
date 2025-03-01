@@ -3,7 +3,7 @@ spec:
   services:
     - name: app
       github:
-        branch: digital-ocean-2
+        branch: apps-s-1vcpu-0.5gb
         deploy_on_push: true
         repo: levhita/yamo
       dockerfile_path: Dockerfile
