@@ -8,6 +8,7 @@ const usersRouter = require('./routes/users');
 const transactionsRouter = require('./routes/transactions');
 const categoriesRouter = require('./routes/categories');
 const accountsRouter = require('./routes/accounts');
+const healthRouter = require('./routes/health');
 //const workspaceRouter = require('./routes/workspace');
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/accounts', accountsRouter);
+app.use('/api/health', healthRouter);
 
 // Serve static files from public directory
 app.use(express.static('public'));
