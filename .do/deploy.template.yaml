@@ -2,13 +2,11 @@ spec:
   name: yamo
   services:
     - name: app
-      git:
+      github:
         branch: digital-ocean-2
-        repo_clone_url: https://github.com/levhita/yamo.git
+        repo: levhita/yamo
         deploy_on_push: true
-      build_command: |
-        cd frontend && npm install && npm run build && cd ../api && npm install
-      run_command: cd api && npm start
+      dockerfile_path: Dockerfile
       envs:
         - key: YAMO_MYSQL_HOST
           scope: RUN_TIME
