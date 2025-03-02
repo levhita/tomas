@@ -7,6 +7,8 @@ DROP TABLE IF EXISTS `total`;
 
 DROP TABLE IF EXISTS `account`;
 
+DROP TABLE IF EXISTS `user`;
+
 -- Account --
 CREATE TABLE
   `account` (
@@ -58,4 +60,15 @@ CREATE TABLE
     PRIMARY KEY (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
     FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
+  ) ENGINE = InnoDB;
+
+-- Users --
+CREATE TABLE
+  `user` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `username` VARCHAR(255) NOT NULL,
+    `password_hash` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;

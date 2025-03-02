@@ -1,11 +1,11 @@
 meta {
-  name: Delete Account
+  name: Delete User
   type: http
-  seq: 5
+  seq: 3
 }
 
 delete {
-  url: {{server_url}}/accounts/:id
+  url: {{server_url}}/users/:id
   body: none
   auth: inherit
 }

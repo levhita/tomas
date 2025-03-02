@@ -1,0 +1,22 @@
+meta {
+  name: Update User
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{server_url}}/users/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 2
+}
+
+body:json {
+  {
+    "username": "admin",
+    "password": "admin"
+  }
+}

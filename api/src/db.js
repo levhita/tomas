@@ -1,5 +1,4 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
 
 const db = mysql.createPool({
   host: process.env.YAMO_MYSQL_HOST,

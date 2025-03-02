@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import fetchWithAuth from '../utils/fetch';
 
 export const useAccountsStore = defineStore('accounts', () => {
   // State
@@ -25,7 +26,7 @@ export const useAccountsStore = defineStore('accounts', () => {
   // Actions
   async function fetchAccounts() {
     try {
-      const response = await fetch('/api/accounts');
+      const response = await fetchWithAuth('/api/accounts');
       const data = await response.json();
       accounts.value = data;
     } catch (error) {
@@ -36,11 +37,8 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function addAccount(account) {
     try {
-      const response = await fetch('/api/accounts', {
+      const response = await fetchWithAuth('/api/accounts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(account),
       });
       const newAccount = await response.json();
@@ -54,11 +52,8 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function updateAccount(id, updates) {
     try {
-      const response = await fetch(`/api/accounts/${id}`, {
+      const response = await fetchWithAuth(`/api/accounts/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updates),
       });
       const updatedAccount = await response.json();
@@ -75,7 +70,7 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function deleteAccount(id) {
     try {
-      await fetch(`/api/accounts/${id}`, {
+      await fetchWithAuth(`/api/accounts/${id}`, {
         method: 'DELETE',
       });
       const index = accounts.value.findIndex(a => a.id === id);
@@ -90,7 +85,7 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function fetchAccountBalance(id, upToDate) {
     try {
-      const response = await fetch(`/api/accounts/${id}/balance?upToDate=${upToDate}`);
+      const response = await fetchWithAuth(`/api/accounts/${id}/balance?upToDate=${upToDate}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message);
