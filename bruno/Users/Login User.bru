@@ -12,9 +12,17 @@ post {
 
 body:json {
   {
-    "username": "admins",
-    "password": "admin"
+    "username": "{{username}}",
+    "password": "{{password}}"
   }
+}
+
+script:pre-request {
+  const username = await bru.prompt('Username', 'Please type your Username', '')
+  const password = await bru.promptKey('Password', 'Please type your Password')
+  
+  bru.setVar("username", username);
+  bru.setVar("password", password);
 }
 
 script:post-response {
