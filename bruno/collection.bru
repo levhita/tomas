@@ -9,3 +9,16 @@ auth:bearer {
 vars:pre-request {
   server_url: http://localhost:3000/api
 }
+
+script:pre-request {
+  bru.prompt = async (title, label, value) => {
+    const prompt = require('electron-prompt')
+    return await prompt({
+      title,
+      label,
+      value,
+      type: 'input',
+      inputAttrs: {type: 'text', required: true}
+    })
+  }
+}

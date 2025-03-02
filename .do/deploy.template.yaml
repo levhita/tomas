@@ -21,6 +21,9 @@ spec:
         - key: YAMO_MYSQL_PORT
           scope: RUN_TIME
           value: "3306"
+        - key: YAMO_JWT_SECRET
+          scope: RUN_TIME
+          type: SECRET
       http_port: 3000
       instance_count: 1
       instance_size_slug: "basic-xxs"

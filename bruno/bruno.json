@@ -9,5 +9,10 @@
   "presets": {
     "requestType": "http",
     "requestUrl": "{{server_url}}/"
+  },
+  "scripts": {
+    "moduleWhitelist": [
+      "electron"
+    ]
   }
 }
