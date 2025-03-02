@@ -8,7 +8,7 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
+        <ul class="navbar-nav me-auto">
           <li class="nav-item">
             <RouterLink class="nav-link" active-class="active" to="/">default view</RouterLink>
           </li>
@@ -25,13 +25,29 @@
             <RouterLink class="nav-link" active-class="active" to="/monthly">Monthly</RouterLink>
           </li>
         </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a href="#" class="nav-link" @click.prevent="handleLogout">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { useUsersStore } from '../stores/users'
+
+const router = useRouter()
+const usersStore = useUsersStore()
+
+async function handleLogout() {
+  await usersStore.logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>

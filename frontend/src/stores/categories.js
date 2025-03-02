@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import fetchWithAuth from '../utils/fetch';
 
 export const useCategoriesStore = defineStore('categories', () => {
   // State
@@ -37,7 +38,7 @@ export const useCategoriesStore = defineStore('categories', () => {
   // Actions
   async function fetchCategories() {
     try {
-      const response = await fetch('/api/categories');
+      const response = await fetchWithAuth('/api/categories');
       const data = await response.json();
       categories.value = data;
     } catch (error) {
@@ -48,11 +49,8 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function addCategory(category) {
     try {
-      const response = await fetch('/api/categories', {
+      const response = await fetchWithAuth('/api/categories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(category),
       });
       const newCategory = await response.json();
@@ -66,11 +64,8 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function updateCategory(id, updates) {
     try {
-      const response = await fetch(`/api/categories/${id}`, {
+      const response = await fetchWithAuth(`/api/categories/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updates),
       });
       const updatedCategory = await response.json();
@@ -87,8 +82,8 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function deleteCategory(id) {
     try {
-      await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
+      await fetchWithAuth(`/api/categories/${id}`, {
+        method: 'DELETE'
       });
       const index = categories.value.findIndex(c => c.id === id);
       if (index !== -1) {

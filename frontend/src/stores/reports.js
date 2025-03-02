@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import moment from 'moment';
+import fetchWithAuth from '../utils/fetch';
 
 export const useReportsStore = defineStore('reports', () => {
   // State
@@ -23,14 +24,14 @@ export const useReportsStore = defineStore('reports', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fetch(`/api/reports/monthly/${accountId}?date=${date}`);
+      const response = await fetchWithAuth(`/api/reports/monthly/${accountId}?date=${date}`);
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to fetch report');
       }
-      return await response.json();
+      monthlyReport.value = await response.json();
+      return monthlyReport.value;
     } catch (err) {
-      // TODO: Handle error, probably date is out of range
       error.value = err.message;
       throw err;
     } finally {
