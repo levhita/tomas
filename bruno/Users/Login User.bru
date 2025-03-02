@@ -18,11 +18,9 @@ body:json {
 }
 
 script:pre-request {
-  const username = await bru.prompt('Username', 'please ttype your username', '')
-  const password = await bru.prompt('Password', 'please type your password', '')
+  const username = await bru.prompt('Username', 'Please type your Username', '')
+  const password = await bru.promptKey('Password', 'Please type your Password')
   
-  
-  console.log
   bru.setVar("username", username);
   bru.setVar("password", password);
 }

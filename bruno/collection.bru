@@ -21,4 +21,15 @@ script:pre-request {
       inputAttrs: {type: 'text', required: true}
     })
   }
+  
+  bru.promptKey = async (title, label) => {
+    const prompt = require('electron-prompt')
+    return await prompt({
+      title,
+      label,
+      value:'',
+      type: 'input',
+      inputAttrs: {type: 'password', required: true}
+    })
+  }
 }
