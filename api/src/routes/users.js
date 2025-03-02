@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+// Add JWT secret to environment variables or config
+const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
 
 // Get all users
 router.get('/', async (req, res) => {
@@ -16,6 +20,33 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Get user by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [users] = await db.query(`
+      SELECT id, username, created_at 
+      FROM user 
+      WHERE id = ?
+    `, [id]);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    res.status(200).json(users[0]);
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to fetch user'
+    });
   }
 });
 
@@ -104,9 +135,23 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Return user without sensitive data
+    // Generate JWT token
+    console.log({ YAMO_JWT_SECRET })
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Return user and token
     const { password_hash, ...userWithoutPassword } = user;
-    res.status(200).json(userWithoutPassword);
+    res.status(200).json({
+      user: userWithoutPassword,
+      token
+    });
 
   } catch (err) {
     console.error('Authentication error:', err);
