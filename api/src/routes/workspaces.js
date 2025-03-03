@@ -2,14 +2,53 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Get all workspaces for current user
+// Helper functions
+async function checkWorkspaceAccess(workspaceId, userId) {
+  const [access] = await db.query(`
+    SELECT 1 FROM workspace_user 
+    WHERE workspace_id = ? AND user_id = ?
+  `, [workspaceId, userId]);
+
+  return access.length > 0;
+}
+
+async function getWorkspaceUsers(workspaceId) {
+  const [users] = await db.query(`
+    SELECT u.id, u.username, u.created_at
+    FROM user u
+    INNER JOIN workspace_user wu ON u.id = wu.user_id
+    WHERE wu.workspace_id = ?
+    ORDER BY u.username ASC
+  `, [workspaceId]);
+  return users;
+}
+
+// Update the getWorkspaceById helper
+async function getWorkspaceById(workspaceId) {
+  const [workspaces] = await db.query(
+    'SELECT * FROM workspace WHERE id = ? AND deleted_at IS NULL',
+    [workspaceId]
+  );
+  return workspaces[0];
+}
+
+async function getWorkspaceWithUsers(workspaceId) {
+  const workspace = await getWorkspaceById(workspaceId);
+  if (!workspace) return null;
+
+  const users = await getWorkspaceUsers(workspaceId);
+  return { ...workspace, users };
+}
+
+// Routes
+// Update the GET / route to exclude deleted workspaces
 router.get('/', async (req, res) => {
   try {
     const [workspaces] = await db.query(`
       SELECT w.* 
       FROM workspace w
       INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ?
+      WHERE wu.user_id = ? AND w.deleted_at IS NULL
       ORDER BY w.name ASC
     `, [req.user.id]);
 
@@ -20,26 +59,19 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single workspace
 router.get('/:id', async (req, res) => {
   try {
-    const [workspaces] = await db.query(`
-      SELECT w.*, GROUP_CONCAT(u.username) as users
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      INNER JOIN user u ON wu.user_id = u.id
-      WHERE w.id = ? AND EXISTS (
-        SELECT 1 FROM workspace_user 
-        WHERE workspace_id = w.id AND user_id = ?
-      )
-      GROUP BY w.id
-    `, [req.params.id, req.user.id]);
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
-    if (workspaces.length === 0) {
+    const workspace = await getWorkspaceWithUsers(req.params.id);
+    if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    res.status(200).json(workspaces[0]);
+    res.status(200).json(workspace);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch workspace' });
@@ -70,14 +102,11 @@ router.post('/', async (req, res) => {
       );
 
       await connection.commit();
-
-      const [workspaces] = await connection.query(
-        'SELECT * FROM workspace WHERE id = ?',
-        [result.insertId]
-      );
-
       connection.release();
-      res.status(201).json(workspaces[0]);
+
+      const workspace = await getWorkspaceWithUsers(result.insertId);
+
+      res.status(201).json(workspace);
     } catch (err) {
       await connection.rollback();
       connection.release();
@@ -89,7 +118,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update workspace
 router.put('/:id', async (req, res) => {
   const { name, description } = req.body;
 
@@ -98,41 +126,40 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     const [result] = await db.query(`
-      UPDATE workspace w
-      SET name = ?, description = ?
-      WHERE id = ? AND EXISTS (
-        SELECT 1 FROM workspace_user 
-        WHERE workspace_id = w.id AND user_id = ?
-      )
-    `, [name, description, req.params.id, req.user.id]);
+      UPDATE workspace SET name = ?, description = ? WHERE id = ?
+    `, [name, description, req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    const [workspaces] = await db.query(
-      'SELECT * FROM workspace WHERE id = ?',
-      [req.params.id]
-    );
-
-    res.status(200).json(workspaces[0]);
+    const workspace = await getWorkspaceWithUsers(req.params.id);
+    res.status(200).json(workspace);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update workspace' });
   }
 });
 
-// Delete workspace
+// Update the DELETE route to use soft delete
 router.delete('/:id', async (req, res) => {
   try {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     const [result] = await db.query(`
-      DELETE w FROM workspace w
-      WHERE w.id = ? AND EXISTS (
-        SELECT 1 FROM workspace_user 
-        WHERE workspace_id = w.id AND user_id = ?
-      )
-    `, [req.params.id, req.user.id]);
+      UPDATE workspace 
+      SET deleted_at = CURRENT_TIMESTAMP 
+      WHERE id = ? AND deleted_at IS NULL
+    `, [req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Workspace not found' });
@@ -142,6 +169,76 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to delete workspace' });
+  }
+});
+
+// Add new route to restore deleted workspace
+router.post('/:id/restore', async (req, res) => {
+  try {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const [result] = await db.query(`
+      UPDATE workspace 
+      SET deleted_at = NULL 
+      WHERE id = ? AND deleted_at IS NOT NULL
+    `, [req.params.id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Workspace not found or already restored' });
+    }
+
+    const workspace = await getWorkspaceWithUsers(req.params.id);
+    res.status(200).json(workspace);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to restore workspace' });
+  }
+});
+
+// Optional: Add route to permanently delete workspace
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Delete workspace users first (foreign key constraint)
+      await connection.query(
+        'DELETE FROM workspace_user WHERE workspace_id = ?',
+        [req.params.id]
+      );
+
+      // Then delete the workspace
+      const [result] = await connection.query(
+        'DELETE FROM workspace WHERE id = ?',
+        [req.params.id]
+      );
+
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(404).json({ error: 'Workspace not found' });
+      }
+
+      await connection.commit();
+      connection.release();
+      res.status(204).send();
+    } catch (err) {
+      await connection.rollback();
+      connection.release();
+      throw err;
+    }
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to permanently delete workspace' });
   }
 });
 
@@ -161,12 +258,8 @@ router.post('/:id/users', async (req, res) => {
     }
 
     // Check if requester has access to workspace
-    const [workspaces] = await db.query(`
-      SELECT 1 FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [req.params.id, req.user.id]);
-
-    if (workspaces.length === 0) {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -186,15 +279,8 @@ router.post('/:id/users', async (req, res) => {
       VALUES (?, ?)
     `, [req.params.id, userId]);
 
-    // Get updated users list
-    const [updatedUsers] = await db.query(`
-      SELECT u.id, u.username, u.created_at
-      FROM user u
-      INNER JOIN workspace_user wu ON u.id = wu.user_id
-      WHERE wu.workspace_id = ?
-      ORDER BY u.username ASC
-    `, [req.params.id]);
 
+    const updatedUsers = await getWorkspaceUsers(req.params.id);
     res.status(201).json(updatedUsers);
   } catch (err) {
     console.error('Database error:', err);
@@ -206,12 +292,8 @@ router.post('/:id/users', async (req, res) => {
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
     // Check if requester has access to workspace
-    const [workspaces] = await db.query(`
-      SELECT 1 FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [req.params.id, req.user.id]);
-
-    if (workspaces.length === 0) {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -246,25 +328,13 @@ router.delete('/:id/users/:userId', async (req, res) => {
 router.get('/:id/users', async (req, res) => {
   try {
     // Check if requester has access to workspace
-    const [access] = await db.query(`
-      SELECT 1 FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [req.params.id, req.user.id]);
-
-    if (access.length === 0) {
+    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Get users
-    const [users] = await db.query(`
-      SELECT u.id, u.username, u.created_at
-      FROM user u
-      INNER JOIN workspace_user wu ON u.id = wu.user_id
-      WHERE wu.workspace_id = ?
-      ORDER BY u.username ASC
-    `, [req.params.id]);
-
-    res.status(200).json(users);
+    const updatedUsers = await getWorkspaceUsers(req.params.id);
+    res.status(200).json(updatedUsers);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch workspace users' });
