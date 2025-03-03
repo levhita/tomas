@@ -1,0 +1,16 @@
+meta {
+  name: Remove User from Workspace
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{server_url}}/workspaces/:id/users/:userid
+  body: none
+  auth: inherit
+}
+
+params:path {
+  userid: 4
+  id: 1
+}

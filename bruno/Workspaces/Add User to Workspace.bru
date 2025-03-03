@@ -1,0 +1,21 @@
+meta {
+  name: Add User to Workspace
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{server_url}}/workspaces/:id/users
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 1
+}
+
+body:json {
+  {
+    "userId": 4
+  }
+}
