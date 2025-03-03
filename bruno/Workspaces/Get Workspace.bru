@@ -1,0 +1,15 @@
+meta {
+  name: Get Workspace
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{server_url}}/workspaces/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 12
+}

@@ -33,6 +33,7 @@ async function authenticateToken(req, res, next) {
       return res.status(403).json({ error: 'Invalid user' });
     }
 
+    //Inject user object into the request
     req.user = users[0];
     next();
   } catch (err) {

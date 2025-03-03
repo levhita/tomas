@@ -1,4 +1,8 @@
 -- Clean Up --
+DROP TABLE IF EXISTS `workspace_user`;
+
+DROP TABLE IF EXISTS `workspace`;
+
 DROP TABLE IF EXISTS `transaction`;
 
 DROP TABLE IF EXISTS `category`;
@@ -71,4 +75,25 @@ CREATE TABLE
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `unique_username` (`username`)
+  ) ENGINE = InnoDB;
+
+-- Workspaces --
+CREATE TABLE
+  `workspace` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB;
+
+-- Workspace Users --
+CREATE TABLE
+  `workspace_user` (
+    `workspace_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`workspace_id`, `user_id`),
+    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
   ) ENGINE = InnoDB;

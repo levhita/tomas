@@ -11,7 +11,7 @@ const transactionsRouter = require('./routes/transactions');
 const categoriesRouter = require('./routes/categories');
 const accountsRouter = require('./routes/accounts');
 const healthRouter = require('./routes/health');
-//const workspaceRouter = require('./routes/workspace');
+const workspacesRouter = require('./routes/workspaces');
 const app = express();
 
 app.use(logger('dev'));
@@ -29,6 +29,7 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/accounts', accountsRouter);
 app.use('/api/health', healthRouter);
+app.use('/api/workspaces', workspacesRouter);
 
 // Serve static files from public directory
 app.use(express.static('public'));

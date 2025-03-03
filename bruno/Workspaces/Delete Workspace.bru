@@ -1,11 +1,11 @@
 meta {
-  name: Delete Transaction
+  name: Delete Workspace
   type: http
   seq: 5
 }
 
 delete {
-  url: {{server_url}}/transactions/:id
+  url: {{server_url}}/workspaces/:id
   body: none
   auth: inherit
 }
