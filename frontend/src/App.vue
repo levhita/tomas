@@ -1,13 +1,15 @@
-<script setup>
-import Navigation from './components/Navigation.vue'
-
-</script>
-
 <template>
-  <Navigation />
-  <main :style="{ height: 'calc(100vh - 56px)' }">
-    <RouterView />
+  <Navigation v-if="showNavigation" />
+  <main class="container-fluid">
+    <router-view />
   </main>
 </template>
 
-<style scoped></style>
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import Navigation from './components/Navigation.vue';
+
+const route = useRoute();
+const showNavigation = computed(() => route.path !== '/login');
+</script>

@@ -136,7 +136,6 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate JWT token
-    console.log({ YAMO_JWT_SECRET })
     const token = jwt.sign(
       {
         userId: user.id,

@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
-      <RouterLink class="navbar-brand" to="/">YAMO</RouterLink>
+      <RouterLink class="navbar-brand" to="/workspaces">YAMO</RouterLink>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -10,19 +10,13 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/">default view</RouterLink>
-          </li>
-          <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/home">Home</RouterLink>
-          </li>
-          <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/split">Split</RouterLink>
+            <RouterLink class="nav-link" active-class="active" to="/workspaces">Workspaces</RouterLink>
           </li>
           <li class="nav-item">
             <RouterLink class="nav-link" active-class="active" to="/calendar">Calendar</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/monthly">Monthly</RouterLink>
+            <RouterLink class="nav-link" active-class="active" to="/flow">Flow</RouterLink>
           </li>
         </ul>
         <ul class="navbar-nav">

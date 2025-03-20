@@ -4,45 +4,56 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap";
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './style.css';
-import { createMemoryHistory, createRouter } from 'vue-router';
-import HomeView from './pages/HomeView.vue';
-import CalendarView from './pages/CalendarView.vue';
-import MonthlyView from './pages/MonthlyView.vue';
-import SplitView from './pages/SplitView.vue';
-import LoginView from './pages/LoginView.vue';
+import { createWebHistory, createRouter } from 'vue-router';
 import App from './App.vue';
+import WorkspacesView from './pages/WorkspacesView.vue';
+import CalendarView from './pages/CalendarView.vue';
+import FlowView from './pages/FlowView.vue';
+import LoginView from './pages/LoginView.vue';
 
+// Create the router instance
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(),
   routes: [
     {
       path: '/login',
       component: LoginView,
       meta: { public: true }
     },
-    { path: '/', component: SplitView },
-    { path: '/home', component: HomeView },
-    { path: '/split', component: SplitView },
-    { path: '/calendar', component: CalendarView },
-    { path: '/monthly', component: MonthlyView },
+    { path: '/', redirect: '/workspaces' },
+    {
+      path: '/workspaces',
+      component: WorkspacesView,
+      name: 'workspaces'
+    },
+    {
+      path: '/calendar',
+      component: CalendarView,
+      name: 'calendar'
+    },
+    {
+      path: '/flow',
+      component: FlowView,
+      name: 'flow'
+    },
   ],
 });
 
-// Navigation guard
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token')
-  const isPublicRoute = to.meta.public
+// Clear any existing app instances (this can help during hot reloading)
+const rootElement = document.getElementById('app');
+if (rootElement && rootElement.__vue_app__) {
+  rootElement.__vue_app__.unmount();
+}
 
-  if (!isPublicRoute && !isAuthenticated) {
-    next('/login')
-  } else {
-    next()
-  }
-})
-
+// Create a single Pinia instance
 const pinia = createPinia();
+
+// Create a single Vue app instance
 const app = createApp(App);
 
+// Use plugins
 app.use(pinia);
 app.use(router);
+
+// Mount the app
 app.mount('#app');
