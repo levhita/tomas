@@ -1,47 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-
-// Helper functions
-async function checkWorkspaceAccess(workspaceId, userId) {
-  const [access] = await db.query(`
-    SELECT 1 FROM workspace_user 
-    WHERE workspace_id = ? AND user_id = ?
-  `, [workspaceId, userId]);
-
-  return access.length > 0;
-}
-
-async function getWorkspaceUsers(workspaceId) {
-  const [users] = await db.query(`
-    SELECT u.id, u.username, u.created_at
-    FROM user u
-    INNER JOIN workspace_user wu ON u.id = wu.user_id
-    WHERE wu.workspace_id = ?
-    ORDER BY u.username ASC
-  `, [workspaceId]);
-  return users;
-}
-
-// Update the getWorkspaceById helper
-async function getWorkspaceById(workspaceId) {
-  const [workspaces] = await db.query(
-    'SELECT * FROM workspace WHERE id = ? AND deleted_at IS NULL',
-    [workspaceId]
-  );
-  return workspaces[0];
-}
-
-async function getWorkspaceWithUsers(workspaceId) {
-  const workspace = await getWorkspaceById(workspaceId);
-  if (!workspace) return null;
-
-  const users = await getWorkspaceUsers(workspaceId);
-  return { ...workspace, users };
-}
+const {
+  checkWorkspaceAccess,
+  checkWorkspaceOwner,
+  checkDeletePermission,
+  getWorkspaceById
+} = require('../utils/workspace');
 
 // Routes
-// Update the GET / route to exclude deleted workspaces
 router.get('/', async (req, res) => {
   try {
     const [workspaces] = await db.query(`
@@ -59,14 +26,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Example of operation that requires any level of access
 router.get('/:id', async (req, res) => {
   try {
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    // Check if user has basic access (owner or collaborator)
+    const { allowed, status, message } = await checkWorkspacePermission(req.params.id, req.user.id);
+
+    if (!allowed) {
+      return res.status(status).json({ error: message });
     }
 
-    const workspace = await getWorkspaceWithUsers(req.params.id);
+    // User has access, proceed with fetching the workspace
+    const workspace = await getWorkspaceById(req.params.id);
+
     if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
@@ -80,7 +52,7 @@ router.get('/:id', async (req, res) => {
 
 // Create new workspace
 router.post('/', async (req, res) => {
-  const { name, description = null } = req.body;
+  const { name, description = null, currency_symbol = '$', week_start = 'monday' } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -92,8 +64,8 @@ router.post('/', async (req, res) => {
 
     try {
       const [result] = await connection.query(
-        'INSERT INTO workspace (name, description) VALUES (?, ?)',
-        [name, description]
+        'INSERT INTO workspace (name, description, currency_symbol, week_start) VALUES (?, ?, ?, ?)',
+        [name, description, currency_symbol, week_start]
       );
 
       await connection.query(
@@ -104,7 +76,7 @@ router.post('/', async (req, res) => {
       await connection.commit();
       connection.release();
 
-      const workspace = await getWorkspaceWithUsers(result.insertId);
+      const workspace = await getWorkspaceById(result.insertId);
 
       res.status(201).json(workspace);
     } catch (err) {
@@ -119,7 +91,7 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, currency_symbol, week_start } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -131,15 +103,29 @@ router.put('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Get existing workspace to keep current values if not provided
+    const existingWorkspace = await getWorkspaceById(req.params.id);
+    if (!existingWorkspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    const currencySymbol = currency_symbol !== undefined ? currency_symbol : existingWorkspace.currency_symbol;
+    const weekStart = week_start !== undefined ? week_start : existingWorkspace.week_start;
+
     const [result] = await db.query(`
-      UPDATE workspace SET name = ?, description = ? WHERE id = ?
-    `, [name, description, req.params.id]);
+      UPDATE workspace 
+      SET name = ?, 
+          description = ?, 
+          currency_symbol = ?, 
+          week_start = ? 
+      WHERE id = ?
+    `, [name, description, currencySymbol, weekStart, req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    const workspace = await getWorkspaceWithUsers(req.params.id);
+    const workspace = await getWorkspaceById(req.params.id);
     res.status(200).json(workspace);
   } catch (err) {
     console.error('Database error:', err);
@@ -147,14 +133,17 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Update the DELETE route to use soft delete
+// Example of delete operation that requires owner role
 router.delete('/:id', async (req, res) => {
   try {
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    // Check if user has delete permission (must be owner)
+    const { allowed, status, message } = await checkDeletePermission(req.params.id, req.user.id);
+
+    if (!allowed) {
+      return res.status(status).json({ error: message });
     }
 
+    // User is the owner, proceed with deletion
     const [result] = await db.query(`
       UPDATE workspace 
       SET deleted_at = CURRENT_TIMESTAMP 
@@ -162,7 +151,7 @@ router.delete('/:id', async (req, res) => {
     `, [req.params.id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Workspace not found' });
+      return res.status(404).json({ error: 'Workspace not found or already deleted' });
     }
 
     res.status(204).send();
@@ -190,7 +179,7 @@ router.post('/:id/restore', async (req, res) => {
       return res.status(404).json({ error: 'Workspace not found or already restored' });
     }
 
-    const workspace = await getWorkspaceWithUsers(req.params.id);
+    const workspace = await getWorkspaceById(req.params.id);
     res.status(200).json(workspace);
   } catch (err) {
     console.error('Database error:', err);

@@ -139,7 +139,8 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.id,
-        username: user.username
+        username: user.username,
+        role: user.role
       },
       YAMO_JWT_SECRET,
       { expiresIn: '24h' }

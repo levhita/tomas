@@ -8,6 +8,11 @@ async function authenticateToken(req, res, next) {
   if (req.path === '/users/login') {
     return next();
   }
+  // Skip authentication for login endpoint
+  // if (req.path === '/users/1') {
+  //   return next();
+  // }
+
   // Skip authentication for health endpoint
   if (req.path === '/health') {
     return next();

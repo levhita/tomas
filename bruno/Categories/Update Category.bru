@@ -11,13 +11,15 @@ put {
 }
 
 params:path {
-  id: 
+  id: 100
 }
 
 body:json {
   {
     "name": "Some Name",
     "note": "Just some random category",
-    "parent_category_id": null
+    "parent_category_id": null,
+    "type": "expense",
+    "workspace_id": 1
   }
 }
