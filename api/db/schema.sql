@@ -43,7 +43,7 @@ CREATE TABLE
   `workspace_user` (
     `workspace_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
-    `role` ENUM ('owner', 'collaborator') NOT NULL DEFAULT 'collaborator',
+    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`workspace_id`, `user_id`),
     FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),

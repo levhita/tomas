@@ -1,0 +1,22 @@
+meta {
+  name: Update User of Workspace
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{server_url}}/workspaces/:id/users/:userId
+  body: json
+  auth: inherit
+}
+
+params:path {
+  userId: 3
+  id: 1
+}
+
+body:json {
+  {
+    "role": "admin"
+  }
+}

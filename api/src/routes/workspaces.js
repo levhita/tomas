@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const {
-  checkWorkspaceAccess,
-  checkWorkspaceOwner,
-  checkDeletePermission,
+  canAdmin,
+  canWrite,
+  canRead,
+  getWorkspaceUsers,
   getWorkspaceById
 } = require('../utils/workspace');
 
-// Routes
+// Get workspace list (only needs auth, no workspace-specific permission)
 router.get('/', async (req, res) => {
   try {
     const [workspaces] = await db.query(`
@@ -26,19 +27,15 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Example of operation that requires any level of access
+// View single workspace (requires read permission)
 router.get('/:id', async (req, res) => {
   try {
-    // Check if user has basic access (owner or collaborator)
-    const { allowed, status, message } = await checkWorkspacePermission(req.params.id, req.user.id);
-
+    const { allowed, message } = await canRead(req.params.id, req.user.id);
     if (!allowed) {
-      return res.status(status).json({ error: message });
+      return res.status(403).json({ error: message });
     }
 
-    // User has access, proceed with fetching the workspace
     const workspace = await getWorkspaceById(req.params.id);
-
     if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
     }
@@ -68,9 +65,10 @@ router.post('/', async (req, res) => {
         [name, description, currency_symbol, week_start]
       );
 
+      // Add current user as admin of the workspace
       await connection.query(
-        'INSERT INTO workspace_user (workspace_id, user_id) VALUES (?, ?)',
-        [result.insertId, req.user.id]
+        'INSERT INTO workspace_user (workspace_id, user_id, role) VALUES (?, ?, ?)',
+        [result.insertId, req.user.id, 'admin']
       );
 
       await connection.commit();
@@ -90,6 +88,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Update workspace (requires write permission)
 router.put('/:id', async (req, res) => {
   const { name, description, currency_symbol, week_start } = req.body;
 
@@ -98,9 +97,9 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    const { allowed, message } = await canWrite(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // Get existing workspace to keep current values if not provided
@@ -133,17 +132,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Example of delete operation that requires owner role
+// Delete workspace (requires admin permission)
 router.delete('/:id', async (req, res) => {
   try {
-    // Check if user has delete permission (must be owner)
-    const { allowed, status, message } = await checkDeletePermission(req.params.id, req.user.id);
-
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
     if (!allowed) {
-      return res.status(status).json({ error: message });
+      return res.status(403).json({ error: message });
     }
 
-    // User is the owner, proceed with deletion
     const [result] = await db.query(`
       UPDATE workspace 
       SET deleted_at = CURRENT_TIMESTAMP 
@@ -161,12 +157,12 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Add new route to restore deleted workspace
+// Restore workspace (requires admin permission)
 router.post('/:id/restore', async (req, res) => {
   try {
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const [result] = await db.query(`
@@ -187,12 +183,12 @@ router.post('/:id/restore', async (req, res) => {
   }
 });
 
-// Optional: Add route to permanently delete workspace
+// Permanently delete workspace (requires admin permission)
 router.delete('/:id/permanent', async (req, res) => {
   try {
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const connection = await db.getConnection();
@@ -231,25 +227,28 @@ router.delete('/:id/permanent', async (req, res) => {
   }
 });
 
-// Add user to workspace
+// Add user to workspace (requires admin permission)
 router.post('/:id/users', async (req, res) => {
-  const { userId } = req.body;
+  const { userId, role } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
+  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
+  }
+
   try {
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
     // Check if user exists
     const [users] = await db.query('SELECT id FROM user WHERE id = ?', [userId]);
     if (users.length === 0) {
       return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Check if requester has access to workspace
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Check if user is already in workspace
@@ -262,12 +261,11 @@ router.post('/:id/users', async (req, res) => {
       return res.status(409).json({ error: 'User already in workspace' });
     }
 
-    // Add user to workspace
+    // Add user to workspace with specified role
     await db.query(`
-      INSERT INTO workspace_user (workspace_id, user_id) 
-      VALUES (?, ?)
-    `, [req.params.id, userId]);
-
+      INSERT INTO workspace_user (workspace_id, user_id, role) 
+      VALUES (?, ?, ?)
+    `, [req.params.id, userId, role]);
 
     const updatedUsers = await getWorkspaceUsers(req.params.id);
     res.status(201).json(updatedUsers);
@@ -277,13 +275,12 @@ router.post('/:id/users', async (req, res) => {
   }
 });
 
-// Remove user from workspace
+// Remove user from workspace (requires admin permission)
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
-    // Check if requester has access to workspace
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // Prevent removing the last user
@@ -313,17 +310,68 @@ router.delete('/:id/users/:userId', async (req, res) => {
   }
 });
 
-// Get workspace users
-router.get('/:id/users', async (req, res) => {
+// Update user role in workspace (requires admin permission)
+router.put('/:id/users/:userId', async (req, res) => {
+  const { role } = req.body;
+
+  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
+  }
+
   try {
-    // Check if requester has access to workspace
-    const hasAccess = await checkWorkspaceAccess(req.params.id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Prevent removing the last admin
+    if (role !== 'admin') {
+      const [adminCount] = await db.query(`
+        SELECT COUNT(*) as count 
+        FROM workspace_user 
+        WHERE workspace_id = ? AND role = 'admin'
+      `, [req.params.id]);
+
+      const [currentRole] = await db.query(`
+        SELECT role 
+        FROM workspace_user 
+        WHERE workspace_id = ? AND user_id = ?
+      `, [req.params.id, req.params.userId]);
+
+      if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
+        return res.status(400).json({ error: 'Cannot remove the last admin from the workspace' });
+      }
+    }
+
+    // Update user's role
+    const [result] = await db.query(`
+      UPDATE workspace_user 
+      SET role = ? 
+      WHERE workspace_id = ? AND user_id = ?
+    `, [role, req.params.id, req.params.userId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found in workspace' });
     }
 
     const updatedUsers = await getWorkspaceUsers(req.params.id);
     res.status(200).json(updatedUsers);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+// Get workspace users (requires read permission)
+router.get('/:id/users', async (req, res) => {
+  try {
+    const { allowed, message } = await canRead(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    const users = await getWorkspaceUsers(req.params.id);
+    res.status(200).json(users);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch workspace users' });

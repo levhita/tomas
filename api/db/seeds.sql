@@ -1,26 +1,27 @@
--- Create default user --
+-- Create users --
 INSERT INTO
   `user` (id, username, password_hash, admin)
 VALUES
   (
     1,
     "admin",
-    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS",
-    true -- Password: 'admin'
-  );
-
--- Create a regular user for demo
-INSERT INTO
-  `user` (id, username, password_hash, admin)
-VALUES
+    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
+    true
+  ),
   (
     2,
     "user",
     "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
     false
+  ),
+  (
+    3,
+    "viewer",
+    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
+    false
   );
 
--- Create default workspace --
+-- Create workspaces --
 INSERT INTO
   `workspace` (
     id,
@@ -36,18 +37,7 @@ VALUES
     "Default workspace for demo purposes",
     "$",
     "monday"
-  );
-
--- Create additional demo workspaces
-INSERT INTO
-  `workspace` (
-    id,
-    name,
-    description,
-    currency_symbol,
-    week_start
-  )
-VALUES
+  ),
   (
     2,
     "European Business",
@@ -77,19 +67,25 @@ VALUES
     "sunday"
   );
 
--- Add users to workspaces with appropriate roles --
+-- Add users to workspaces with roles --
 INSERT INTO
   `workspace_user` (workspace_id, user_id, role)
 VALUES
-  (1, 1, 'owner'), -- Admin user is owner of Default workspace
-  (2, 1, 'owner'), -- Admin user is owner of European Business
-  (3, 1, 'owner'), -- Admin user is owner of UK Investments
-  (4, 1, 'owner'), -- Admin user is owner of Japan Office
-  (5, 1, 'owner'), -- Admin user is owner of Mexico Branch
-  (1, 2, 'collaborator'), -- Regular user is collaborator in Default workspace
-  (3, 2, 'collaborator');
+  -- Admin user has admin access to all workspaces
+  (1, 1, 'admin'),
+  (2, 1, 'admin'),
+  (3, 1, 'admin'),
+  (4, 1, 'admin'),
+  (5, 1, 'admin'),
+  -- Regular user has mixed roles
+  (1, 2, 'collaborator'), -- Can edit in Default workspace
+  (2, 2, 'viewer'), -- Can only view European Business
+  (3, 2, 'admin'), -- Has admin rights in UK Investments
+  -- Viewer user has view-only access to some workspaces
+  (1, 3, 'viewer'),
+  (4, 3, 'viewer'),
+  (5, 3, 'viewer');
 
--- Regular user is collaborator in UK Investments
 -- Categories --
 INSERT INTO
   category (id, name, type, workspace_id)

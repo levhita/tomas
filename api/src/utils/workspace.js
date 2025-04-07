@@ -1,113 +1,88 @@
 const db = require('../db');
 
+
 /**
- * Check if a user has access to a workspace
- * @param {number|string} workspaceId - The workspace ID to check access for
- * @param {number|string} userId - The user ID to check access for
- * @returns {Promise<{hasAccess: boolean, role: string|null}>} - Returns access info and role
+ * Get user's role in a workspace
+ * @param {number} workspaceId - The workspace ID
+ * @param {number} userId - The user ID
+ * @returns {Promise<string|null>} - Returns role or null if no access
  */
-async function checkWorkspaceAccess(workspaceId, userId) {
+async function getUserRole(workspaceId, userId) {
   try {
     const [access] = await db.query(`
       SELECT role FROM workspace_user 
       WHERE workspace_id = ? AND user_id = ?
     `, [workspaceId, userId]);
 
-    if (access.length > 0) {
-      return {
-        hasAccess: true,
-        role: access[0].role
-      };
-    } else {
-      return {
-        hasAccess: false,
-        role: null
-      };
-    }
+    return access.length > 0 ? access[0].role : null;
   } catch (error) {
-    console.error('Error checking workspace access:', error);
-    return {
-      hasAccess: false,
-      role: null
-    };
+    console.error('Error getting user role:', error);
+    return null;
   }
 }
 
 /**
- * Check if a user is owner of a workspace
- * @param {number|string} workspaceId - The workspace ID to check ownership for
- * @param {number|string} userId - The user ID to check
- * @returns {Promise<boolean>} - Returns true if user is owner, false otherwise
+ * Check if user can perform admin operations (full access)
+ * @param {number} workspaceId - The workspace ID
+ * @param {number} userId - The user ID
+ * @returns {Promise<{allowed: boolean, message: string}>}
  */
-async function checkWorkspaceOwner(workspaceId, userId) {
-  try {
-    const [access] = await db.query(`
-      SELECT 1 FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ? AND role = 'owner'
-    `, [workspaceId, userId]);
+async function canAdmin(workspaceId, userId) {
+  const role = await getUserRole(workspaceId, userId);
 
-    return access.length > 0;
-  } catch (error) {
-    console.error('Error checking workspace ownership:', error);
-    return false;
+  if (!role) {
+    return { allowed: false, message: 'Access denied to this workspace' };
   }
+
+  if (role !== 'admin') {
+    return { allowed: false, message: 'Admin privileges required for this operation' };
+  }
+
+  // Role exists and is 'admin'
+  return { allowed: true, message: 'Access granted' };
 }
 
 /**
- * Checks if user has permission to make changes to a workspace
- * @param {number|string} workspaceId - The workspace ID to check
- * @param {number|string} userId - The user ID to check
- * @param {boolean} requireOwner - If true, requires owner role
- * @returns {Promise<{allowed: boolean, status: number, message: string}>} - Returns permission info
+ * Check if user can perform write operations
+ * @param {number} workspaceId - The workspace ID
+ * @param {number} userId - The user ID
+ * @returns {Promise<{allowed: boolean, message: string}>}
  */
-async function checkWorkspacePermission(workspaceId, userId, requireOwner = false) {
-  try {
-    const { hasAccess, role } = await checkWorkspaceAccess(workspaceId, userId);
+async function canWrite(workspaceId, userId) {
+  const role = await getUserRole(workspaceId, userId);
 
-    if (!hasAccess) {
-      return {
-        allowed: false,
-        status: 403,
-        message: 'Access denied to this workspace'
-      };
-    }
-
-    if (requireOwner && role !== 'owner') {
-      return {
-        allowed: false,
-        status: 403,
-        message: 'Only workspace owners can perform this action'
-      };
-    }
-
-    return {
-      allowed: true,
-      status: 200,
-      message: 'Access granted'
-    };
-  } catch (error) {
-    console.error('Error checking workspace permissions:', error);
-    return {
-      allowed: false,
-      status: 500,
-      message: 'Internal server error while checking permissions'
-    };
+  if (!role) {
+    return { allowed: false, message: 'Access denied to this workspace' };
   }
+
+  if (role === 'viewer') {
+    return { allowed: false, message: 'Write access required for this operation' };
+  }
+
+  // Role exists and is either 'admin' or 'contributor'
+  return { allowed: true, message: 'Access granted' };
 }
 
 /**
- * Verify user has permission to delete items in a workspace
- * @param {number|string} workspaceId - The workspace ID
- * @param {number|string} userId - The user ID
- * @returns {Promise<{allowed: boolean, status: number, message: string}>} - Returns permission info
+ * Check if user can perform read operations
+ * @param {number} workspaceId - The workspace ID
+ * @param {number} userId - The user ID
+ * @returns {Promise<{allowed: boolean, message: string}>}
  */
-async function checkDeletePermission(workspaceId, userId) {
-  return checkWorkspacePermission(workspaceId, userId, true);
+async function canRead(workspaceId, userId) {
+  const role = await getUserRole(workspaceId, userId);
+
+  if (!role) {
+    return { allowed: false, message: 'Access denied to this workspace' };
+  }
+
+  // Role exists and is either 'admin', 'contributor', or 'viewer'
+  return { allowed: true, message: 'Access granted' };
 }
 
 /**
  * Get users of a workspace
- * @param {number|string} workspaceId - The workspace ID to get users for
+ * @param {number} workspaceId - The workspace ID to get users for
  * @returns {Promise<Array>} - Returns array of workspace users
  */
 async function getWorkspaceUsers(workspaceId) {
@@ -124,7 +99,7 @@ async function getWorkspaceUsers(workspaceId) {
 
 /**
  * Get workspace by ID (excludes deleted workspaces)
- * @param {number|string} workspaceId - The workspace ID to get
+ * @param {number} workspaceId - The workspace ID to get
  * @returns {Promise<Object|null>} - Returns workspace object or null if not found
  */
 async function getWorkspaceById(workspaceId) {
@@ -137,10 +112,9 @@ async function getWorkspaceById(workspaceId) {
 }
 
 module.exports = {
-  checkWorkspaceAccess,
-  checkWorkspaceOwner,
-  checkWorkspacePermission,
-  checkDeletePermission,
+  canAdmin,
+  canWrite,
+  canRead,
   getWorkspaceUsers,
   getWorkspaceById
 };
