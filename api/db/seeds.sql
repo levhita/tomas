@@ -1,21 +1,23 @@
 -- Create default user --
 INSERT INTO
-  `user` (id, username, password_hash)
+  `user` (id, username, password_hash, admin)
 VALUES
   (
     1,
     "admin",
-    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS" -- Password: 'admin'
+    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS",
+    true -- Password: 'admin'
   );
 
 -- Create a regular user for demo
 INSERT INTO
-  `user` (id, username, password_hash)
+  `user` (id, username, password_hash, admin)
 VALUES
   (
     2,
     "user",
-    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS" -- Password: 'admin'
+    "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
+    false
   );
 
 -- Create default workspace --

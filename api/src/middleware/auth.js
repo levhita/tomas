@@ -8,10 +8,6 @@ async function authenticateToken(req, res, next) {
   if (req.path === '/users/login') {
     return next();
   }
-  // Skip authentication for login endpoint
-  // if (req.path === '/users/1') {
-  //   return next();
-  // }
 
   // Skip authentication for health endpoint
   if (req.path === '/health') {
@@ -30,7 +26,7 @@ async function authenticateToken(req, res, next) {
 
     // Check if user exists and matches token data
     const [users] = await db.query(
-      'SELECT id, username FROM user WHERE id = ? AND username = ?',
+      'SELECT id, username, admin FROM user WHERE id = ? AND username = ?',
       [decoded.userId, decoded.username]
     );
 
@@ -47,4 +43,16 @@ async function authenticateToken(req, res, next) {
   }
 }
 
-module.exports = authenticateToken;
+/**
+ * Middleware to require admin privileges
+ */
+function requireAdmin(req, res, next) {
+  // Check if user is authenticated and is an admin
+  if (!req.user || !req.user.admin) {
+    return res.status(403).json({ error: 'Admin privileges required' });
+  }
+
+  next();
+}
+
+module.exports = { authenticateToken, requireAdmin };
