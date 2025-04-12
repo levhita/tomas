@@ -4,6 +4,11 @@ const db = require('../db');
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
 
 async function authenticateToken(req, res, next) {
+
+  // Skip authentication for login endpoint
+  if (req.path === '/') {
+    return next();
+  }
   // Skip authentication for login endpoint
   if (req.path === '/users/login') {
     return next();
