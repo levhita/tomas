@@ -1,5 +1,3 @@
-// api/src/routes/health.js
-
 /**
  * Health API Router
  * Provides endpoints for monitoring and checking the application health.

@@ -1,11 +1,27 @@
-const db = require('../db');
+/**
+ * Workspace Utilities Module
+ * 
+ * This module provides utility functions for workspace access control and management.
+ * It implements the permission model for workspaces with three roles:
+ * - admin: Full control (manage users, delete workspace, all write/read operations)
+ * - collaborator: Write access (create/edit/delete content)
+ * - viewer: Read-only access
+ * 
+ * These utilities are used throughout the API to enforce consistent
+ * permission checks and access control across all workspace resources.
+ */
 
+const db = require('../db');
 
 /**
  * Get user's role in a workspace
+ * 
+ * Queries the database to determine what role (if any) a user has
+ * in a specific workspace.
+ * 
  * @param {number} workspaceId - The workspace ID
  * @param {number} userId - The user ID
- * @returns {Promise<string|null>} - Returns role or null if no access
+ * @returns {Promise<string|null>} - Returns role ('admin', 'collaborator', 'viewer') or null if no access
  */
 async function getUserRole(workspaceId, userId) {
   try {
@@ -23,9 +39,17 @@ async function getUserRole(workspaceId, userId) {
 
 /**
  * Check if user can perform admin operations (full access)
+ * 
+ * Admin operations include:
+ * - Managing workspace users (add/remove users, change roles)
+ * - Deleting or permanently deleting a workspace
+ * - All write and read operations
+ * 
+ * Only users with the 'admin' role can perform these operations.
+ * 
  * @param {number} workspaceId - The workspace ID
  * @param {number} userId - The user ID
- * @returns {Promise<{allowed: boolean, message: string}>}
+ * @returns {Promise<{allowed: boolean, message: string}>} - Object with access decision and message
  */
 async function canAdmin(workspaceId, userId) {
   const role = await getUserRole(workspaceId, userId);
@@ -44,9 +68,17 @@ async function canAdmin(workspaceId, userId) {
 
 /**
  * Check if user can perform write operations
+ * 
+ * Write operations include:
+ * - Creating/updating/deleting content within a workspace
+ * - Managing accounts, categories, and transactions
+ * - Updating workspace settings
+ * 
+ * Users with either 'admin' or 'collaborator' roles can perform these operations.
+ * 
  * @param {number} workspaceId - The workspace ID
  * @param {number} userId - The user ID
- * @returns {Promise<{allowed: boolean, message: string}>}
+ * @returns {Promise<{allowed: boolean, message: string}>} - Object with access decision and message
  */
 async function canWrite(workspaceId, userId) {
   const role = await getUserRole(workspaceId, userId);
@@ -59,15 +91,24 @@ async function canWrite(workspaceId, userId) {
     return { allowed: false, message: 'Write access required for this operation' };
   }
 
-  // Role exists and is either 'admin' or 'contributor'
+  // Role exists and is either 'admin' or 'collaborator'
   return { allowed: true, message: 'Access granted' };
 }
 
 /**
  * Check if user can perform read operations
+ * 
+ * Read operations include:
+ * - Viewing workspace content
+ * - Retrieving accounts, categories, and transactions
+ * - Accessing workspace settings
+ * 
+ * Any user with access to the workspace ('admin', 'collaborator', or 'viewer')
+ * can perform these operations.
+ * 
  * @param {number} workspaceId - The workspace ID
  * @param {number} userId - The user ID
- * @returns {Promise<{allowed: boolean, message: string}>}
+ * @returns {Promise<{allowed: boolean, message: string}>} - Object with access decision and message
  */
 async function canRead(workspaceId, userId) {
   const role = await getUserRole(workspaceId, userId);
@@ -76,14 +117,25 @@ async function canRead(workspaceId, userId) {
     return { allowed: false, message: 'Access denied to this workspace' };
   }
 
-  // Role exists and is either 'admin', 'contributor', or 'viewer'
+  // Role exists and is either 'admin', 'collaborator', or 'viewer'
   return { allowed: true, message: 'Access granted' };
 }
 
 /**
  * Get users of a workspace
+ * 
+ * Retrieves all users who have access to a workspace, along with their
+ * roles and basic profile information.
+ * 
+ * This is typically used in workspace management interfaces and for
+ * permission verification.
+ * 
  * @param {number} workspaceId - The workspace ID to get users for
- * @returns {Promise<Array>} - Returns array of workspace users
+ * @returns {Promise<Array>} - Returns array of workspace users with their roles
+ * 
+ * @example
+ * // Returns an array of objects like:
+ * // [{ id: 1, username: 'johndoe', role: 'admin', created_at: '2023-01-01' }, ...]
  */
 async function getWorkspaceUsers(workspaceId) {
   const [users] = await db.query(`
@@ -99,8 +151,19 @@ async function getWorkspaceUsers(workspaceId) {
 
 /**
  * Get workspace by ID (excludes deleted workspaces)
+ * 
+ * Retrieves a workspace's full details by its ID. Only returns
+ * active workspaces (not soft-deleted ones).
+ * 
+ * This function is commonly used to verify workspace existence
+ * and to retrieve workspace settings.
+ * 
  * @param {number} workspaceId - The workspace ID to get
- * @returns {Promise<Object|null>} - Returns workspace object or null if not found
+ * @returns {Promise<Object|null>} - Returns workspace object or null if not found/deleted
+ * 
+ * @example
+ * // Returns an object like:
+ * // { id: 1, name: 'Personal Finance', description: '...', created_at: '2023-01-01', ... }
  */
 async function getWorkspaceById(workspaceId) {
   const [workspaces] = await db.query(
@@ -111,6 +174,19 @@ async function getWorkspaceById(workspaceId) {
   return workspaces[0] || null;
 }
 
+/**
+ * Function exports
+ * 
+ * These utility functions enable consistent permission checking across the API.
+ * They should be used in all routes that access workspace resources to ensure
+ * proper access control.
+ * 
+ * Usage pattern:
+ * 1. Determine which level of access is needed for an operation
+ * 2. Call the appropriate can* function
+ * 3. Check the 'allowed' property to make the access control decision
+ * 4. Use the 'message' property to inform the client if access is denied
+ */
 module.exports = {
   canAdmin,
   canWrite,
