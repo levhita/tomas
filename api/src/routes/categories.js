@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { checkWorkspaceAccess } = require('../utils/workspace');
+const { canRead, canWrite } = require('../utils/workspace');
 
 // Get all categories for a workspace
 router.get('/', async (req, res) => {
@@ -12,10 +12,10 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // Verify user has access to the workspace
-    const hasAccess = await checkWorkspaceAccess(workspaceId, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied to this workspace' });
+    // Verify user has read access to the workspace
+    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const [categories] = await db.query(`
@@ -43,12 +43,12 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    // Check if user has access to the workspace this category belongs to
+    // Check if user has read access to the workspace this category belongs to
     const workspaceId = categories[0].workspace_id;
-    const hasAccess = await checkWorkspaceAccess(workspaceId, req.user.id);
+    const { allowed, message } = await canRead(workspaceId, req.user.id);
 
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied to this category' });
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     res.status(200).json(categories[0]);
@@ -58,7 +58,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create category
+// Create category (requires write access)
 router.post('/', async (req, res) => {
   const { name, note = null, parent_category_id = null, workspace_id, type = 'expense' } = req.body;
 
@@ -71,24 +71,36 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Verify user has access to the workspace
-    const hasAccess = await checkWorkspaceAccess(workspace_id, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied to this workspace' });
+    // Verify user has write access to the workspace
+    const { allowed, message } = await canWrite(workspace_id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // If parent category is specified, verify it belongs to the same workspace
     if (parent_category_id) {
       const [parentCategories] = await db.query(`
-        SELECT workspace_id FROM category WHERE id = ?
+        SELECT c.*, 
+               (SELECT COUNT(*) FROM category WHERE parent_category_id = c.id) AS child_count,
+               (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
+        FROM category c 
+        WHERE c.id = ?
       `, [parent_category_id]);
 
       if (parentCategories.length === 0) {
         return res.status(404).json({ error: 'Parent category not found' });
       }
 
+      // Ensure parent belongs to the same workspace
       if (parentCategories[0].workspace_id !== parseInt(workspace_id)) {
         return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
+      }
+
+      // Enforce two-level nesting limit - if parent already has a parent, reject
+      if (parentCategories[0].parent_id !== null) {
+        return res.status(400).json({
+          error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
+        });
       }
     }
 
@@ -109,7 +121,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update category
+// Update category (requires write access)
 router.put('/:id', async (req, res) => {
   const { name, note, type, parent_category_id } = req.body;
 
@@ -124,25 +136,55 @@ router.put('/:id', async (req, res) => {
     }
 
     const workspaceId = categories[0].workspace_id;
+    const categoryId = parseInt(req.params.id);
 
-    // Verify user has access to the workspace
-    const hasAccess = await checkWorkspaceAccess(workspaceId, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied to this category' });
+    // Verify user has write access to the workspace
+    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
-    // If parent category is being updated, verify it belongs to the same workspace
+    // If parent category is being updated, perform additional checks
     if (parent_category_id) {
+      // Check if trying to assign itself as parent
+      if (parseInt(parent_category_id) === categoryId) {
+        return res.status(400).json({ error: 'A category cannot be its own parent' });
+      }
+
       const [parentCategories] = await db.query(`
-        SELECT workspace_id FROM category WHERE id = ?
+        SELECT c.*, 
+               (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
+        FROM category c
+        WHERE c.id = ?
       `, [parent_category_id]);
 
       if (parentCategories.length === 0) {
         return res.status(404).json({ error: 'Parent category not found' });
       }
 
+      // Ensure parent belongs to the same workspace
       if (parentCategories[0].workspace_id !== workspaceId) {
         return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
+      }
+
+      // Enforce two-level nesting limit - if parent already has a parent, reject
+      if (parentCategories[0].parent_id !== null) {
+        return res.status(400).json({
+          error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
+        });
+      }
+
+      // Check if this category has children (can't make a category with children a child of another category)
+      const [childCheck] = await db.query(`
+        SELECT COUNT(*) AS child_count
+        FROM category
+        WHERE parent_category_id = ?
+      `, [categoryId]);
+
+      if (childCheck[0].child_count > 0) {
+        return res.status(400).json({
+          error: 'Cannot assign a parent to this category because it already has child categories'
+        });
       }
     }
 
@@ -153,7 +195,7 @@ router.put('/:id', async (req, res) => {
           type = ?,
           parent_category_id = ?
       WHERE id = ?
-    `, [name, note, type, parent_category_id, req.params.id]);
+    `, [name, note, type, parent_category_id, categoryId]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Category not found' });
@@ -162,7 +204,7 @@ router.put('/:id', async (req, res) => {
     const [updatedCategories] = await db.query(`
       SELECT * FROM category 
       WHERE id = ?
-    `, [req.params.id]);
+    `, [categoryId]);
 
     res.status(200).json(updatedCategories[0]);
   } catch (err) {
@@ -171,7 +213,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete category
+// Delete category (requires write access)
 router.delete('/:id', async (req, res) => {
   try {
     // First fetch the category to check workspace access
@@ -185,10 +227,10 @@ router.delete('/:id', async (req, res) => {
 
     const workspaceId = categories[0].workspace_id;
 
-    // Verify user has access to the workspace
-    const hasAccess = await checkWorkspaceAccess(workspaceId, req.user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied to this category' });
+    // Verify user has write access to the workspace
+    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const [result] = await db.query(`
