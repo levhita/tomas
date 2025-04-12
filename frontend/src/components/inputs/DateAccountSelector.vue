@@ -13,13 +13,13 @@
       </div>
 
       <div class="btn-group">
-        <button class="btn btn-outline-primary" @click="previousPeriod">
+        <button class="btn btn-outline-primary" @click="previousPeriod" aria-label="Previous Period">
           <i class="bi bi-chevron-left"></i>
         </button>
         <button class="btn btn-outline-primary" disabled>
           {{ selectedPeriod }}
         </button>
-        <button class="btn btn-outline-primary" @click="nextPeriod">
+        <button class="btn btn-outline-primary" @click="nextPeriod" aria-label="Next Period">
           <i class="bi bi-chevron-right"></i>
         </button>
       </div>

@@ -40,10 +40,11 @@
               <i class="bi bi-box-arrow-in-right me-1"></i>Enter
             </button>
             <div>
-              <button class="btn btn-sm btn-outline-secondary me-1" @click="editWorkspace(workspace)">
+              <button class="btn btn-sm btn-outline-secondary me-1" @click="editWorkspace(workspace)" aria-label="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" @click="confirmDeleteWorkspace(workspace)">
+              <button class="btn btn-sm btn-outline-danger" @click="confirmDeleteWorkspace(workspace)"
+                aria-label="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
