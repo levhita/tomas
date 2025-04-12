@@ -1,3 +1,22 @@
+/**
+ * Workspaces API Router
+ * Handles all workspace-related operations including:
+ * - Managing workspaces (create, read, update, delete)
+ * - Workspace soft deletion and restoration
+ * - User access management for workspaces
+ * - Role assignment within workspaces
+ * 
+ * Permission model:
+ * - READ operations: Any workspace member (admin, collaborator, viewer)
+ * - WRITE operations: Workspace editors (admin, collaborator)
+ * - ADMIN operations: Workspace admins only
+ * 
+ * Workspace roles:
+ * - admin: Full control including user management and workspace deletion
+ * - collaborator: Can edit workspace content but not manage users
+ * - viewer: Read-only access to workspace content
+ */
+
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -9,7 +28,13 @@ const {
   getWorkspaceById
 } = require('../utils/workspace');
 
-// Get workspace list (only needs auth, no workspace-specific permission)
+/**
+ * GET /workspaces
+ * List all workspaces accessible to the current user
+ * 
+ * @permission Requires authentication, returns only workspaces the user is a member of
+ * @returns {Array} List of workspaces the user has access to
+ */
 router.get('/', async (req, res) => {
   try {
     const [workspaces] = await db.query(`
@@ -27,7 +52,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// View single workspace (requires read permission)
+/**
+ * GET /workspaces/:id
+ * Get details for a single workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @permission Read access to the workspace (admin, collaborator, viewer)
+ * @returns {Object} Workspace details
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { allowed, message } = await canRead(req.params.id, req.user.id);
@@ -47,7 +79,19 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new workspace
+/**
+ * POST /workspaces
+ * Create a new workspace
+ * 
+ * @body {string} name - Required workspace name
+ * @body {string} description - Optional workspace description
+ * @body {string} currency_symbol - Currency symbol, defaults to '$'
+ * @body {string} week_start - First day of the week, defaults to 'monday'
+ * @permission Any authenticated user can create a workspace
+ * @returns {Object} Newly created workspace
+ * 
+ * Note: Creating user is automatically assigned the admin role in the new workspace
+ */
 router.post('/', async (req, res) => {
   const { name, description = null, currency_symbol = '$', week_start = 'monday' } = req.body;
 
@@ -56,10 +100,12 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // Use a transaction to ensure workspace and user association are created together
     const connection = await db.getConnection();
     await connection.beginTransaction();
 
     try {
+      // Create the workspace
       const [result] = await connection.query(
         'INSERT INTO workspace (name, description, currency_symbol, week_start) VALUES (?, ?, ?, ?)',
         [name, description, currency_symbol, week_start]
@@ -75,7 +121,6 @@ router.post('/', async (req, res) => {
       connection.release();
 
       const workspace = await getWorkspaceById(result.insertId);
-
       res.status(201).json(workspace);
     } catch (err) {
       await connection.rollback();
@@ -88,7 +133,18 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update workspace (requires write permission)
+/**
+ * PUT /workspaces/:id
+ * Update workspace details
+ * 
+ * @param {number} id - Workspace ID
+ * @body {string} name - Required workspace name
+ * @body {string} description - Optional workspace description
+ * @body {string} currency_symbol - Currency symbol
+ * @body {string} week_start - First day of the week
+ * @permission Write access to the workspace (admin, collaborator)
+ * @returns {Object} Updated workspace details
+ */
 router.put('/:id', async (req, res) => {
   const { name, description, currency_symbol, week_start } = req.body;
 
@@ -132,7 +188,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete workspace (requires admin permission)
+/**
+ * DELETE /workspaces/:id
+ * Soft delete a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @permission Admin access to the workspace
+ * @returns {void}
+ */
 router.delete('/:id', async (req, res) => {
   try {
     const { allowed, message } = await canAdmin(req.params.id, req.user.id);
@@ -157,7 +220,14 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Restore workspace (requires admin permission)
+/**
+ * POST /workspaces/:id/restore
+ * Restore a soft-deleted workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @permission Admin access to the workspace
+ * @returns {Object} Restored workspace details
+ */
 router.post('/:id/restore', async (req, res) => {
   try {
     const { allowed, message } = await canAdmin(req.params.id, req.user.id);
@@ -183,7 +253,14 @@ router.post('/:id/restore', async (req, res) => {
   }
 });
 
-// Permanently delete workspace (requires admin permission)
+/**
+ * DELETE /workspaces/:id/permanent
+ * Permanently delete a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @permission Admin access to the workspace
+ * @returns {void}
+ */
 router.delete('/:id/permanent', async (req, res) => {
   try {
     const { allowed, message } = await canAdmin(req.params.id, req.user.id);
@@ -227,7 +304,16 @@ router.delete('/:id/permanent', async (req, res) => {
   }
 });
 
-// Add user to workspace (requires admin permission)
+/**
+ * POST /workspaces/:id/users
+ * Add a user to a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @body {number} userId - User ID to add
+ * @body {string} role - Role to assign (admin, collaborator, viewer)
+ * @permission Admin access to the workspace
+ * @returns {Array} Updated list of workspace users
+ */
 router.post('/:id/users', async (req, res) => {
   const { userId, role } = req.body;
 
@@ -275,7 +361,15 @@ router.post('/:id/users', async (req, res) => {
   }
 });
 
-// Remove user from workspace (requires admin permission)
+/**
+ * DELETE /workspaces/:id/users/:userId
+ * Remove a user from a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @param {number} userId - User ID to remove
+ * @permission Admin access to the workspace
+ * @returns {void}
+ */
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
     const { allowed, message } = await canAdmin(req.params.id, req.user.id);
@@ -310,7 +404,16 @@ router.delete('/:id/users/:userId', async (req, res) => {
   }
 });
 
-// Update user role in workspace (requires admin permission)
+/**
+ * PUT /workspaces/:id/users/:userId
+ * Update a user's role in a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @param {number} userId - User ID to update
+ * @body {string} role - New role to assign (admin, collaborator, viewer)
+ * @permission Admin access to the workspace
+ * @returns {Array} Updated list of workspace users
+ */
 router.put('/:id/users/:userId', async (req, res) => {
   const { role } = req.body;
 
@@ -362,7 +465,14 @@ router.put('/:id/users/:userId', async (req, res) => {
   }
 });
 
-// Get workspace users (requires read permission)
+/**
+ * GET /workspaces/:id/users
+ * List all users in a workspace
+ * 
+ * @param {number} id - Workspace ID
+ * @permission Read access to the workspace (admin, collaborator, viewer)
+ * @returns {Array} List of workspace users
+ */
 router.get('/:id/users', async (req, res) => {
   try {
     const { allowed, message } = await canRead(req.params.id, req.user.id);

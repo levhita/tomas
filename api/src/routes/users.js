@@ -1,3 +1,20 @@
+/**
+ * Users API Router
+ * Handles all user-related operations including:
+ * - Authentication (login)
+ * - User management (create, read, update, delete)
+ * - User administration
+ * 
+ * Permission model:
+ * - Public endpoints: Login only
+ * - User endpoints: Users can view/edit their own data
+ * - Admin endpoints: Admins can manage all users
+ * 
+ * User types:
+ * - Regular users: Can only manage their own profile
+ * - Admin users: Can manage all users and assign admin privileges
+ */
+
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -8,7 +25,15 @@ const { requireAdmin } = require('../middleware/auth');
 // Add JWT secret to environment variables or config
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
 
-// Login user - open to all
+/**
+ * POST /users/login
+ * Authenticate a user and generate a JWT token
+ * 
+ * @body {string} username - Required username
+ * @body {string} password - Required password
+ * @permission Public - available to unauthenticated users
+ * @returns {Object} User data and JWT token for authentication
+ */
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -38,7 +63,6 @@ router.post('/login', async (req, res) => {
     // Convert admin flag from 0/1 to boolean
     user.admin = user.admin === 1;
 
-
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
@@ -59,7 +83,7 @@ router.post('/login', async (req, res) => {
     );
 
     // Return user and token (without password)
-    const { password_hash, ...userWithoutPassword } = user
+    const { password_hash, ...userWithoutPassword } = user;
     res.status(200).json({
       user: userWithoutPassword,
       token
@@ -73,7 +97,13 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get all users - admin only
+/**
+ * GET /users
+ * Get list of all users
+ * 
+ * @permission Admin only
+ * @returns {Array} List of all users (excluding password data)
+ */
 router.get('/', requireAdmin, async (req, res) => {
   try {
     const [users] = await db.query(`
@@ -86,15 +116,21 @@ router.get('/', requireAdmin, async (req, res) => {
       // Convert admin flag from 0/1 to boolean
       user.admin = user.admin === 1;
       return user;
-    }
-    ));
+    }));
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-// Get user by ID - admin or self
+/**
+ * GET /users/:id
+ * Get a single user by ID
+ * 
+ * @param {number} id - User ID
+ * @permission User can access their own data, admins can access any user
+ * @returns {Object} User data (excluding password)
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -130,7 +166,16 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new user - admin only
+/**
+ * POST /users
+ * Create a new user
+ * 
+ * @body {string} username - Required unique username
+ * @body {string} password - Required password
+ * @body {boolean} admin - Optional admin flag, defaults to false
+ * @permission Admin only
+ * @returns {Object} Newly created user (excluding password)
+ */
 router.post('/', requireAdmin, async (req, res) => {
   try {
     const { username, password, admin = false } = req.body;
@@ -180,9 +225,20 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
-
-
-// Update user - admin or self with limitations
+/**
+ * PUT /users/:id
+ * Update an existing user
+ * 
+ * @param {number} id - User ID to update
+ * @body {string} username - Optional new username
+ * @body {string} password - Optional new password
+ * @body {boolean} admin - Optional admin status flag
+ * @permission User can update their own data (except admin flag), admins can update any user
+ * @returns {Object} Updated user data (excluding password)
+ * 
+ * Note: Only admins can modify the admin flag. Regular users can only update
+ * their own account information and cannot change their admin status.
+ */
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -231,7 +287,7 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Update user fields
+    // Build update query dynamically based on provided fields
     let updates = [];
     let params = [];
 
@@ -288,7 +344,17 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete user - admin only
+/**
+ * DELETE /users/:id
+ * Delete a user
+ * 
+ * @param {number} id - User ID to delete
+ * @permission Admin only, cannot delete own account
+ * @returns {null} 204 No Content on success
+ * 
+ * Note: Users cannot delete their own accounts as a safety measure.
+ * This prevents admins from accidentally removing their own access.
+ */
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -318,6 +384,12 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     res.status(204).send();
 
   } catch (err) {
+    // Handle foreign key constraint violations (user is referenced elsewhere)
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(409).json({
+        error: 'Cannot delete user that is a member of workspaces'
+      });
+    }
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to delete user'
