@@ -132,6 +132,11 @@ export const useCategoriesStore = defineStore('categories', () => {
     }
   }
 
+  // Add this function to the store
+  function resetState() {
+    categories.value = [];
+  }
+
   return {
     // State
     categories,
@@ -144,5 +149,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     addCategory,
     updateCategory,
     deleteCategory,
+    // New action
+    resetState,
   };
 });

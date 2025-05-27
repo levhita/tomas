@@ -139,10 +139,18 @@ const isLoading = ref(false)
 const invertOrder = ref(false)
 const showOnlyExercised = ref(false)
 
+// Add a computed property to check if we have all required data
+const hasRequiredData = computed(() => {
+  return !!props.account && !!props.startDate && !!props.endDate;
+});
+
 // Separate base transactions from filtered transactions
 const rangeTransactions = computed(() => {
+  // Return empty array if we don't have the required data
+  if (!hasRequiredData.value) return [];
+
   const rangeTransactions = transactionsStore.transactionsByDate.filter(t => {
-    const date = moment(t.date) // do we really need moment, dates are guaranted to be in ISO format
+    const date = moment(t.date)
     return t.account_id === props.account.id &&
       date.isBetween(props.startDate, props.endDate, 'day', '[]')
   })
@@ -196,9 +204,10 @@ function sum(transactions) {
   return transactions.reduce((total, t) => total + t.amount, 0)
 }
 
-// Replace the formatCurrency function with the one from the utils
+// Update formatAmount to handle missing workspace
 function formatAmount(amount) {
-  return formatCurrency(amount, workspacesStore.currentWorkspace.currency_symbol)
+  const symbol = workspacesStore.currentWorkspace?.currency_symbol || '$';
+  return formatCurrency(amount, symbol);
 }
 
 async function toggleExercised(transaction) {
@@ -216,13 +225,17 @@ async function toggleExercised(transaction) {
 watch(
   [() => props.account?.id, previousMonthEnd],
   async ([accountId, date]) => {
-    if (accountId && date) {
-      try {
-        const balance = await accountsStore.fetchAccountBalance(accountId, date)
-        previousBalance.value = balance;
-      } catch (error) {
-        console.error('Failed to fetch previous balance:', error)
-      }
+    // Skip if any required data is missing
+    if (!accountId || !date) return;
+
+    try {
+      isLoading.value = true;
+      const balance = await accountsStore.fetchAccountBalance(accountId, date);
+      previousBalance.value = balance;
+    } catch (error) {
+      console.error('Failed to fetch previous balance:', error);
+    } finally {
+      isLoading.value = false;
     }
   },
   { immediate: true }

@@ -134,6 +134,11 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  // Add this function to the store
+  function resetState() {
+    accounts.value = [];
+  }
+
   return {
     // State
     accounts,
@@ -147,5 +152,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     updateAccount,
     deleteAccount,
     fetchAccountBalance,
+    // New action
+    resetState,
   };
 });

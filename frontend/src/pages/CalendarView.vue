@@ -111,49 +111,34 @@ async function duplicateTransaction(transaction) {
   }
 }
 
+// Simplified validation function that uses the enhanced workspace store
 async function validateAndSetWorkspace() {
   // Get workspaceId from query parameter
-  const workspaceId = route.query.workspaceId
+  const workspaceId = route.query.workspaceId;
 
   // If workspaceId is missing, redirect to workspace selection
   if (!workspaceId) {
     router.replace({
       name: 'workspaces',
       query: { error: 'missing-workspace' }
-    })
-    return false
+    });
+    return false;
   }
 
-  try {
-    // Try to fetch workspaces if not already loaded
-    if (workspacesStore.workspaces.length === 0) {
-      await workspacesStore.fetchWorkspaces()
-    }
+  // Use the enhanced workspace store to validate and load everything
+  const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
 
-    // Set current workspace
-    const workspace = workspacesStore.getWorkspaceById(workspaceId)
-
-    // If workspace doesn't exist, redirect to workspace selection
-    if (!workspace) {
-      router.replace({
-        name: 'workspaces',
-        query: { error: 'invalid-workspace' }
-      })
-      return false
-    }
-
-    // Set the workspace as current
-    workspacesStore.setCurrentWorkspace(workspace)
-    return true
-
-  } catch (error) {
-    console.error('Error validating workspace:', error)
+  // Handle validation result
+  if (!result.success) {
     router.replace({
       name: 'workspaces',
-      query: { error: 'workspace-error' }
-    })
-    return false
+      query: { error: result.error }
+    });
+    return false;
   }
+
+  // Success - workspace and all dependent data are loaded
+  return true;
 }
 
 watch(
@@ -167,25 +152,16 @@ watch(
   }
 )
 
-// Update onMounted to validate workspace first
+// Update onMounted to use the simplified approach
 onMounted(async () => {
-  // Validate and set workspace first
-  const isWorkspaceValid = await validateAndSetWorkspace()
+  // Validate and set workspace - this now loads all dependent data
+  const isWorkspaceValid = await validateAndSetWorkspace();
 
-  // Only proceed if workspace is valid
-  if (isWorkspaceValid) {
-    // Fetch categories and accounts for the current workspace
-    await Promise.all([
-      categoriesStore.fetchCategories(workspacesStore.currentWorkspace.id),
-      accountsStore.fetchAccounts(workspacesStore.currentWorkspace.id)
-    ])
-
-    // Set the first account as selected if available
-    if (accountsStore.accountsByName.length > 0) {
-      accountId.value = accountsStore.accountsByName[0].id
-    }
+  // Only set initial account if workspace is valid
+  if (isWorkspaceValid && accountsStore.accountsByName.length > 0) {
+    accountId.value = accountsStore.accountsByName[0].id;
   }
-})
+});
 </script>
 
 <style scoped>

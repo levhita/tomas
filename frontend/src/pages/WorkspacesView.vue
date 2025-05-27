@@ -37,7 +37,7 @@
           </div>
           <div class="card-footer bg-transparent d-flex justify-content-between">
             <button class="btn btn-sm btn-primary" @click="selectWorkspace(workspace)">
-              <i class="bi bi-box-arrow-in-right me-1"></i>Open Workspace
+              <i class="bi bi-folder2-open me-1"></i>Open
             </button>
             <div>
               <button class="btn btn-sm btn-outline-secondary me-1" @click="editWorkspace(workspace)" aria-label="Edit">
@@ -197,7 +197,15 @@ async function deleteWorkspace() {
 }
 
 function selectWorkspace(workspace) {
-  router.push('/calendar?workspaceId=' + workspace.id);
+  // Replace the current URL with the workspace URL
+  // Using replace: true ensures we don't build up history stack
+  router.push({
+    path: '/calendar',
+    query: {
+      workspaceId: workspace.id,
+    },
+    replace: true
+  });
 }
 </script>
 

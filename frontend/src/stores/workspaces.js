@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import fetchWithAuth from '../utils/fetch';
+import { useAccountsStore } from './accounts';
+import { useCategoriesStore } from './categories';
+import { useTransactionsStore } from './transactions';
 
 export const useWorkspacesStore = defineStore('workspaces', () => {
   // State
@@ -279,8 +282,85 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     }
   }
 
-  function setCurrentWorkspace(workspace) {
+  // Enhanced method for setting current workspace and loading all dependent data
+  async function setCurrentWorkspaceAndLoadData(workspace) {
+    // Reset all stores first to clear previous workspace data
+    resetWorkspaceData();
+
+    // Set current workspace
     currentWorkspace.value = workspace;
+
+    // Return early if no workspace was provided
+    if (!workspace) return null;
+
+    // Load all dependent data for this workspace
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      // Get stores
+      const accountsStore = useAccountsStore();
+      const categoriesStore = useCategoriesStore();
+
+      // Load data in parallel
+      await Promise.all([
+        accountsStore.fetchAccounts(workspace.id),
+        categoriesStore.fetchCategories(workspace.id)
+      ]);
+
+      return workspace;
+    } catch (err) {
+      console.error('Error loading workspace data:', err);
+      error.value = 'Failed to load workspace data: ' + err.message;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Function to reset all workspace-related data
+  function resetWorkspaceData() {
+    const accountsStore = useAccountsStore();
+    const categoriesStore = useCategoriesStore();
+    const transactionsStore = useTransactionsStore();
+
+    // Reset each store
+    accountsStore.resetState();
+    categoriesStore.resetState();
+    transactionsStore.resetState();
+  }
+
+  // Validates workspace ID and loads the workspace with all related data
+  async function validateAndLoadWorkspace(workspaceId) {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      // Ensure workspaces are loaded
+      if (workspaces.value.length === 0) {
+        await fetchWorkspaces();
+      }
+
+      // Find the workspace
+      const workspace = getWorkspaceById.value(workspaceId);
+
+      // If workspace doesn't exist
+      if (!workspace) {
+        error.value = 'Workspace not found';
+        return { success: false, error: 'invalid-workspace' };
+      }
+
+      // Load the workspace and all its data
+      await setCurrentWorkspaceAndLoadData(workspace);
+
+      return { success: true, workspace };
+    } catch (err) {
+      console.error('Error validating workspace:', err);
+      error.value = err.message;
+      return { success: false, error: 'workspace-error' };
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   return {
@@ -304,6 +384,8 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     getWorkspaceUsers,
     addUserToWorkspace,
     removeUserFromWorkspace,
-    setCurrentWorkspace
+    setCurrentWorkspaceAndLoadData,
+    resetWorkspaceData,
+    validateAndLoadWorkspace
   };
 });
