@@ -6,6 +6,7 @@
 import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useWorkspacesStore } from '../stores/workspaces'
+import { formatCurrency } from '../utils/utilities'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -111,16 +112,8 @@ watch(() => props.selectedDate, updateDate)
 watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
-  if (isExpense) { amount = -amount }
-
-  // Use the currency symbol from the current workspace if available
-  const currencySymbol = workspacesStore.currentWorkspace?.currency_symbol || '€'
-
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'EUR', // This is just for formatting, we'll use the symbol from workspace
-    currencyDisplay: "narrowSymbol"
-  }).format(amount).replace('€', currencySymbol) // Replace the Euro symbol with workspace's symbol
+  const signedAmount = isExpense ? -amount : amount
+  return formatCurrency(signedAmount, workspacesStore.currentWorkspace.currency_symbol)
 }
 
 function handleDateClick(arg) {

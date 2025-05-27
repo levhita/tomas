@@ -1,21 +1,33 @@
 <template>
-  <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-    v-model:rangeType="rangeType" />
-  <div class="row w-100 ps-2">
-    <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
-      <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
-        @edit-transaction="showTransactionDialog" />
+  <!-- Loading state when workspace is not yet loaded -->
+  <div v-if="!isWorkspaceLoaded" class="workspace-loading container text-center p-5">
+    <div class="spinner-border text-primary mb-3" role="status">
+      <span class="visually-hidden">Loading workspace...</span>
     </div>
-    <div class="col-8 pb-1">
-      <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
-        @show-transaction="showTransactionDialog" @update-transaction="updateTransaction"
-        @delete-transaction="deleteTransaction" />
-    </div>
+    <h4>Loading workspace data...</h4>
   </div>
 
-  <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
-    :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
-    @duplicate="duplicateTransaction" />
+  <!-- Main content when workspace is loaded -->
+  <template v-else>
+    <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
+      v-model:rangeType="rangeType" />
+
+    <div class="row w-100 ps-2">
+      <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
+        <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
+          @edit-transaction="showTransactionDialog" />
+      </div>
+      <div class="col-8 pb-1">
+        <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
+          @show-transaction="showTransactionDialog" @update-transaction="updateTransaction"
+          @delete-transaction="deleteTransaction" />
+      </div>
+    </div>
+
+    <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
+      :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
+      @duplicate="duplicateTransaction" />
+  </template>
 </template>
 
 <script setup>
@@ -38,6 +50,9 @@ const categoriesStore = useCategoriesStore()
 const accountsStore = useAccountsStore()
 const transactionsStore = useTransactionsStore()
 const workspacesStore = useWorkspacesStore()
+
+// Add a computed property to check if workspace is loaded
+const isWorkspaceLoaded = computed(() => !!workspacesStore.currentWorkspace)
 
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
 const dateAccountSelector = ref(null)
@@ -172,3 +187,13 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.workspace-loading {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+</style>
