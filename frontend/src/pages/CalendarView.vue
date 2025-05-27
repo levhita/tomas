@@ -10,7 +10,7 @@
   <!-- Main content when workspace is loaded -->
   <template v-else>
     <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-      v-model:rangeType="rangeType" />
+      v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
 
     <div class="row w-100 ps-2">
       <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">

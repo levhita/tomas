@@ -204,7 +204,7 @@ function selectWorkspace(workspace) {
     query: {
       workspaceId: workspace.id,
     },
-    replace: true
+    replace: false
   });
 }
 </script>

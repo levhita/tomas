@@ -1,6 +1,6 @@
 <template>
   <Navigation v-if="showNavigation" />
-  <main class="container-fluid">
+  <main>
     <router-view />
   </main>
 </template>
