@@ -5,6 +5,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
+import { useWorkspacesStore } from '../stores/workspaces'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -17,6 +18,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['show-transaction', 'update-transaction'])
+
+// Get workspace store to access week_start setting
+const workspacesStore = useWorkspacesStore()
+const transactionsStore = useTransactionsStore()
 
 const accountId = computed(() => props.account?.id)
 
@@ -31,9 +36,17 @@ const emptyTransaction = {
   exercised: false,
   //note: ''
 }
-const transactionsStore = useTransactionsStore()
-
 const selectedDate = computed(() => moment().format('YYYY-MM-DD'))
+
+// Helper function to convert week_start setting to day index
+const getFirstDayIndex = computed(() => {
+  // Default to Monday (1) if no current workspace or setting
+  if (!workspacesStore.currentWorkspace) return 1
+
+  // Convert week_start string to numerical index for FullCalendar
+  // FullCalendar uses: 0=Sunday, 1=Monday, 2=Tuesday, etc.
+  return workspacesStore.currentWorkspace.week_start === 'sunday' ? 0 : 1
+})
 
 const calendarOptions = computed(() => {
   const events = transactionsStore.transactions.map(transaction => ({
@@ -47,11 +60,12 @@ const calendarOptions = computed(() => {
     date: transaction.date,
     html: true
   }))
+
   return {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
-    firstDay: 0, // Start week on Sunday, this should probably be a user setting
+    firstDay: getFirstDayIndex.value, // Use workspace setting for first day of week
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
@@ -85,16 +99,28 @@ async function updateView() {
   }
 }
 
+// Watch for changes to first day setting from workspace
+watch(() => workspacesStore.currentWorkspace?.week_start, () => {
+  if (calendarRef.value) {
+    const api = calendarRef.value.getApi()
+    api.setOption('firstDay', getFirstDayIndex.value)
+  }
+})
+
 watch(() => props.selectedDate, updateDate)
 watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
   if (isExpense) { amount = -amount }
+
+  // Use the currency symbol from the current workspace if available
+  const currencySymbol = workspacesStore.currentWorkspace?.currency_symbol || '€'
+
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
-    currency: 'EUR', //TODO: Change to user's currency
+    currency: 'EUR', // This is just for formatting, we'll use the symbol from workspace
     currencyDisplay: "narrowSymbol"
-  }).format(amount)
+  }).format(amount).replace('€', currencySymbol) // Replace the Euro symbol with workspace's symbol
 }
 
 function handleDateClick(arg) {

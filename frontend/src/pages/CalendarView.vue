@@ -20,6 +20,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import moment from 'moment'
 import Calendar from '../components/Calendar.vue'
 import Totals from '../components/Totals.vue'
@@ -27,11 +28,16 @@ import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
 import { useCategoriesStore } from '../stores/categories'
+import { useWorkspacesStore } from '../stores/workspaces'
 import TransactionDialog from '../components/inputs/TransactionDialog.vue'
 
-const categoriesStore = useCategoriesStore();
-const accountsStore = useAccountsStore();
-const transactionsStore = useTransactionsStore();
+const router = useRouter()
+const route = useRoute()
+
+const categoriesStore = useCategoriesStore()
+const accountsStore = useAccountsStore()
+const transactionsStore = useTransactionsStore()
+const workspacesStore = useWorkspacesStore()
 
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
 const dateAccountSelector = ref(null)
@@ -90,6 +96,51 @@ async function duplicateTransaction(transaction) {
   }
 }
 
+async function validateAndSetWorkspace() {
+  // Get workspaceId from query parameter
+  const workspaceId = route.query.workspaceId
+
+  // If workspaceId is missing, redirect to workspace selection
+  if (!workspaceId) {
+    router.replace({
+      name: 'workspaces',
+      query: { error: 'missing-workspace' }
+    })
+    return false
+  }
+
+  try {
+    // Try to fetch workspaces if not already loaded
+    if (workspacesStore.workspaces.length === 0) {
+      await workspacesStore.fetchWorkspaces()
+    }
+
+    // Set current workspace
+    const workspace = workspacesStore.getWorkspaceById(workspaceId)
+
+    // If workspace doesn't exist, redirect to workspace selection
+    if (!workspace) {
+      router.replace({
+        name: 'workspaces',
+        query: { error: 'invalid-workspace' }
+      })
+      return false
+    }
+
+    // Set the workspace as current
+    workspacesStore.setCurrentWorkspace(workspace)
+    return true
+
+  } catch (error) {
+    console.error('Error validating workspace:', error)
+    router.replace({
+      name: 'workspaces',
+      query: { error: 'workspace-error' }
+    })
+    return false
+  }
+}
+
 watch(
   [() => accountId.value, startDate, endDate],
   async ([accountId, start, end]) => {
@@ -101,12 +152,23 @@ watch(
   }
 )
 
-// Update onMounted to set full account object
+// Update onMounted to validate workspace first
 onMounted(async () => {
-  await categoriesStore.fetchCategories();
-  await accountsStore.fetchAccounts();
-  if (accountsStore.accountsByName.length > 0) {
-    accountId.value = accountsStore.accountsByName[0].id
+  // Validate and set workspace first
+  const isWorkspaceValid = await validateAndSetWorkspace()
+
+  // Only proceed if workspace is valid
+  if (isWorkspaceValid) {
+    // Fetch categories and accounts for the current workspace
+    await Promise.all([
+      categoriesStore.fetchCategories(workspacesStore.currentWorkspace.id),
+      accountsStore.fetchAccounts(workspacesStore.currentWorkspace.id)
+    ])
+
+    // Set the first account as selected if available
+    if (accountsStore.accountsByName.length > 0) {
+      accountId.value = accountsStore.accountsByName[0].id
+    }
   }
 })
 </script>

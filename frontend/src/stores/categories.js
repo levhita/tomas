@@ -36,11 +36,25 @@ export const useCategoriesStore = defineStore('categories', () => {
   }
 
   // Actions
-  async function fetchCategories() {
+  async function fetchCategories(workspaceId) {
     try {
-      const response = await fetchWithAuth('/api/categories');
+      // Check if workspaceId is provided
+      if (!workspaceId) {
+        console.error('fetchCategories: workspaceId is required');
+        throw new Error('Workspace ID is required to fetch categories');
+      }
+
+      // Fetch categories for the specified workspace
+      const response = await fetchWithAuth(`/api/categories?workspace_id=${workspaceId}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch categories');
+      }
+
       const data = await response.json();
       categories.value = data;
+      return data;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -49,10 +63,21 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function addCategory(category) {
     try {
+      // Make sure category has a workspace_id
+      if (!category.workspace_id) {
+        throw new Error('workspace_id is required when creating a category');
+      }
+
       const response = await fetchWithAuth('/api/categories', {
         method: 'POST',
         body: JSON.stringify(category),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add category');
+      }
+
       const newCategory = await response.json();
       categories.value.push(newCategory);
       return newCategory;
@@ -68,6 +93,12 @@ export const useCategoriesStore = defineStore('categories', () => {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update category');
+      }
+
       const updatedCategory = await response.json();
       const index = categories.value.findIndex(c => c.id === id);
       if (index !== -1) {
@@ -82,9 +113,15 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function deleteCategory(id) {
     try {
-      await fetchWithAuth(`/api/categories/${id}`, {
+      const response = await fetchWithAuth(`/api/categories/${id}`, {
         method: 'DELETE'
       });
+
+      if (!response.ok && response.status !== 204) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete category');
+      }
+
       const index = categories.value.findIndex(c => c.id === id);
       if (index !== -1) {
         categories.value.splice(index, 1);

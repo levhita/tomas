@@ -37,7 +37,7 @@
           </div>
           <div class="card-footer bg-transparent d-flex justify-content-between">
             <button class="btn btn-sm btn-primary" @click="selectWorkspace(workspace)">
-              <i class="bi bi-box-arrow-in-right me-1"></i>Enter
+              <i class="bi bi-box-arrow-in-right me-1"></i>Open Workspace
             </button>
             <div>
               <button class="btn btn-sm btn-outline-secondary me-1" @click="editWorkspace(workspace)" aria-label="Edit">
@@ -197,8 +197,7 @@ async function deleteWorkspace() {
 }
 
 function selectWorkspace(workspace) {
-  workspacesStore.setCurrentWorkspace(workspace);
-  router.push('/calendar');
+  router.push('/calendar?workspaceId=' + workspace.id);
 }
 </script>
 
