@@ -9,22 +9,13 @@
         Brand logo and name - always links back to workspaces overview
         Provides consistent branding across all workspace pages
       -->
-      <RouterLink class="navbar-brand d-flex align-items-center" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="Purrfect Finances" class="navbar-logo me-2">
-        Purrfect Finances
+      <RouterLink class="me-2" to="/workspaces">
+        <img src="/logo/logo_128.png" alt="Purrfect Finances" class="navbar-logo">
       </RouterLink>
 
-      <!-- 
-        Workspace display badge
-        Shows current workspace name with building icon when workspace is active
-        Only visible when a workspace prop is provided
-      -->
-      <div v-if="workspace" class="workspace-display me-auto ms-3">
-        <span class="workspace-name">
-          <i class="bi bi-building me-1"></i>
-          {{ workspace.name }}
-        </span>
-      </div>
+      <span v-if="workspace" class="fw-bold fs-4">
+        {{ workspace.name }}
+      </span>
 
       <!-- 
         Mobile menu toggle button
@@ -201,42 +192,6 @@ const props = defineProps({
  */
 nav {
   padding: 1rem;
-}
-
-/**
- * Brand styling
- * 
- * Makes the brand text bold and larger for better visual hierarchy.
- * The brand serves as the main application identifier.
- */
-.navbar-brand {
-  font-weight: bold;
-  font-size: 1.5rem;
-}
-
-/**
- * Workspace display badge styling
- * 
- * Creates a visually distinct badge that shows the current workspace name.
- * Uses semi-transparent white background for visibility across themes.
- * Border radius provides modern, rounded appearance.
- */
-.workspace-display {
-  padding: 0.375rem 0.75rem;
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: 0.25rem;
-}
-
-/**
- * Workspace name text styling
- * 
- * Ensures good contrast and readability for the workspace name.
- * Medium font weight provides appropriate emphasis without being too bold.
- */
-.workspace-name {
-  color: white;
-  font-weight: 500;
-  font-size: 1rem;
 }
 
 /**

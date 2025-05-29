@@ -55,37 +55,8 @@
         </div>
       </div>
 
-      <!-- New/Edit Workspace Modal -->
-      <div class="modal fade" id="workspaceModal" tabindex="-1" ref="workspaceModal">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">{{ isEditing ? 'Edit' : 'New' }} Workspace</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <form @submit.prevent="saveWorkspace">
-                <div class="mb-3">
-                  <label for="workspaceName" class="form-label">Name</label>
-                  <input type="text" class="form-control" id="workspaceName" v-model="workspaceForm.name" required>
-                </div>
-                <div class="mb-3">
-                  <label for="workspaceDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="workspaceDescription" v-model="workspaceForm.description"
-                    rows="3"></textarea>
-                </div>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" @click="saveWorkspace"
-                :disabled="workspacesStore.isLoading">
-                {{ workspacesStore.isLoading ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Workspace Modal Component -->
+      <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
 
       <!-- Delete Confirmation Modal -->
       <div class="modal fade" id="deleteModal" tabindex="-1" ref="deleteModal">
@@ -119,22 +90,19 @@ import { useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { Modal } from 'bootstrap';
 import GeneralLayout from '../layouts/GeneralLayout.vue';
+import WorkspaceModal from '../components/WorkspaceModal.vue';
 
 const router = useRouter();
 const workspacesStore = useWorkspacesStore();
 
 const workspaceModal = ref(null);
 const deleteModal = ref(null);
-const workspaceForm = ref({ name: '', description: '' });
-const isEditing = ref(false);
 const workspaceToDelete = ref(null);
 
-let bsWorkspaceModal = null;
 let bsDeleteModal = null;
 
 onMounted(async () => {
-  // Initialize bootstrap modals
-  bsWorkspaceModal = new Modal(workspaceModal.value);
+  // Initialize bootstrap delete modal
   bsDeleteModal = new Modal(deleteModal.value);
 
   // Fetch workspaces
@@ -152,35 +120,29 @@ function formatDate(dateString) {
 }
 
 function showNewWorkspaceModal() {
-  workspaceForm.value = { name: '', description: '' };
-  isEditing.value = false;
-  bsWorkspaceModal.show();
+  workspaceModal.value?.showNew();
 }
 
 function editWorkspace(workspace) {
-  workspaceForm.value = {
-    name: workspace.name,
-    description: workspace.description || '',
-    id: workspace.id
-  };
-  isEditing.value = true;
-  bsWorkspaceModal.show();
+  workspaceModal.value?.showEdit(workspace);
 }
 
-async function saveWorkspace() {
+async function handleSaveWorkspace(workspaceData) {
   try {
-    if (isEditing.value) {
-      await workspacesStore.updateWorkspace(workspaceForm.value.id, {
-        name: workspaceForm.value.name,
-        description: workspaceForm.value.description
+    if (workspaceData.id) {
+      // Update existing workspace
+      await workspacesStore.updateWorkspace(workspaceData.id, {
+        name: workspaceData.name,
+        description: workspaceData.description
       });
     } else {
+      // Create new workspace
       await workspacesStore.createWorkspace({
-        name: workspaceForm.value.name,
-        description: workspaceForm.value.description
+        name: workspaceData.name,
+        description: workspaceData.description
       });
     }
-    bsWorkspaceModal.hide();
+    workspaceModal.value?.hide();
   } catch (error) {
     alert('Error saving workspace: ' + error.message);
   }
