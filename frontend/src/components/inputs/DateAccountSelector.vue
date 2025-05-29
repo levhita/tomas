@@ -1,11 +1,6 @@
 <template>
   <div class="toolbar bg-light border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
-      <!-- Workspace Name Display -->
-      <div class="workspace-display d-flex align-items-center">
-        <h4 class="workspace-name">{{ workspaceName || 'Select Workspace' }}</h4>
-      </div>
-
       <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 
       <div class="btn-group" role="group">
@@ -39,7 +34,6 @@ import AccountSelect from './AccountSelect.vue'
 const props = defineProps({
   accountId: Number,
   selectedDate: String,
-  workspaceName: String // Add prop for workspace name
 })
 
 const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])

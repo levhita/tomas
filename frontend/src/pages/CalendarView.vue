@@ -1,33 +1,35 @@
 <template>
-  <!-- Loading state when workspace is not yet loaded -->
-  <div v-if="!isWorkspaceLoaded" class="workspace-loading container text-center p-5">
-    <div class="spinner-border text-primary mb-3" role="status">
-      <span class="visually-hidden">Loading workspace...</span>
-    </div>
-    <h4>Loading workspace data...</h4>
-  </div>
-
-  <!-- Main content when workspace is loaded -->
-  <template v-else>
-    <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-      v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
-
-    <div class="row w-100 ps-2">
-      <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
-        <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
-          @edit-transaction="showTransactionDialog" />
+  <WorkspaceLayout>
+    <!-- Loading state when workspace is not yet loaded -->
+    <div v-if="!isWorkspaceLoaded" class="workspace-loading container text-center p-5">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading workspace...</span>
       </div>
-      <div class="col-8 pb-1">
-        <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
-          @show-transaction="showTransactionDialog" @update-transaction="updateTransaction"
-          @delete-transaction="deleteTransaction" />
-      </div>
+      <h4>Loading workspace data...</h4>
     </div>
 
-    <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
-      :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
-      @duplicate="duplicateTransaction" />
-  </template>
+    <!-- Main content when workspace is loaded -->
+    <template v-else>
+      <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
+        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
+
+      <div class="row w-100 ps-2">
+        <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
+          <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
+            @edit-transaction="showTransactionDialog" />
+        </div>
+        <div class="col-8 pb-1">
+          <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
+            @show-transaction="showTransactionDialog" @update-transaction="updateTransaction"
+            @delete-transaction="deleteTransaction" />
+        </div>
+      </div>
+
+      <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
+        :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
+        @duplicate="duplicateTransaction" />
+    </template>
+  </WorkspaceLayout>
 </template>
 
 <script setup>
@@ -42,6 +44,7 @@ import { useAccountsStore } from '../stores/accounts'
 import { useCategoriesStore } from '../stores/categories'
 import { useWorkspacesStore } from '../stores/workspaces'
 import TransactionDialog from '../components/inputs/TransactionDialog.vue'
+import WorkspaceLayout from '../layouts/WorkspaceLayout.vue'
 
 const router = useRouter()
 const route = useRoute()
