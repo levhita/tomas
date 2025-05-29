@@ -103,10 +103,42 @@
 </template>
 
 <script setup>
+/**
+ * TransactionModal Component
+ * 
+ * A comprehensive modal component for creating and editing financial transactions.
+ * Built using Bootstrap modal structure with full form validation and transaction
+ * management capabilities.
+ * 
+ * Features:
+ * - Create new transactions
+ * - Edit existing transactions
+ * - Duplicate transactions (same month or next month)
+ * - Delete transactions with confirmation
+ * - Dynamic account type support (debit/credit)
+ * - Form validation and keyboard shortcuts
+ * - Focus management for better UX
+ * - Bootstrap modal integration
+ * 
+ * Props:
+ * @prop {boolean} modelValue - Controls modal visibility
+ * @prop {Object} transaction - Transaction object to edit/create
+ * @prop {boolean} isEditing - Whether this is an edit or create operation
+ * @prop {string} focusOn - Which field to focus on when modal opens ('description' or 'amount')
+ * 
+ * Events:
+ * @event update:modelValue - Emitted when modal visibility should change
+ * @event save - Emitted when transaction should be saved (payload: transaction object)
+ * @event delete - Emitted when transaction should be deleted (payload: transaction id)
+ * @event duplicate - Emitted when transaction should be duplicated (payload: transaction object)
+ * 
+ * @component
+ */
+
 import { ref, watch, nextTick, computed } from 'vue'
-import AccountSelect from './AccountSelect.vue'
-import CategorySelect from './CategorySelect.vue'
-import CurrencyInput from './CurrencyInput.vue'
+import AccountSelect from '../inputs/AccountSelect.vue'
+import CategorySelect from '../inputs/CategorySelect.vue'
+import CurrencyInput from '../inputs/CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
 import moment from 'moment'
 

@@ -363,6 +363,44 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     }
   }
 
+  /**
+   * Saves workspace data (create or update based on presence of ID)
+   * @param {Object} workspaceData - Workspace data to save
+   * @returns {Promise<Object>} The saved workspace
+   */
+  async function saveWorkspace(workspaceData) {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      let savedWorkspace;
+      if (workspaceData.id) {
+        // Update existing workspace
+        savedWorkspace = await updateWorkspace(workspaceData.id, {
+          name: workspaceData.name,
+          description: workspaceData.description,
+          currency_symbol: workspaceData.currency_symbol,
+          week_start: workspaceData.week_start
+        });
+      } else {
+        // Create new workspace
+        savedWorkspace = await createWorkspace({
+          name: workspaceData.name,
+          description: workspaceData.description,
+          currency_symbol: workspaceData.currency_symbol,
+          week_start: workspaceData.week_start
+        });
+      }
+
+      return savedWorkspace;
+    } catch (error) {
+      error.value = error.message;
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   return {
     // State
     workspaces,
@@ -386,6 +424,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     removeUserFromWorkspace,
     setCurrentWorkspaceAndLoadData,
     resetWorkspaceData,
-    validateAndLoadWorkspace
+    validateAndLoadWorkspace,
+    saveWorkspace
   };
 });

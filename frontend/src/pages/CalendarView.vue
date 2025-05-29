@@ -16,17 +16,17 @@
       <div class="row w-100 ps-2">
         <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
           <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
-            @edit-transaction="showTransactionDialog" />
+            @edit-transaction="showTransactionModal" />
         </div>
         <div class="col-8 pb-1">
           <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
-            @show-transaction="showTransactionDialog" @update-transaction="updateTransaction"
+            @show-transaction="showTransactionModal" @update-transaction="updateTransaction"
             @delete-transaction="deleteTransaction" />
         </div>
       </div>
 
-      <TransactionDialog v-model="showDialog" :transaction="currentTransaction" :is-editing="isEditing"
-        :focus-on="dialogFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
+      <TransactionModal v-model="showModal" :transaction="currentTransaction" :is-editing="isEditing"
+        :focus-on="modalFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
         @duplicate="duplicateTransaction" />
     </template>
   </WorkspaceLayout>
@@ -43,7 +43,7 @@ import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
 import { useCategoriesStore } from '../stores/categories'
 import { useWorkspacesStore } from '../stores/workspaces'
-import TransactionDialog from '../components/inputs/TransactionDialog.vue'
+import TransactionModal from '../components/modals/TransactionModal.vue'
 import WorkspaceLayout from '../layouts/WorkspaceLayout.vue'
 
 const router = useRouter()
@@ -67,16 +67,16 @@ const rangeType = ref('monthly')
 const accountId = ref(null)
 const selectedAccount = computed(() => accountsStore.getAccountById(accountId.value))
 
-const showDialog = ref(false)
+const showModal = ref(false)
 const currentTransaction = ref({})
 const isEditing = ref(false)
-const dialogFocusTarget = ref('description')
+const modalFocusTarget = ref('description')
 
-function showTransactionDialog({ transaction, editing, focusOn = 'description' }) {
+function showTransactionModal({ transaction, editing, focusOn = 'description' }) {
   currentTransaction.value = transaction
   isEditing.value = editing
-  dialogFocusTarget.value = focusOn
-  showDialog.value = true
+  modalFocusTarget.value = focusOn
+  showModal.value = true
 }
 
 async function saveTransaction(transaction) {
@@ -86,7 +86,7 @@ async function saveTransaction(transaction) {
     } else {
       await transactionsStore.addTransaction(transaction)
     }
-    showDialog.value = false
+    showModal.value = false
   } catch (error) {
     console.error('Failed to save transaction:', error)
   }
@@ -95,7 +95,7 @@ async function saveTransaction(transaction) {
 async function deleteTransaction(id) {
   try {
     await transactionsStore.deleteTransaction(id)
-    showDialog.value = false
+    showModal.value = false
   } catch (error) {
     console.error('Failed to delete transaction:', error)
   }
@@ -108,7 +108,7 @@ async function updateTransaction(transaction) {
 async function duplicateTransaction(transaction) {
   try {
     await transactionsStore.addTransaction(transaction)
-    showDialog.value = false
+    showModal.value = false
   } catch (error) {
     console.error('Failed to duplicate transaction:', error)
   }

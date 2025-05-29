@@ -57,11 +57,11 @@
         <ul class="navbar-nav">
           <!-- 
             Workspace settings button
-            Placeholder for future workspace configuration functionality
+            Opens WorkspaceModal for editing current workspace
             Only visible when workspace is active
           -->
           <li v-if="workspace" class="nav-item me-2">
-            <button class="btn btn-link nav-link" title="Workspace settings">
+            <button class="btn btn-link nav-link" title="Workspace settings" @click="openWorkspaceSettings">
               <i class="bi bi-gear"></i>
             </button>
           </li>
@@ -93,6 +93,12 @@
       </div>
     </div>
   </nav>
+
+  <!-- 
+    Workspace settings modal
+    Uses the reusable WorkspaceModal component for editing workspace details
+  -->
+  <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
 </template>
 
 <script setup>
@@ -109,7 +115,7 @@
  * - Quick navigation back to workspaces overview
  * - Integrated dark mode toggle
  * - User menu with account actions
- * - Workspace settings button (placeholder)
+ * - Workspace settings modal for editing workspace details
  * - Responsive mobile-friendly design
  * - Theme-aware styling (dark/light mode)
  * 
@@ -128,7 +134,7 @@
  * - Brand: Links to /workspaces (always visible)
  * - Workspace Badge: Shows current workspace name (conditional)
  * - Calendar Link: Links to /calendar with workspaceId query (conditional)
- * - Settings Button: Placeholder for workspace configuration (conditional)
+ * - Settings Button: Opens workspace edit modal (conditional)
  * - Dark Mode Toggle: Theme switching control (always visible)
  * - Workspaces Link: Quick return to overview (conditional)
  * - User Menu: Account actions and logout (always visible)
@@ -153,6 +159,8 @@
  * - Bootstrap Icons (for all icons)
  * - UserMenu component
  * - DarkModeToggle component
+ * - WorkspaceModal component
+ * - Workspaces store (for updating workspace data)
  * 
  * @component
  * @example
@@ -161,19 +169,37 @@
  * </template>
  */
 
-import { computed } from 'vue'
+import { ref } from 'vue'
 import UserMenu from './UserMenu.vue'
 import DarkModeToggle from './DarkModeToggle.vue'
+import WorkspaceModal from './modals/WorkspaceModal.vue'
+import { useWorkspacesStore } from '../stores/workspaces'
 
-/**
- * Component props definition
- * 
- * @typedef {Object} Props
- * @property {Object} workspace - The current workspace object
- */
 const props = defineProps({
   workspace: Object
 })
+
+// Store reference for workspace operations
+const workspacesStore = useWorkspacesStore()
+
+// Template refs
+const workspaceModal = ref(null)
+
+function openWorkspaceSettings() {
+  if (props.workspace && workspaceModal.value) {
+    workspaceModal.value.showEdit(props.workspace)
+  }
+}
+
+async function handleSaveWorkspace(workspaceData) {
+  try {
+    await workspacesStore.saveWorkspace(workspaceData)
+    workspaceModal.value?.hide()
+  } catch (error) {
+    console.error('Error updating workspace:', error)
+    alert('Error updating workspace: ' + error.message)
+  }
+}
 </script>
 
 <style scoped>

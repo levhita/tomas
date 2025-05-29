@@ -90,7 +90,7 @@ import { useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { Modal } from 'bootstrap';
 import GeneralLayout from '../layouts/GeneralLayout.vue';
-import WorkspaceModal from '../components/WorkspaceModal.vue';
+import WorkspaceModal from '../components/modals/WorkspaceModal.vue';
 
 const router = useRouter();
 const workspacesStore = useWorkspacesStore();
@@ -129,22 +129,10 @@ function editWorkspace(workspace) {
 
 async function handleSaveWorkspace(workspaceData) {
   try {
-    if (workspaceData.id) {
-      // Update existing workspace
-      await workspacesStore.updateWorkspace(workspaceData.id, {
-        name: workspaceData.name,
-        description: workspaceData.description
-      });
-    } else {
-      // Create new workspace
-      await workspacesStore.createWorkspace({
-        name: workspaceData.name,
-        description: workspaceData.description
-      });
-    }
-    workspaceModal.value?.hide();
+    await workspacesStore.saveWorkspace(workspaceData)
+    workspaceModal.value?.hide()
   } catch (error) {
-    alert('Error saving workspace: ' + error.message);
+    alert('Error saving workspace: ' + error.message)
   }
 }
 
@@ -165,8 +153,6 @@ async function deleteWorkspace() {
 }
 
 function selectWorkspace(workspace) {
-  // Replace the current URL with the workspace URL
-  // Using replace: true ensures we don't build up history stack
   router.push({
     path: '/calendar',
     query: {
