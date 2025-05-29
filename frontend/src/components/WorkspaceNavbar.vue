@@ -2,8 +2,9 @@
   <nav class="navbar navbar-expand-lg"
     :class="{ 'navbar-dark bg-dark': isDarkMode, 'navbar-dark bg-primary': !isDarkMode }">
     <div class="container-fluid">
-      <RouterLink class="navbar-brand" to="/workspaces">YAMO</RouterLink>
-
+      <RouterLink class="navbar-brand d-flex align-items-center" to="/workspaces">
+        <img src="/logo/logo_128.png" alt="YAMO Logo" class="navbar-logo me-2">
+      </RouterLink>
       <!-- Workspace display -->
       <div v-if="workspace" class="workspace-display me-auto ms-3">
         <span class="workspace-name">
@@ -129,5 +130,11 @@ nav {
   color: white;
   font-weight: 500;
   font-size: 1rem;
+}
+
+.navbar-logo {
+  height: 64px;
+  width: auto;
+  margin: -1rem 0;
 }
 </style>

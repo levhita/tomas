@@ -8,7 +8,13 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
 import GeneralNavbar from '../components/GeneralNavbar.vue';
+
+// Set the page title when this layout is mounted
+onMounted(() => {
+  document.title = 'Purrfect Finances';
+});
 </script>
 
 <style scoped>
