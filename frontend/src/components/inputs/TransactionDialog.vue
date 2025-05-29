@@ -209,7 +209,7 @@ function close() {
 }
 
 .dialog-content {
-  background: white;
+  background: var(--bs-body-bg);
   padding: 2rem;
   border-radius: 8px;
   width: 100%;

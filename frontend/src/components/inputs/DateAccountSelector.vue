@@ -1,5 +1,5 @@
 <template>
-  <div class="toolbar bg-light border-bottom shadow-sm p-3 mb-3">
+  <div class="toolbar bg-body-tertiary border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
       <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 

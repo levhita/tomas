@@ -1,11 +1,24 @@
 <template>
-  <nav class="navbar navbar-expand-lg"
-    :class="{ 'navbar-dark bg-dark': isDarkMode, 'navbar-dark bg-primary': !isDarkMode }">
+  <!-- 
+    Workspace-specific navigation bar
+    Adapts styling based on dark/light mode and displays workspace context
+  -->
+  <nav class="navbar navbar-expand-lg bg-body-secondary">
     <div class="container-fluid">
+      <!-- 
+        Brand logo and name - always links back to workspaces overview
+        Provides consistent branding across all workspace pages
+      -->
       <RouterLink class="navbar-brand d-flex align-items-center" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="YAMO Logo" class="navbar-logo me-2">
+        <img src="/logo/logo_128.png" alt="Purrfect Finances" class="navbar-logo me-2">
+        Purrfect Finances
       </RouterLink>
-      <!-- Workspace display -->
+
+      <!-- 
+        Workspace display badge
+        Shows current workspace name with building icon when workspace is active
+        Only visible when a workspace prop is provided
+      -->
       <div v-if="workspace" class="workspace-display me-auto ms-3">
         <span class="workspace-name">
           <i class="bi bi-building me-1"></i>
@@ -13,14 +26,30 @@
         </span>
       </div>
 
+      <!-- 
+        Mobile menu toggle button
+        Standard Bootstrap navbar toggler for responsive design
+      -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
         aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
+      <!-- 
+        Collapsible navigation content
+        Contains workspace-specific navigation and user controls
+      -->
       <div class="collapse navbar-collapse" id="navbarNav">
+        <!-- 
+          Left-aligned navigation items
+          Workspace-specific page navigation
+        -->
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
+            <!-- 
+              Calendar navigation link
+              Only shown when workspace is active, includes workspaceId in query params
+            -->
             <RouterLink v-if="workspace" class="nav-link" active-class="active"
               :to="{ path: '/calendar', query: { workspaceId: workspace.id } }">
               <i class="bi bi-calendar-week me-1"></i>
@@ -30,22 +59,33 @@
           <!-- Additional workspace-specific navigation items can be added here -->
         </ul>
 
+        <!-- 
+          Right-aligned navigation items
+          User controls and workspace utilities
+        -->
         <ul class="navbar-nav">
-          <!-- Workspace settings button -->
+          <!-- 
+            Workspace settings button
+            Placeholder for future workspace configuration functionality
+            Only visible when workspace is active
+          -->
           <li v-if="workspace" class="nav-item me-2">
             <button class="btn btn-link nav-link" title="Workspace settings">
               <i class="bi bi-gear"></i>
             </button>
           </li>
 
-          <!-- Dark mode toggle -->
-          <li class="nav-item me-2">
-            <button class="btn btn-link nav-link" @click="toggleDarkMode" title="Toggle dark mode">
-              <i class="bi" :class="isDarkMode ? 'bi-sun' : 'bi-moon'"></i>
-            </button>
-          </li>
+          <!-- 
+            Dark mode toggle component
+            Reusable component for theme switching
+          -->
+          <DarkModeToggle />
 
-          <!-- Back to workspaces -->
+          <!-- 
+            Back to workspaces link
+            Quick navigation back to workspace overview
+            Only visible when workspace is active
+          -->
           <li v-if="workspace" class="nav-item me-2">
             <RouterLink class="nav-link" to="/workspaces" title="Back to workspaces">
               <i class="bi bi-grid-3x3-gap me-1"></i>
@@ -53,13 +93,11 @@
             </RouterLink>
           </li>
 
-          <!-- Logout -->
-          <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="handleLogout">
-              <i class="bi bi-box-arrow-right me-1"></i>
-              Logout
-            </a>
-          </li>
+          <!-- 
+            User menu component
+            Reusable component for user account actions
+          -->
+          <UserMenu />
         </ul>
       </div>
     </div>
@@ -67,71 +105,147 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUsersStore } from '../stores/users'
+/**
+ * WorkspaceNavbar Component
+ * 
+ * A specialized navigation bar component designed for workspace-scoped pages.
+ * Provides workspace context, navigation, and user controls while maintaining
+ * consistent branding and responsive design.
+ * 
+ * Features:
+ * - Displays current workspace name with visual badge
+ * - Workspace-specific navigation (Calendar, etc.)
+ * - Quick navigation back to workspaces overview
+ * - Integrated dark mode toggle
+ * - User menu with account actions
+ * - Workspace settings button (placeholder)
+ * - Responsive mobile-friendly design
+ * - Theme-aware styling (dark/light mode)
+ * 
+ * Props:
+ * @prop {Object} workspace - Current workspace object containing id, name, etc.
+ * 
+ * Workspace Object Structure:
+ * {
+ *   id: number,           // Unique workspace identifier
+ *   name: string,         // Display name for the workspace
+ *   description?: string, // Optional workspace description
+ *   created_at?: string   // Optional creation timestamp
+ * }
+ * 
+ * Navigation Structure:
+ * - Brand: Links to /workspaces (always visible)
+ * - Workspace Badge: Shows current workspace name (conditional)
+ * - Calendar Link: Links to /calendar with workspaceId query (conditional)
+ * - Settings Button: Placeholder for workspace configuration (conditional)
+ * - Dark Mode Toggle: Theme switching control (always visible)
+ * - Workspaces Link: Quick return to overview (conditional)
+ * - User Menu: Account actions and logout (always visible)
+ * 
+ * Responsive Behavior:
+ * - Collapses navigation items on mobile devices
+ * - Maintains workspace badge visibility on all screen sizes
+ * - Uses Bootstrap's navbar component for consistent behavior
+ * 
+ * Theme Integration:
+ * - Automatically adapts colors based on dark/light mode
+ * - Uses Bootstrap's theme system (data-bs-theme)
+ * - Workspace badge styling adapts to theme
+ * 
+ * Usage:
+ * <WorkspaceNavbar :workspace="currentWorkspace" />
+ * 
+ * Dependencies:
+ * - Vue 3 Composition API
+ * - Vue Router (for navigation links)
+ * - Bootstrap CSS/JS (for navbar functionality)
+ * - Bootstrap Icons (for all icons)
+ * - UserMenu component
+ * - DarkModeToggle component
+ * 
+ * @component
+ * @example
+ * <template>
+ *   <WorkspaceNavbar :workspace="{ id: 1, name: 'Personal Budget' }" />
+ * </template>
+ */
 
+import { computed } from 'vue'
+import UserMenu from './UserMenu.vue'
+import DarkModeToggle from './DarkModeToggle.vue'
+
+/**
+ * Component props definition
+ * 
+ * @typedef {Object} Props
+ * @property {Object} workspace - The current workspace object
+ */
 const props = defineProps({
-  workspace: Object // Changed from workspaceName to workspace
+  workspace: Object
 })
-
-const router = useRouter()
-const usersStore = useUsersStore()
-const isDarkMode = ref(false)
-
-function toggleDarkMode() {
-  isDarkMode.value = !isDarkMode.value
-
-  if (isDarkMode.value) {
-    document.documentElement.setAttribute('data-bs-theme', 'dark')
-  } else {
-    document.documentElement.setAttribute('data-bs-theme', 'light')
-  }
-
-  localStorage.setItem('darkMode', isDarkMode.value ? 'true' : 'false')
-}
-
-onMounted(() => {
-  // Check for saved preference
-  const savedDarkMode = localStorage.getItem('darkMode')
-
-  if (savedDarkMode === 'true') {
-    isDarkMode.value = true
-    document.documentElement.setAttribute('data-bs-theme', 'dark')
-  } else if (savedDarkMode === null) {
-    // If no saved preference, check system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-
-    if (prefersDark) {
-      document.documentElement.setAttribute('data-bs-theme', 'dark')
-    }
-  }
-})
-
-async function handleLogout() {
-  await usersStore.logout()
-  router.push('/login')
-}
 </script>
 
 <style scoped>
+/**
+ * Component-specific styles for workspace navigation
+ * 
+ * Provides custom styling for workspace-specific elements while
+ * maintaining Bootstrap compatibility and responsive design.
+ */
+
+/**
+ * Base navbar styling
+ * 
+ * Adds consistent padding to the navbar container for
+ * better visual spacing and content alignment.
+ */
 nav {
   padding: 1rem;
 }
 
+/**
+ * Brand styling
+ * 
+ * Makes the brand text bold and larger for better visual hierarchy.
+ * The brand serves as the main application identifier.
+ */
+.navbar-brand {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+/**
+ * Workspace display badge styling
+ * 
+ * Creates a visually distinct badge that shows the current workspace name.
+ * Uses semi-transparent white background for visibility across themes.
+ * Border radius provides modern, rounded appearance.
+ */
 .workspace-display {
   padding: 0.375rem 0.75rem;
   background-color: rgba(255, 255, 255, 0.15);
   border-radius: 0.25rem;
 }
 
+/**
+ * Workspace name text styling
+ * 
+ * Ensures good contrast and readability for the workspace name.
+ * Medium font weight provides appropriate emphasis without being too bold.
+ */
 .workspace-name {
   color: white;
   font-weight: 500;
   font-size: 1rem;
 }
 
+/**
+ * Logo image styling
+ * 
+ * Sets appropriate size for the logo while maintaining aspect ratio.
+ * Negative margin compensates for navbar padding to align logo properly.
+ * Auto width maintains proportions based on height constraint.
+ */
 .navbar-logo {
   height: 64px;
   width: auto;
