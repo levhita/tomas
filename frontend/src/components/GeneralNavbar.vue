@@ -14,9 +14,19 @@
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
-          <!-- <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/workspaces">Workspaces</RouterLink>
-          </li> -->
+          <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/workspaces">
+              <i class="bi bi-building me-1"></i>
+              Workspaces
+            </RouterLink>
+          </li>
+          <!-- Admin section link - only visible for superadmins -->
+          <li v-if="usersStore.isSuperAdmin" class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/admin">
+              <i class="bi bi-gear-fill me-1"></i>
+              Administration
+            </RouterLink>
+          </li>
         </ul>
 
         <ul class="navbar-nav">
@@ -27,12 +37,30 @@
             </button>
           </li>
 
-          <!-- Logout -->
-          <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="handleLogout">
-              <i class="bi bi-box-arrow-right me-1"></i>
-              Logout
+          <!-- User info and logout -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle me-1"></i>
+              {{ usersStore.currentUser?.username || 'User' }}
             </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <span class="dropdown-item-text">
+                  <small class="text-muted">
+                    {{ usersStore.isSuperAdmin ? 'Super Administrator' : 'User' }}
+                  </small>
+                </span>
+              </li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li>
+                <a href="#" class="dropdown-item" @click.prevent="handleLogout">
+                  <i class="bi bi-box-arrow-right me-2"></i>
+                  Logout
+                </a>
+              </li>
+            </ul>
           </li>
         </ul>
       </div>
@@ -99,5 +127,9 @@ nav {
   height: 64px;
   width: auto;
   margin: -1rem 0;
+}
+
+.dropdown-item-text {
+  padding: 0.25rem 1rem;
 }
 </style>

@@ -20,7 +20,7 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { requireSuperAdmin } = require('../middleware/auth');
+const { authenticateToken, requireSuperAdmin } = require('../middleware/auth');
 
 // Add JWT secret to environment variables or config
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
@@ -124,6 +124,42 @@ router.get('/', requireSuperAdmin, async (req, res) => {
 });
 
 /**
+ * GET /users/me
+ * Get current user's information
+ * 
+ * @permission Authenticated user
+ * @returns {Object} Current user data (excluding password)
+ */
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    // The user information is already available from the auth middleware
+    // But we'll fetch fresh data from the database to ensure it's up to date
+    const [users] = await db.query(`
+      SELECT id, username, superadmin, created_at 
+      FROM user 
+      WHERE id = ?
+    `, [req.user.id]);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    const user = users[0];
+    // Convert superadmin flag from 0/1 to boolean
+    user.superadmin = user.superadmin === 1;
+
+    res.status(200).json(user);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to fetch user information'
+    });
+  }
+});
+
+/**
  * GET /users/:id
  * Get a single user by ID
  * 
@@ -131,7 +167,7 @@ router.get('/', requireSuperAdmin, async (req, res) => {
  * @permission User can access their own data, admins can access any user
  * @returns {Object} User data (excluding password)
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
