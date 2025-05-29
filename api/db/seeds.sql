@@ -1,6 +1,6 @@
 -- Create users --
 INSERT INTO
-  `user` (id, username, password_hash, admin)
+  `user` (id, username, password_hash, superadmin)
 VALUES
   (
     1,

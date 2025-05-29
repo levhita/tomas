@@ -66,7 +66,7 @@ async function authenticateToken(req, res, next) {
     // Validate user against database
     // This ensures the user still exists and matches token claims
     const [users] = await db.query(
-      'SELECT id, username, admin FROM user WHERE id = ? AND username = ?',
+      'SELECT id, username, superadmin FROM user WHERE id = ? AND username = ?',
       [decoded.userId, decoded.username]
     );
 
@@ -76,13 +76,13 @@ async function authenticateToken(req, res, next) {
 
     // Validate admin claim from token against database
     // This prevents using a token with outdated privileges
-    if (decoded.admin !== !!users[0].admin) {
-      console.warn('Token admin claim mismatch for user:', decoded.userId);
+    if (decoded.superadmin !== !!users[0].superadmin) {
+      console.warn('Token superadmin claim mismatch for user:', decoded.userId);
       return res.status(403).json({ error: 'Token privileges invalid' });
     }
 
     // Convert database 0/1 to boolean for consistency
-    users[0].admin = !!users[0].admin;
+    users[0].superadmin = !!users[0].superadmin;
 
     // Inject user object into the request
     // This makes user data available to downstream middleware and route handlers
@@ -99,7 +99,7 @@ async function authenticateToken(req, res, next) {
 }
 
 /**
- * Middleware to require admin privileges
+ * Middleware to require superadmin privileges
  * 
  * This middleware:
  * 1. Checks if the user is authenticated
@@ -108,11 +108,11 @@ async function authenticateToken(req, res, next) {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
- * @returns {void} Calls next() if user is admin, returns error response if not
+ * @returns {void} Calls next() if user is superadmin, returns error response if not
  */
-function requireAdmin(req, res, next) {
-  // Check if user is authenticated and is an admin
-  if (!req.user || !req.user.admin) {
+function requireSuperAdmin(req, res, next) {
+  // Check if user is authenticated and is a superadmin
+  if (!req.user || !req.user.superadmin) {
     return res.status(403).json({ error: 'Admin privileges required' });
   }
 
@@ -120,4 +120,4 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authenticateToken, requireAdmin };
+module.exports = { authenticateToken, requireSuperAdmin };

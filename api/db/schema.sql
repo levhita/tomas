@@ -20,7 +20,7 @@ CREATE TABLE
     `username` VARCHAR(255) NOT NULL,
     `password_hash` VARCHAR(255) NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `admin` BOOLEAN DEFAULT FALSE,
+    `superadmin` BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (`id`),
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;

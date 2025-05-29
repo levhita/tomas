@@ -20,7 +20,7 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { requireAdmin } = require('../middleware/auth');
+const { requireSuperAdmin } = require('../middleware/auth');
 
 // Add JWT secret to environment variables or config
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
 
     // Get user with password_hash and admin flag
     const [users] = await db.query(`
-      SELECT id, username, password_hash, admin, created_at 
+      SELECT id, username, password_hash, superadmin, created_at 
       FROM user 
       WHERE username = ?
     `, [username]);
@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
 
     const user = users[0];
     // Convert admin flag from 0/1 to boolean
-    user.admin = user.admin === 1;
+    user.superadmin = user.superadmin === 1;
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
       {
         userId: user.id,
         username: user.username,
-        admin: user.admin
+        superadmin: user.superadmin
       },
       YAMO_JWT_SECRET,
       { expiresIn: '24h' }
@@ -101,20 +101,20 @@ router.post('/login', async (req, res) => {
  * GET /users
  * Get list of all users
  * 
- * @permission Admin only
+ * @permission SuperAdmin only
  * @returns {Array} List of all users (excluding password data)
  */
-router.get('/', requireAdmin, async (req, res) => {
+router.get('/', requireSuperAdmin, async (req, res) => {
   try {
     const [users] = await db.query(`
-      SELECT id, username, admin, created_at 
+      SELECT id, username, superadmin, created_at 
       FROM user 
       ORDER BY username ASC
     `);
 
     res.status(200).json(users.map(user => {
       // Convert admin flag from 0/1 to boolean
-      user.admin = user.admin === 1;
+      user.superadmin = user.superadmin === 1;
       return user;
     }));
   } catch (err) {
@@ -135,15 +135,15 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if user is requesting their own info or is an admin
-    if (req.user.id !== parseInt(id) && !req.user.admin) {
+    // Check if user is requesting their own info or is a superadmin
+    if (req.user.id !== parseInt(id) && !req.user.superadmin) {
       return res.status(403).json({
         error: 'Access denied: You can only view your own user information'
       });
     }
 
     const [users] = await db.query(`
-      SELECT id, username, admin, created_at 
+      SELECT id, username, superadmin, created_at 
       FROM user 
       WHERE id = ?
     `, [id]);
@@ -155,7 +155,7 @@ router.get('/:id', async (req, res) => {
     }
     const user = users[0];
     // Convert admin flag from 0/1 to boolean
-    user.admin = user.admin === 1;
+    user.superadmin = user.superadmin === 1;
     res.status(200).json(user);
 
   } catch (err) {
@@ -176,9 +176,9 @@ router.get('/:id', async (req, res) => {
  * @permission Admin only
  * @returns {Object} Newly created user (excluding password)
  */
-router.post('/', requireAdmin, async (req, res) => {
+router.post('/', requireSuperAdmin, async (req, res) => {
   try {
-    const { username, password, admin = false } = req.body;
+    const { username, password, superadmin = false } = req.body;
 
     // Validate input
     if (!username || !password) {
@@ -205,17 +205,23 @@ router.post('/', requireAdmin, async (req, res) => {
 
     // Insert new user
     const [result] = await db.query(`
-      INSERT INTO user (username, password_hash, admin)
+      INSERT INTO user (username, password_hash, superadmin)
       VALUES (?, ?, ?)
-    `, [username, passwordHash, admin]);
+    `, [username, passwordHash, superadmin]);
+
+    // Fetch the newly created user to ensure consistent data format
+    const [newUser] = await db.query(`
+      SELECT id, username, superadmin, created_at 
+      FROM user 
+      WHERE id = ?
+    `, [result.insertId]);
+
+    const user = newUser[0];
+    // Convert superadmin flag from 0/1 to boolean
+    user.superadmin = user.superadmin === 1;
 
     // Return new user (without sensitive data)
-    res.status(201).json({
-      id: result.insertId,
-      username,
-      admin,
-      created_at: new Date()
-    });
+    res.status(201).json(user);
 
   } catch (err) {
     console.error('Database error:', err);
@@ -242,11 +248,11 @@ router.post('/', requireAdmin, async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, admin } = req.body;
+    const { username, password, superadmin } = req.body;
 
     // Check if user exists
     const [existingUsers] = await db.query(
-      'SELECT id, admin FROM user WHERE id = ?',
+      'SELECT id, superadmin FROM user WHERE id = ?',
       [id]
     );
 
@@ -260,14 +266,14 @@ router.put('/:id', async (req, res) => {
     const isOwnAccount = req.user.id === parseInt(id);
 
     // Only admins can update admin flag
-    if (admin !== undefined && !req.user.admin) {
+    if (superadmin !== undefined && !req.user.superadmin) {
       return res.status(403).json({
         error: 'Only administrators can change admin privileges'
       });
     }
 
     // Non-admins can only update their own account
-    if (!isOwnAccount && !req.user.admin) {
+    if (!isOwnAccount && !req.user.superadmin) {
       return res.status(403).json({
         error: 'You can only update your own user information'
       });
@@ -303,10 +309,10 @@ router.put('/:id', async (req, res) => {
       params.push(passwordHash);
     }
 
-    // Only include admin update if the current user is an admin
-    if (admin !== undefined && req.user.admin) {
-      updates.push('admin = ?');
-      params.push(admin);
+    // Only include superadmin update if the current user is a superadmin
+    if (superadmin !== undefined && req.user.superadmin) {
+      updates.push('superadmin = ?');
+      params.push(superadmin);
     }
 
     if (updates.length === 0) {
@@ -327,13 +333,13 @@ router.put('/:id', async (req, res) => {
 
     // Get updated user
     const [updatedUser] = await db.query(`
-      SELECT id, username, admin, created_at 
+      SELECT id, username, superadmin, created_at 
       FROM user 
       WHERE id = ?
     `, [id]);
     const user = updatedUser[0];
     // Convert admin flag from 0/1 to boolean
-    user.admin = user.admin === 1;
+    user.superadmin = user.superadmin === 1;
     res.status(200).json(user);
 
   } catch (err) {
@@ -355,7 +361,7 @@ router.put('/:id', async (req, res) => {
  * Note: Users cannot delete their own accounts as a safety measure.
  * This prevents admins from accidentally removing their own access.
  */
-router.delete('/:id', requireAdmin, async (req, res) => {
+router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
