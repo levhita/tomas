@@ -1,75 +1,81 @@
 <template>
-  <div v-if="modelValue" class="transaction-dialog">
-    <div class="dialog-content">
-      <div class="row">
-        <div class="col-10">
-          <h3>{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
-        </div>
-        <div class="col-2 text-end">
+  <!-- Bootstrap Modal Container -->
+  <div class="modal fade" :class="{ show: modelValue }" :style="{ display: modelValue ? 'block' : 'none' }"
+    tabindex="-1" ref="modalElement">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <h3 class="modal-title">{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
           <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
-      </div>
-      <form @submit.prevent="save">
-        <div class="form-floating mb-3">
-          <input id="transactionInput" ref="descriptionInput" v-model="transaction.description" class="form-control"
-            placeholder="Groceries, Rent, etc." required @keyup.esc="close" />
-          <label for="transactionInput">Description</label>
-        </div>
 
-        <div class="row mb-3">
-          <div class="col-7">
-            <div class="form-floating">
-              <CurrencyInput id="amountInput" ref="amountInput" v-model="amount" required @keyup.esc="close" />
-              <label for="amountInput">Amount</label>
+        <!-- Modal Body -->
+        <div class="modal-body">
+          <form @submit.prevent="save">
+            <div class="form-floating mb-3">
+              <input id="transactionInput" ref="descriptionInput" v-model="transaction.description" class="form-control"
+                placeholder="Groceries, Rent, etc." required @keyup.esc="close" />
+              <label for="transactionInput">Description</label>
             </div>
-          </div>
-          <div class="col-5">
-            <div class="form-floating">
-              <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required />
-              <label for="dateInput" class="form-label">Date</label>
+
+            <div class="row mb-3">
+              <div class="col-7">
+                <div class="form-floating">
+                  <CurrencyInput id="amountInput" ref="amountInput" v-model="amount" required @keyup.esc="close" />
+                  <label for="amountInput">Amount</label>
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="form-floating">
+                  <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required />
+                  <label for="dateInput" class="form-label">Date</label>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div class="btn-group w-100 h-100 mb-3" role="group">
-          <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType">
-          <label class="btn btn-outline-primary" for="expense">
-            {{ isDebitAccount ? 'Expense' : 'Payment' }}
-          </label>
+            <div class="btn-group w-100 h-100 mb-3" role="group">
+              <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType">
+              <label class="btn btn-outline-primary" for="expense">
+                {{ isDebitAccount ? 'Expense' : 'Payment' }}
+              </label>
 
-          <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType">
-          <label class="btn btn-outline-primary" for="income">
-            {{ isDebitAccount ? 'Income' : 'Charge' }}
-          </label>
-        </div>
-
-        <div class="form-check mb-3">
-          <input type="checkbox" class="form-check-input" v-model="transaction.exercised" />
-          <label class="form-check-label">Already exercised</label>
-        </div>
-
-        <div class="row mb-3">
-          <div class="col-6">
-            <div class="form-floating">
-              <AccountSelect v-model="transaction.account_id" />
-              <label>Account</label>
+              <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType">
+              <label class="btn btn-outline-primary" for="income">
+                {{ isDebitAccount ? 'Income' : 'Charge' }}
+              </label>
             </div>
-          </div>
-          <div class="col-6">
-            <div class="form-floating">
-              <CategorySelect v-model="transaction.category_id" />
-              <label>Category</label>
+
+            <div class="form-check mb-3">
+              <input type="checkbox" class="form-check-input" v-model="transaction.exercised" />
+              <label class="form-check-label">Already exercised</label>
             </div>
-          </div>
+
+            <div class="row mb-3">
+              <div class="col-6">
+                <div class="form-floating">
+                  <AccountSelect v-model="transaction.account_id" />
+                  <label>Account</label>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-floating">
+                  <CategorySelect v-model="transaction.category_id" />
+                  <label>Category</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-floating mb-3">
+              <textarea id="noteTextarea" class="form-control" v-model="transaction.note"
+                placeholder="Additional details..." :style="{ 'min-height': '6rem' }"></textarea>
+              <label for="noteTextarea">Note</label>
+            </div>
+          </form>
         </div>
 
-        <div class="form-floating mb-3">
-          <textarea id="noteTextarea" class="form-control" v-model="transaction.note"
-            placeholder="Additional details..." :style="{ 'min-height': '6rem' }"></textarea>
-          <label for="noteTextarea">Note</label>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center">
+        <!-- Modal Footer -->
+        <div class="modal-footer d-flex justify-content-between">
           <div>
             <button v-if="isEditing" type="button" class="btn btn-danger me-2" @click="confirmDelete">
               Delete
@@ -85,12 +91,15 @@
           </div>
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary" @click="save">Save</button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   </div>
+
+  <!-- Bootstrap Modal Backdrop -->
+  <div v-if="modelValue" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
@@ -117,6 +126,7 @@ const descriptionInput = ref(null)
 const amountInput = ref(null)
 const amount = ref(0)
 const transactionType = ref('expense')
+const modalElement = ref(null)
 
 const accountsStore = useAccountsStore()
 const isDebitAccount = computed(() => {
@@ -131,6 +141,8 @@ watch(() => transaction.value.account_id, () => {
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
+    // Add modal-open class to body when modal shows
+    document.body.classList.add('modal-open')
     nextTick(() => {
       if (props.focusOn === 'amount') {
         amountInput.value?.selectAll()
@@ -139,6 +151,9 @@ watch(() => props.modelValue, (newVal) => {
         descriptionInput.value?.select()
       }
     })
+  } else {
+    // Remove modal-open class from body when modal hides
+    document.body.classList.remove('modal-open')
   }
 })
 
@@ -195,26 +210,28 @@ function close() {
 </script>
 
 <style scoped>
-.transaction-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+/**
+ * Custom modal styling to ensure proper Bootstrap modal behavior
+ * while maintaining existing functionality
+ */
+
+/* Override Bootstrap modal z-index if needed */
+.modal {
+  z-index: 1055;
 }
 
-.dialog-content {
-  background: var(--bs-body-bg);
-  padding: 2rem;
-  border-radius: 8px;
-  width: 100%;
+.modal-backdrop {
+  z-index: 1050;
+}
+
+/* Ensure modal content is properly sized */
+.modal-dialog {
   max-width: 700px;
-  max-height: 90vh;
-  overflow-y: auto;
+}
+
+/* Custom footer styling to maintain existing button layout */
+.modal-footer {
+  border-top: 1px solid var(--bs-border-color);
+  padding: 1rem;
 }
 </style>
