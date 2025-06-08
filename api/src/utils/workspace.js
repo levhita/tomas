@@ -33,7 +33,7 @@ async function getUserRole(workspaceId, userId) {
     return access.length > 0 ? access[0].role : null;
   } catch (error) {
     console.error('Error getting user role:', error);
-    return null;
+    throw error;
   }
 }
 
