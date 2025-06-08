@@ -10,7 +10,7 @@
         Provides consistent branding across all workspace pages
       -->
       <RouterLink class="me-2" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="Purrfect Finances" class="navbar-logo">
+        <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
       </RouterLink>
 
       <span v-if="workspace" class="fw-bold fs-4">

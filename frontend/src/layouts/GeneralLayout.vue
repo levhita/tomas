@@ -13,7 +13,7 @@ import GeneralNavbar from '../components/GeneralNavbar.vue';
 
 // Set the page title when this layout is mounted
 onMounted(() => {
-  document.title = 'Purrfect Finances';
+  document.title = 'Tomás - Purrfect Budgets';
 });
 </script>
 

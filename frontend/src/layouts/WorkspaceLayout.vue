@@ -123,7 +123,7 @@ watch(currentWorkspace, (newWorkspace) => {
   if (newWorkspace?.name) {
     document.title = `${newWorkspace.name}`;
   } else {
-    document.title = 'Purrfect Finances';
+    document.title = 'Tomás - Purrfect Budgets';
   }
 }, { immediate: true });
 </script>

@@ -2,8 +2,8 @@
   <nav class="navbar navbar-expand-lg bg-body-secondary shadow-sm">
     <div class="container-fluid">
       <RouterLink class="navbar-brand  d-flex align-items-center" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="Purrfect Finances Logo" class="navbar-logo me-2">
-        Purrfect Finances
+        <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo me-2">
+        Tomás
       </RouterLink>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
