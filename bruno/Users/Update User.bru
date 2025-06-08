@@ -11,12 +11,29 @@ put {
 }
 
 params:path {
-  id: 2
+  id: {{userId}}
 }
 
 body:json {
   {
-    "username": "admin",
-    "password": "admin"
+    "username": "{{username}}",
+    "password": "{{password}}"
   }
+}
+
+script:pre-request {
+  const userId = await bru.prompt('userId', 'userId', bru.getVar('userId'))
+  bru.setVar("userId", userId);
+  
+  const username = await bru.prompt('username', 'username', bru.getVar('username'))
+  bru.setVar("username", username);
+  
+  const password = await bru.promptKey('Password', 'Password')
+  
+  bru.setVar("password", password);
+}
+
+script:post-response {
+  bru.setVar("userId", res.body.id);
+  bru.setVar("username", res.body.username);
 }

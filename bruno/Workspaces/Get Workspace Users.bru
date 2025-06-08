@@ -1,0 +1,15 @@
+meta {
+  name: Get Workspace Users
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{server_url}}/workspaces/:id/users
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 9
+}

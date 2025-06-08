@@ -1,0 +1,24 @@
+meta {
+  name: Update Workspace
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{server_url}}/workspaces/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 1
+}
+
+body:json {
+  {
+    "name": "Updated Workspace",
+    "description": "Some New Description",
+    "currency_symbol": "$",
+    "week_start": "monday"
+  }
+}

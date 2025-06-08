@@ -1,7 +1,7 @@
 meta {
   name: Create User
   type: http
-  seq: 5
+  seq: 3
 }
 
 post {
@@ -12,7 +12,20 @@ post {
 
 body:json {
   {
-    "username": "admin",
-    "password": "admin"
+    "username": "{{username}}",
+    "password": "{{password}}"
   }
+}
+
+script:pre-request {
+  const username = await bru.prompt('Username', 'Username', '')
+  const password = await bru.promptKey('Password', 'Password')
+  
+  bru.setVar("username", username);
+  bru.setVar("password", password);
+}
+
+script:post-response {
+  bru.setVar("userId", res.body.id);
+  bru.setVar("username", res.body.username);
 }

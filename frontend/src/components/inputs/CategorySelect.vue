@@ -5,7 +5,7 @@
       <option :value="category.id">{{ category.name }}</option>
       <template v-if="category.children?.length">
         <option v-for="child in category.children" :key="child.id" :value="child.id" class="child-category">
-          &nbsp; — {{ child.name }}
+          &nbsp;&nbsp;&nbsp;{{ child.name }}
         </option>
       </template>
     </template>

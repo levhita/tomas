@@ -1,7 +1,6 @@
 <template>
-  <div class="toolbar bg-light border-bottom shadow-sm p-3 mb-3">
+  <div class="toolbar bg-body-tertiary border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
-
       <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
 
       <div class="btn-group" role="group">
@@ -13,13 +12,13 @@
       </div>
 
       <div class="btn-group">
-        <button class="btn btn-outline-primary" @click="previousPeriod">
+        <button class="btn btn-outline-primary" @click="previousPeriod" aria-label="Previous Period">
           <i class="bi bi-chevron-left"></i>
         </button>
         <button class="btn btn-outline-primary" disabled>
           {{ selectedPeriod }}
         </button>
-        <button class="btn btn-outline-primary" @click="nextPeriod">
+        <button class="btn btn-outline-primary" @click="nextPeriod" aria-label="Next Period">
           <i class="bi bi-chevron-right"></i>
         </button>
       </div>
@@ -34,7 +33,7 @@ import AccountSelect from './AccountSelect.vue'
 
 const props = defineProps({
   accountId: Number,
-  selectedDate: String
+  selectedDate: String,
 })
 
 const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])

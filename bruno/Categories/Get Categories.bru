@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {{server_url}}/categories
+  url: {{server_url}}/categories?workspace_id={{workspaceId}}
   body: none
   auth: inherit
+}
+
+params:query {
+  workspace_id: {{workspaceId}}
 }

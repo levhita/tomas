@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yamo API</title>
+  <link rel="stylesheet" href="/css/welcome.css">
+</head>
+
+<body>
+  <header>
+    <h1>Yamo API</h1>
+    <div class="version">v{{apiVersion}}</div>
+    <p class="tagline">Your Advanced Money Organizer</p>
+  </header>
+
+  <div class="card">
+    <h2>Overview</h2>
+    <p>Welcome to the Yamo API! This RESTful API provides financial management capabilities including:</p>
+    <ul>
+      <li>Multi-workspace financial management</li>
+      <li>Account and transaction tracking</li>
+      <li>Categorization of income and expenses</li>
+      <li>Collaborative access for teams</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Authentication</h2>
+    <p>All API endpoints (except <code>/health</code> and this page) require authentication using JWT tokens.</p>
+    <p>To authenticate:</p>
+    <ol>
+      <li>Get a token by sending your credentials to <code>POST /users/login</code></li>
+      <li>Include the token in the <code>Authorization</code> header as <code>Bearer &lt;token&gt;</code></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Key Endpoints</h2>
+    <div class="endpoints">
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method post">POST</span>/users/login
+        </div>
+        <p>Authenticate and get an access token</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method get">GET</span>/workspaces
+        </div>
+        <p>List all accessible workspaces</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method get">GET</span>/accounts
+        </div>
+        <p>List accounts for a workspace</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method get">GET</span>/transactions
+        </div>
+        <p>Get transactions with filtering options</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method get">GET</span>/categories
+        </div>
+        <p>List categories for a workspace</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-path">
+          <span class="method get">GET</span>/health
+        </div>
+        <p>Check API service health</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Documentation</h2>
+    <p>For detailed API documentation, please refer to:</p>
+    <ul>
+      <li>API Documentation: <a href="/docs" target="_blank">/docs</a> (if enabled)</li>
+      <li>GitHub Repository: <a href="https://github.com/levhita/yamo" target="_blank">github.com/levhita/yamo</a></li>
+    </ul>
+  </div>
+
+  <footer>
+    <p>Yamo API • {{currentYear}} • Running in {{environment}} mode</p>
+  </footer>
+</body>
+
+</html>

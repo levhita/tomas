@@ -1,12 +1,56 @@
+/**
+ * Transactions API Router
+ * Handles all transaction-related operations including:
+ * - Listing transactions with filters (by account, date range)
+ * - Retrieving single transaction details
+ * - Creating, updating and deleting transactions
+ * 
+ * Permission model:
+ * - READ operations: Any workspace member (admin, collaborator, viewer)
+ * - WRITE operations: Workspace editors (admin, collaborator)
+ */
+
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { canRead, canWrite } = require('../utils/workspace');
 
-// Get all transactions
+/**
+ * GET /transactions
+ * List transactions with optional filtering
+ * 
+ * @query {number} accountId - Optional filter by account ID
+ * @query {string} startDate - Optional start date (ISO format)
+ * @query {string} endDate - Optional end date (ISO format)
+ * @permission Read access to the account's workspace
+ * @returns {Array} List of transactions
+ */
 router.get('/', async (req, res) => {
   const { accountId, startDate, endDate } = req.query;
 
+  if (!accountId) {
+    return res.status(400).json({ error: 'accountId is required' });
+  }
+
   try {
+    // First get the account to determine its workspace
+    const [accounts] = await db.query(`
+      SELECT workspace_id FROM account WHERE id = ?
+    `, [accountId]);
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Check if user has read access to the account's workspace
+    const workspaceId = accounts[0].workspace_id;
+    const { allowed, message } = await canRead(workspaceId, req.user.id);
+
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Build query with filters
     let query = `
       SELECT 
         t.*,
@@ -33,6 +77,7 @@ router.get('/', async (req, res) => {
 
     const [transactions] = await db.query(query, params);
 
+    // Convert exercised from 0/1 to boolean
     transactions.forEach(t => t.exercised = !!t.exercised);
     res.status(200).json(transactions);
   } catch (err) {
@@ -41,9 +86,47 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single transaction 
+/**
+ * GET /transactions/:id
+ * Get details for a single transaction
+ * 
+ * @param {number} id - Transaction ID
+ * @permission Read access to the account's workspace
+ * @returns {Object} Transaction details
+ */
 router.get('/:id', async (req, res) => {
   try {
+    // First get transaction with its account ID
+    const [transactionInfo] = await db.query(`
+      SELECT account_id 
+      FROM transaction 
+      WHERE id = ?
+    `, [req.params.id]);
+
+    if (transactionInfo.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    // Get workspace ID for the account
+    const [accounts] = await db.query(`
+      SELECT workspace_id 
+      FROM account 
+      WHERE id = ?
+    `, [transactionInfo[0].account_id]);
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Associated account not found' });
+    }
+
+    // Check if user has read access to this account's workspace
+    const workspaceId = accounts[0].workspace_id;
+    const { allowed, message } = await canRead(workspaceId, req.user.id);
+
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Get full transaction with joins
     const [transactions] = await db.query(`
       SELECT 
         t.*,
@@ -55,9 +138,6 @@ router.get('/:id', async (req, res) => {
       WHERE t.id = ?
     `, [req.params.id]);
 
-    if (transactions.length === 0) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
     // Force return a boolean value for exercised
     transactions[0].exercised = !!transactions[0].exercised;
     res.status(200).json(transactions[0]);
@@ -67,7 +147,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create transaction
+/**
+ * POST /transactions
+ * Create a new transaction
+ * 
+ * @body {string} description - Required transaction description
+ * @body {string} note - Optional transaction note
+ * @body {number} amount - Required transaction amount
+ * @body {string} date - Required transaction date (ISO format)
+ * @body {boolean} exercised - Whether transaction is exercised/cleared
+ * @body {number} account_id - Required account ID
+ * @body {number} category_id - Optional category ID
+ * @permission Write access to the account's workspace
+ * @returns {Object} Newly created transaction
+ */
 router.post('/', async (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
   const exercisedValue = exercised ? 1 : 0;
@@ -97,6 +190,39 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // First get the account to determine its workspace
+    const [accounts] = await db.query(`
+      SELECT workspace_id FROM account WHERE id = ?
+    `, [account_id]);
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Check if user has write access to the account's workspace
+    const workspaceId = accounts[0].workspace_id;
+    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // If category is provided, verify it belongs to the same workspace
+    if (category_id) {
+      const [categories] = await db.query(`
+        SELECT workspace_id FROM category WHERE id = ?
+      `, [category_id]);
+
+      if (categories.length === 0) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+
+      if (categories[0].workspace_id !== workspaceId) {
+        return res.status(400).json({ error: 'Category must belong to the same workspace as the account' });
+      }
+    }
+
+    // Create the transaction
     const [result] = await db.query(`
       INSERT INTO transaction (
         description,
@@ -110,6 +236,7 @@ router.post('/', async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [description, note, amount, date, exercisedValue, account_id, category_id]);
 
+    // Fetch the created transaction with all fields
     const [transactions] = await db.query(`
       SELECT 
         t.*,
@@ -130,7 +257,21 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update transaction
+/**
+ * PUT /transactions/:id
+ * Update an existing transaction
+ * 
+ * @param {number} id - Transaction ID to update
+ * @body {string} description - Required transaction description
+ * @body {string} note - Optional transaction note
+ * @body {number} amount - Required transaction amount
+ * @body {string} date - Required transaction date (ISO format)
+ * @body {boolean} exercised - Whether transaction is exercised/cleared
+ * @body {number} account_id - Required account ID
+ * @body {number} category_id - Optional category ID
+ * @permission Write access to the transaction's account workspace
+ * @returns {Object} Updated transaction
+ */
 router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
   const exercisedValue = exercised ? 1 : 0;
@@ -160,6 +301,49 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
+    // First get the transaction to check it exists
+    const [existingTransaction] = await db.query(
+      'SELECT id FROM transaction WHERE id = ?',
+      [req.params.id]
+    );
+
+    if (existingTransaction.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    // Get the account to determine its workspace
+    const [accounts] = await db.query(`
+      SELECT workspace_id FROM account WHERE id = ?
+    `, [account_id]);
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    // Check if user has write access to the account's workspace
+    const workspaceId = accounts[0].workspace_id;
+    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // If category is provided, verify it belongs to the same workspace
+    if (category_id) {
+      const [categories] = await db.query(`
+        SELECT workspace_id FROM category WHERE id = ?
+      `, [category_id]);
+
+      if (categories.length === 0) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+
+      if (categories[0].workspace_id !== workspaceId) {
+        return res.status(400).json({ error: 'Category must belong to the same workspace as the account' });
+      }
+    }
+
+    // Update the transaction
     const [result] = await db.query(`
       UPDATE transaction
       SET description = ?,
@@ -172,10 +356,7 @@ router.put('/:id', async (req, res) => {
       WHERE id = ?
     `, [description, note, amount, date, exercisedValue, account_id, category_id, req.params.id]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
+    // Fetch the updated transaction
     const [transactions] = await db.query(`
       SELECT 
         t.*,
@@ -196,17 +377,52 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete transaction
+/**
+ * DELETE /transactions/:id
+ * Delete a transaction
+ * 
+ * @param {number} id - Transaction ID to delete
+ * @permission Write access to the transaction's account workspace
+ * @returns {null} 204 No Content on success
+ */
 router.delete('/:id', async (req, res) => {
   try {
+    // First get transaction with its account ID
+    const [transactionInfo] = await db.query(`
+      SELECT account_id 
+      FROM transaction 
+      WHERE id = ?
+    `, [req.params.id]);
+
+    if (transactionInfo.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    // Get workspace ID for the account
+    const [accounts] = await db.query(`
+      SELECT workspace_id 
+      FROM account 
+      WHERE id = ?
+    `, [transactionInfo[0].account_id]);
+
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'Associated account not found' });
+    }
+
+    // Check if user has write access to this account's workspace
+    const workspaceId = accounts[0].workspace_id;
+    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Delete the transaction
     const [result] = await db.query(`
       DELETE FROM transaction
       WHERE id = ?
     `, [req.params.id]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
     res.status(204).send();
   } catch (err) {
     console.error('Database error:', err);

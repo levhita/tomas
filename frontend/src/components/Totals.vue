@@ -26,31 +26,31 @@
       <tbody>
         <tr v-if="showPreviousBalance">
           <th>Previous Balance</th>
-          <td class="text-end text-nowrap">{{ formatCurrency(previousBalance.projected_balance) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(previousBalance.exercised_balance) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(previousBalance.projected_balance) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(previousBalance.exercised_balance) }}</td>
           <td class="text-end text-nowrap">
-            {{ formatCurrency(previousBalance.projected_balance - previousBalance.exercised_balance) }}
+            {{ formatAmount(previousBalance.projected_balance - previousBalance.exercised_balance) }}
           </td>
         </tr>
         <tr>
           <th>{{ incomeString }}</th>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_projected) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_exercised) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.income_projected - totals.income_exercised) }}
+          <td class="text-end text-nowrap">{{ formatAmount(totals.income_projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.income_exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.income_projected - totals.income_exercised) }}
           </td>
         </tr>
         <tr>
           <th>{{ outcomeString }}</th>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_projected) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_exercised) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.outcome_projected - totals.outcome_exercised) }}
+          <td class="text-end text-nowrap">{{ formatAmount(totals.outcome_projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.outcome_exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.outcome_projected - totals.outcome_exercised) }}
           </td>
         </tr>
         <tr>
           <th>Totals</th>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.projected) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.exercised) }}</td>
-          <td class="text-end text-nowrap">{{ formatCurrency(totals.projected - totals.exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.projected) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.exercised) }}</td>
+          <td class="text-end text-nowrap">{{ formatAmount(totals.projected - totals.exercised) }}</td>
         </tr>
       </tbody>
     </table>
@@ -94,7 +94,7 @@
           <td class="text-end text-nowrap ps-2">
             <span class="amount-button"
               @click="$emit('edit-transaction', { transaction, editing: true, focusOn: 'amount' })">
-              {{ formatCurrency(transaction.amount) }}
+              {{ formatAmount(transaction.amount) }}
             </span>
           </td>
           <td class="text-center">
@@ -112,6 +112,8 @@
 import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
+import { useWorkspacesStore } from '../stores/workspaces'
+import { formatCurrency } from '../utils/utilities'
 import moment from 'moment'
 
 const props = defineProps({
@@ -121,6 +123,7 @@ const props = defineProps({
 })
 
 const accountsStore = useAccountsStore()
+const workspacesStore = useWorkspacesStore()
 const previousBalance = ref({})
 
 // Add computed for previous month's end date
@@ -136,10 +139,18 @@ const isLoading = ref(false)
 const invertOrder = ref(false)
 const showOnlyExercised = ref(false)
 
+// Add a computed property to check if we have all required data
+const hasRequiredData = computed(() => {
+  return !!props.account && !!props.startDate && !!props.endDate;
+});
+
 // Separate base transactions from filtered transactions
 const rangeTransactions = computed(() => {
+  // Return empty array if we don't have the required data
+  if (!hasRequiredData.value) return [];
+
   const rangeTransactions = transactionsStore.transactionsByDate.filter(t => {
-    const date = moment(t.date) // do we really need moment, dates are guaranted to be in ISO format
+    const date = moment(t.date)
     return t.account_id === props.account.id &&
       date.isBetween(props.startDate, props.endDate, 'day', '[]')
   })
@@ -193,8 +204,10 @@ function sum(transactions) {
   return transactions.reduce((total, t) => total + t.amount, 0)
 }
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+// Update formatAmount to handle missing workspace
+function formatAmount(amount) {
+  const symbol = workspacesStore.currentWorkspace?.currency_symbol || '$';
+  return formatCurrency(amount, symbol);
 }
 
 async function toggleExercised(transaction) {
@@ -212,13 +225,17 @@ async function toggleExercised(transaction) {
 watch(
   [() => props.account?.id, previousMonthEnd],
   async ([accountId, date]) => {
-    if (accountId && date) {
-      try {
-        const balance = await accountsStore.fetchAccountBalance(accountId, date)
-        previousBalance.value = balance;
-      } catch (error) {
-        console.error('Failed to fetch previous balance:', error)
-      }
+    // Skip if any required data is missing
+    if (!accountId || !date) return;
+
+    try {
+      isLoading.value = true;
+      const balance = await accountsStore.fetchAccountBalance(accountId, date);
+      previousBalance.value = balance;
+    } catch (error) {
+      console.error('Failed to fetch previous balance:', error);
+    } finally {
+      isLoading.value = false;
     }
   },
   { immediate: true }

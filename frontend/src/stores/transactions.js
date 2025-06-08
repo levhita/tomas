@@ -13,6 +13,11 @@ export const useTransactionsStore = defineStore('transactions', () => {
     })
   })
 
+  // Reset state method to clear transactions when switching workspaces
+  function resetState() {
+    transactions.value = [];
+  }
+
   // Actions
   async function fetchTransactions(accountId, startDate, endDate) {
     try {
@@ -113,6 +118,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
     transactions,
     // Getters
     transactionsByDate,
+    // Reset method
+    resetState,
     // Actions
     fetchTransactions,
     fetchTransactionById,

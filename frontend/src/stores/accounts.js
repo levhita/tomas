@@ -24,11 +24,25 @@ export const useAccountsStore = defineStore('accounts', () => {
   });
 
   // Actions
-  async function fetchAccounts() {
+  async function fetchAccounts(workspaceId) {
     try {
-      const response = await fetchWithAuth('/api/accounts');
+      // Check if workspaceId is provided
+      if (!workspaceId) {
+        console.error('fetchAccounts: workspaceId is required');
+        throw new Error('Workspace ID is required to fetch accounts');
+      }
+
+      // Fetch accounts for the specified workspace
+      const response = await fetchWithAuth(`/api/accounts?workspace_id=${workspaceId}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch accounts');
+      }
+
       const data = await response.json();
       accounts.value = data;
+      return data;
     } catch (error) {
       console.error('Error fetching accounts:', error);
       throw error;
@@ -37,10 +51,21 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function addAccount(account) {
     try {
+      // Make sure account has a workspace_id
+      if (!account.workspace_id) {
+        throw new Error('workspace_id is required when creating an account');
+      }
+
       const response = await fetchWithAuth('/api/accounts', {
         method: 'POST',
         body: JSON.stringify(account),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add account');
+      }
+
       const newAccount = await response.json();
       accounts.value.push(newAccount);
       return newAccount;
@@ -56,6 +81,12 @@ export const useAccountsStore = defineStore('accounts', () => {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update account');
+      }
+
       const updatedAccount = await response.json();
       const index = accounts.value.findIndex(a => a.id === id);
       if (index !== -1) {
@@ -70,9 +101,15 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function deleteAccount(id) {
     try {
-      await fetchWithAuth(`/api/accounts/${id}`, {
+      const response = await fetchWithAuth(`/api/accounts/${id}`, {
         method: 'DELETE',
       });
+
+      if (!response.ok && response.status !== 204) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
       const index = accounts.value.findIndex(a => a.id === id);
       if (index !== -1) {
         accounts.value.splice(index, 1);
@@ -97,6 +134,11 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  // Add this function to the store
+  function resetState() {
+    accounts.value = [];
+  }
+
   return {
     // State
     accounts,
@@ -110,5 +152,7 @@ export const useAccountsStore = defineStore('accounts', () => {
     updateAccount,
     deleteAccount,
     fetchAccountBalance,
+    // New action
+    resetState,
   };
 });

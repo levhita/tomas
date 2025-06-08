@@ -1,7 +1,7 @@
 meta {
   name: Delete User
   type: http
-  seq: 3
+  seq: 5
 }
 
 delete {
@@ -11,5 +11,10 @@ delete {
 }
 
 params:path {
-  id: 1
+  id: {{userId}}
+}
+
+script:pre-request {
+  const userId = await bru.prompt('userId', 'userId', bru.getVar('userId'))
+  bru.setVar("userId", userId);
 }

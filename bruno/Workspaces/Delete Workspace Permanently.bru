@@ -1,0 +1,15 @@
+meta {
+  name: Delete Workspace Permanently
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{server_url}}/workspaces/:id/permanent
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 2
+}
