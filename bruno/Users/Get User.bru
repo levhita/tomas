@@ -21,4 +21,5 @@ script:pre-request {
 
 script:post-response {
   bru.setVar("userId", res.body.id);
+  bru.setVar("username", res.body.username);
 }
