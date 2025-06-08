@@ -5,7 +5,7 @@ erDiagram
         int id PK
         varchar username UK
         varchar password_hash
-        boolean admin
+        boolean superadmin
         timestamp created_at
     }
     
