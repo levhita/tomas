@@ -11,5 +11,14 @@ get {
 }
 
 params:path {
-  id: 1
+  id: {{userId}}
+}
+
+script:pre-request {
+  const userId = await bru.prompt('userId', 'userId', bru.getVar('userId'))
+  bru.setVar("userId", userId);
+}
+
+script:post-response {
+  bru.setVar("userId", res.body.id);
 }

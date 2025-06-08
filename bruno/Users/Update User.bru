@@ -11,7 +11,7 @@ put {
 }
 
 params:path {
-  id: 2
+  id: {{userId}}
 }
 
 body:json {
@@ -19,4 +19,9 @@ body:json {
     "username": "admin",
     "password": "admin"
   }
+}
+
+script:pre-request {
+  const userId = await bru.prompt('userId', 'userId', '')
+  bru.setVar("userId", userId);
 }
