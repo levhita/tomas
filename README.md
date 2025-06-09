@@ -1,4 +1,4 @@
-# YAMO - Yet Another Money Organizer and planification software for couples that love eachother
+# Tomas - Purrfect Budgets
 
 Personal and Home finance projection and expense tracking application.
 
@@ -8,7 +8,6 @@ Personal and Home finance projection and expense tracking application.
 - 📊 Monthly reports and summaries
 - 💰 Multiple account management
 - 🏷️ Category organization
-- 📱 Responsive design
 
 ## Tech Stack
 
@@ -26,7 +25,7 @@ Personal and Home finance projection and expense tracking application.
 
 ### 1.- Clone the repository:
 ```bash
-git clone https://github.com/yourusername/yamo.git
+git clone https://github.com/yourusername/tomas.git
 cd yamo
 ```
 
