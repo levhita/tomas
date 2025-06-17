@@ -60,7 +60,7 @@
               </div>
               <div class="col-6">
                 <div class="form-floating">
-                  <CategorySelect v-model="transaction.category_id" />
+                  <CategorySelect v-model="transaction.category_id" :type="categoryType" />
                   <label>Category</label>
                 </div>
               </div>
@@ -68,7 +68,7 @@
 
             <div class="form-floating mb-3">
               <textarea id="noteTextarea" class="form-control" v-model="transaction.note"
-                placeholder="Additional details..." :style="{ 'min-height': '6rem' }"></textarea>
+                placeholder="Additional details..."></textarea>
               <label for="noteTextarea">Note</label>
             </div>
           </form>
@@ -166,6 +166,20 @@ const isDebitAccount = computed(() => {
   return account?.type === 'debit'
 })
 
+// Compute the correct category type based on account type and transaction type
+const categoryType = computed(() => {
+  if (isDebitAccount.value) {
+    // For debit accounts, use the transaction type directly
+    // Expense = expense categories, Income = income categories
+    return transactionType.value
+  } else {
+    // For credit accounts, reverse the logic because:
+    // - Charges (expenses) increase debt → show income categories
+    // - Payments (income) reduce debt → show expense categories
+    return transactionType.value === 'expense' ? 'income' : 'expense'
+  }
+})
+
 // Watch for account changes to update labels
 watch(() => transaction.value.account_id, () => {
   // No need to do anything here, computed property will update automatically
@@ -194,6 +208,8 @@ watch(() => props.transaction, (newVal) => {
   // Only update transactionType if we have an amount
   if (newVal?.amount !== undefined) {
     amount.value = Math.abs(newVal.amount || 0)
+    // For both debit and credit accounts, the transaction type is determined by amount sign
+    // Positive = income/payment, Negative = expense/charge
     transactionType.value = newVal.amount >= 0 ? 'income' : 'expense'
   } else {
     // Default to expense for new transactions
@@ -203,6 +219,8 @@ watch(() => props.transaction, (newVal) => {
 })
 
 function save() {
+  // Convert the transaction type to signed amount
+  // For both debit and credit accounts: expense = negative, income = positive
   const signedAmount = transactionType.value === 'expense' ? -Math.abs(amount.value) : Math.abs(amount.value)
   emit('save', {
     ...transaction.value,
@@ -240,30 +258,3 @@ function close() {
   emit('update:modelValue', false)
 }
 </script>
-
-<style scoped>
-/**
- * Custom modal styling to ensure proper Bootstrap modal behavior
- * while maintaining existing functionality
- */
-
-/* Override Bootstrap modal z-index if needed */
-.modal {
-  z-index: 1055;
-}
-
-.modal-backdrop {
-  z-index: 1050;
-}
-
-/* Ensure modal content is properly sized */
-.modal-dialog {
-  max-width: 700px;
-}
-
-/* Custom footer styling to maintain existing button layout */
-.modal-footer {
-  border-top: 1px solid var(--bs-border-color);
-  padding: 1rem;
-}
-</style>

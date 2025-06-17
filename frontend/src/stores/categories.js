@@ -17,13 +17,39 @@ export const useCategoriesStore = defineStore('categories', () => {
     return (id) => categories.value.find(c => c.id === id);
   });
 
+  const expenseCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'expense');
+  });
+
+  const incomeCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'income');
+  });
+
   const categoryTree = computed(() => {
-    const rootCategories = categories.value.filter(c => !c.parent_category_id);
+    return buildCategoryTree();
+  });
+
+  const expenseCategoryTree = computed(() => {
+    return buildCategoryTree('expense');
+  });
+
+  const incomeCategoryTree = computed(() => {
+    return buildCategoryTree('income');
+  });
+
+  // Helper function to build category tree with optional type filter
+  function buildCategoryTree(typeFilter = null) {
+    const rootCategories = categories.value.filter(c => {
+      const isRoot = !c.parent_category_id;
+      const matchesType = typeFilter ? c.type === typeFilter : true;
+      return isRoot && matchesType;
+    });
+
     return rootCategories.map(category => ({
       ...category,
       children: getChildCategories(category.id)
     }));
-  });
+  }
 
   // Helper function for Tree
   function getChildCategories(parentId) {
@@ -119,7 +145,10 @@ export const useCategoriesStore = defineStore('categories', () => {
 
       if (!response.ok && response.status !== 204) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete category');
+        const error = new Error(errorData.error || 'Failed to delete category');
+        error.status = response.status;
+        error.code = response.status === 428 ? 'CATEGORY_HAS_TRANSACTIONS' : 'UNKNOWN_ERROR';
+        throw error;
       }
 
       const index = categories.value.findIndex(c => c.id === id);
@@ -143,7 +172,11 @@ export const useCategoriesStore = defineStore('categories', () => {
     // Getters
     categoriesByName,
     getCategoryById,
+    expenseCategories,
+    incomeCategories,
     categoryTree,
+    expenseCategoryTree,
+    incomeCategoryTree,
     // Actions
     fetchCategories,
     addCategory,

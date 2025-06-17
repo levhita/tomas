@@ -3,7 +3,7 @@
     Workspace-specific navigation bar
     Adapts styling based on dark/light mode and displays workspace context
   -->
-  <nav class="navbar navbar-expand-lg bg-body-secondary">
+  <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
       <!-- 
         Brand logo and name - always links back to workspaces overview
@@ -46,6 +46,18 @@
               <i class="bi bi-calendar-week me-1"></i>
               Calendar
             </RouterLink>
+          </li>
+
+          <li class="nav-item">
+            <!-- 
+              Categories management button
+              Opens CategoriesModal for managing workspace categories
+              Only visible when workspace is active
+            -->
+            <button v-if="workspace" class="btn btn-link nav-link" @click="openCategoriesModal">
+              <i class="bi bi-tags me-1"></i>
+              Categories
+            </button>
           </li>
           <!-- Additional workspace-specific navigation items can be added here -->
         </ul>
@@ -99,6 +111,12 @@
     Uses the reusable WorkspaceModal component for editing workspace details
   -->
   <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
+
+  <!-- 
+    Categories management modal
+    Uses the CategoriesModal component for managing workspace categories
+  -->
+  <CategoriesModal ref="categoriesModal" :workspace="workspace" />
 </template>
 
 <script setup>
@@ -173,6 +191,7 @@ import { ref } from 'vue'
 import UserMenu from './UserMenu.vue'
 import DarkModeToggle from './DarkModeToggle.vue'
 import WorkspaceModal from './modals/WorkspaceModal.vue'
+import CategoriesModal from './modals/CategoriesModal.vue'
 import { useWorkspacesStore } from '../stores/workspaces'
 
 const props = defineProps({
@@ -184,10 +203,17 @@ const workspacesStore = useWorkspacesStore()
 
 // Template refs
 const workspaceModal = ref(null)
+const categoriesModal = ref(null)
 
 function openWorkspaceSettings() {
   if (props.workspace && workspaceModal.value) {
     workspaceModal.value.showEdit(props.workspace)
+  }
+}
+
+function openCategoriesModal() {
+  if (props.workspace && categoriesModal.value) {
+    categoriesModal.value.show()
   }
 }
 
@@ -201,35 +227,3 @@ async function handleSaveWorkspace(workspaceData) {
   }
 }
 </script>
-
-<style scoped>
-/**
- * Component-specific styles for workspace navigation
- * 
- * Provides custom styling for workspace-specific elements while
- * maintaining Bootstrap compatibility and responsive design.
- */
-
-/**
- * Base navbar styling
- * 
- * Adds consistent padding to the navbar container for
- * better visual spacing and content alignment.
- */
-nav {
-  padding: 1rem;
-}
-
-/**
- * Logo image styling
- * 
- * Sets appropriate size for the logo while maintaining aspect ratio.
- * Negative margin compensates for navbar padding to align logo properly.
- * Auto width maintains proportions based on height constraint.
- */
-.navbar-logo {
-  height: 64px;
-  width: auto;
-  margin: -1rem 0;
-}
-</style>
