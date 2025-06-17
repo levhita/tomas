@@ -32,7 +32,7 @@ const emit = defineEmits(['update:modelValue']);
 const categoriesStore = useCategoriesStore();
 
 const filteredCategories = computed(() => {
-  let categories = categoriesStore.categoryTree.value;
+  let categories = categoriesStore.categoryTree;
 
   if (props.type) {
     categories = categories.filter(category => category.type === props.type);

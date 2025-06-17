@@ -21,28 +21,22 @@
               <label :for="nameFieldId">Name *</label>
             </div>
           </div>
-          <div class="col-md-4">
+          <div v-if="!isChildForm && !isEditingChildCategory" class="col-md-4">
             <div class="form-floating">
-              <template v-if="isChildForm">
-                <input type="text" class="form-control" :id="typeFieldId" :value="typeDisplayValue" readonly disabled>
-                <label :for="typeFieldId">Type</label>
-              </template>
-              <template v-else>
-                <select class="form-select" :id="typeFieldId" v-model="form.type" :disabled="isLoading || typeDisabled">
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-                <label :for="typeFieldId">Type</label>
-                <div v-if="typeDisabled && typeDisabledReason" class="form-text">
-                  <small class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    {{ typeDisabledReason }}
-                  </small>
-                </div>
-              </template>
+              <select class="form-select" :id="typeFieldId" v-model="form.type" :disabled="isLoading || typeDisabled">
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+              <label :for="typeFieldId">Type</label>
+              <div v-if="typeDisabled && typeDisabledReason" class="form-text">
+                <small class="text-muted">
+                  <i class="bi bi-info-circle me-1"></i>
+                  {{ typeDisabledReason }}
+                </small>
+              </div>
             </div>
           </div>
-          <div class="col-md-4">
+          <div v-if="mode !== 'add'" :class="(isChildForm || isEditingChildCategory) ? 'col-md-8' : 'col-md-4'">
             <div class="form-floating">
               <select class="form-select" :id="parentFieldId" v-model="form.parent_category_id"
                 :disabled="isLoading || parentDisabled">
@@ -125,6 +119,7 @@ defineEmits(['submit', 'cancel'])
 // Computed properties for dynamic content
 const isChildForm = computed(() => props.mode === 'add-child')
 const isEditMode = computed(() => props.mode === 'edit')
+const isEditingChildCategory = computed(() => props.mode === 'edit' && props.editingCategory?.parent_category_id)
 
 const title = computed(() => {
   if (props.mode === 'add-child') {
