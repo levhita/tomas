@@ -52,10 +52,3 @@ async function handleSubmit() {
   }
 }
 </script>
-
-<style scoped>
-.login-page {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-}
-</style>

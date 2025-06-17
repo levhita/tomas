@@ -26,84 +26,121 @@
 
           <!-- Categories List -->
           <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <h6 class="card-title mb-0">
-                <i class="bi bi-list-ul me-2"></i>
-                Categories ({{ categoriesStore.categories.length }})
-              </h6>
-              <button class="btn btn-primary btn-sm" @click="showAddRootCategory" :disabled="isLoading">
-                <i class="bi bi-plus-circle me-1"></i>
-                Add Category
-              </button>
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="card-title mb-0">
+                  <i class="bi bi-list-ul me-2"></i>
+                  Categories ({{ filteredCategories.length }})
+                </h6>
+                <button class="btn btn-primary btn-sm" @click="showAddRootCategory" :disabled="isLoading">
+                  <i class="bi bi-plus-circle me-1"></i>
+                  Add Category
+                </button>
+              </div>
+              <!-- Category Type Filter -->
+              <div class="btn-group w-100" role="group" aria-label="Category type filter">
+                <input type="radio" class="btn-check" name="categoryFilter" id="filterAll" value="all"
+                  v-model="categoryFilter">
+                <label class="btn btn-outline-secondary" for="filterAll">All Categories</label>
+
+                <input type="radio" class="btn-check" name="categoryFilter" id="filterExpense" value="expense"
+                  v-model="categoryFilter">
+                <label class="btn btn-outline-danger" for="filterExpense">
+                  <i class="bi bi-arrow-down-circle me-1"></i>Expenses
+                </label>
+
+                <input type="radio" class="btn-check" name="categoryFilter" id="filterIncome" value="income"
+                  v-model="categoryFilter">
+                <label class="btn btn-outline-success" for="filterIncome">
+                  <i class="bi bi-arrow-up-circle me-1"></i>Income
+                </label>
+              </div>
             </div>
             <div class="card-body">
+              <!-- Add Root Category Form (when showForm is true and no editing category) -->
+              <div v-if="showForm && !editingCategory && !parentForNewChild"
+                class="list-group-item bg-body-tertiary mb-3">
+                <div class="card border-0 bg-transparent">
+                  <div class="card-header bg-transparent border-0 px-0 py-2">
+                    <h6 class="card-title mb-0 d-flex justify-content-between align-items-center">
+                      <span>
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Add New Category
+                      </span>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" @click="hideForm"
+                        aria-label="Close form">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </h6>
+                  </div>
+                  <div class="card-body px-0">
+                    <form @submit.prevent="handleSubmit">
+                      <div class="row">
+                        <div class="col-md-4">
+                          <div class="form-floating">
+                            <input type="text" class="form-control" id="categoryName" v-model="form.name" required
+                              :disabled="isLoading" placeholder="e.g., Food, Transportation, Entertainment">
+                            <label for="categoryName">Name *</label>
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="form-floating">
+                            <select class="form-select" id="categoryType" v-model="form.type" :disabled="isLoading">
+                              <option value="expense">Expense</option>
+                              <option value="income">Income</option>
+                            </select>
+                            <label for="categoryType">Type</label>
+                          </div>
+                        </div>
+                        <div class="col-md-4">
+                          <div class="form-floating">
+                            <select class="form-select" id="categoryParent" v-model="form.parent_category_id"
+                              :disabled="isLoading">
+                              <option value="">None (Root Category)</option>
+                              <option v-for="category in availableParentCategories" :key="category.id"
+                                :value="category.id">
+                                {{ category.name }}
+                              </option>
+                            </select>
+                            <label for="categoryParent">Parent Category</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-3">
+                        <div class="form-floating">
+                          <textarea class="form-control textarea-description" id="categoryDescription"
+                            v-model="form.description" rows="2" :disabled="isLoading"
+                            placeholder="Optional description of this category..."></textarea>
+                          <label for="categoryDescription">Description</label>
+                        </div>
+                      </div>
+                      <div class="mt-3">
+                        <button type="submit" class="btn btn-primary me-2" :disabled="isLoading || !form.name.trim()">
+                          <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
+                            aria-hidden="true"></span>
+                          Add Category
+                        </button>
+                        <button type="button" class="btn btn-secondary" @click="hideForm" :disabled="isLoading">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Categories List or Empty State -->
               <div v-if="categoriesStore.categories.length === 0" class="text-center text-muted py-4">
                 <i class="bi bi-tags fs-1 d-block mb-2"></i>
                 <p class="mb-0">No categories found</p>
                 <small>Add your first category above</small>
               </div>
+              <div v-else-if="filteredCategories.length === 0" class="text-center text-muted py-4">
+                <i class="bi bi-funnel fs-1 d-block mb-2"></i>
+                <p class="mb-0">No {{ categoryFilter }} categories found</p>
+                <small>Try a different filter or add a new category</small>
+              </div>
               <div v-else class="list-group list-group-flush">
-                <!-- Add Root Category Form (when showForm is true and no editing category) -->
-                <div v-if="showForm && !editingCategory && !parentForNewChild" class="list-group-item bg-body-tertiary">
-                  <div class="card border-0 bg-transparent">
-                    <div class="card-header bg-transparent border-0 px-0 py-2">
-                      <h6 class="card-title mb-0 d-flex justify-content-between align-items-center">
-                        <span>
-                          <i class="bi bi-plus-circle me-2"></i>
-                          Add New Category
-                        </span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="hideForm"
-                          aria-label="Close form">
-                          <i class="bi bi-x"></i>
-                        </button>
-                      </h6>
-                    </div>
-                    <div class="card-body px-0">
-                      <form @submit.prevent="handleSubmit">
-                        <div class="row">
-                          <div class="col-md-6">
-                            <div class="form-floating">
-                              <input type="text" class="form-control" id="categoryName" v-model="form.name" required
-                                :disabled="isLoading" placeholder="e.g., Food, Transportation, Entertainment">
-                              <label for="categoryName">Name *</label>
-                            </div>
-                          </div>
-                          <div class="col-md-6">
-                            <div class="form-floating">
-                              <select class="form-select" id="categoryParent" v-model="form.parent_category_id"
-                                :disabled="isLoading">
-                                <option value="">None (Root Category)</option>
-                                <option v-for="category in availableParentCategories" :key="category.id"
-                                  :value="category.id">
-                                  {{ category.name }}
-                                </option>
-                              </select>
-                              <label for="categoryParent">Parent Category</label>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="mt-3">
-                          <div class="form-floating">
-                            <textarea class="form-control textarea-description" id="categoryDescription"
-                              v-model="form.description" rows="2" :disabled="isLoading"
-                              placeholder="Optional description of this category..."></textarea>
-                            <label for="categoryDescription">Description</label>
-                          </div>
-                        </div>
-                        <div class="mt-3">
-                          <button type="submit" class="btn btn-primary me-2" :disabled="isLoading || !form.name.trim()">
-                            <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
-                              aria-hidden="true"></span>
-                            Add Category
-                          </button>
-                          <button type="button" class="btn btn-secondary" @click="hideForm" :disabled="isLoading">
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
 
                 <!-- Root Categories -->
                 <div v-for="category in rootCategories" :key="category.id" class="category-item">
@@ -112,6 +149,9 @@
                     <div class="flex-grow-1">
                       <div class="d-flex align-items-center">
                         <strong>{{ category.name }}</strong>
+                        <span class="badge ms-2" :class="category.type === 'expense' ? 'bg-danger' : 'bg-success'">
+                          {{ category.type === 'expense' ? 'Expense' : 'Income' }}
+                        </span>
                         <span v-if="category.description" class="text-muted ms-2">- {{ category.description }}</span>
                       </div>
                     </div>
@@ -150,7 +190,7 @@
                       <div class="card-body px-0">
                         <form @submit.prevent="handleSubmit">
                           <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                               <div class="form-floating">
                                 <input type="text" class="form-control" id="editCategoryName" v-model="form.name"
                                   required :disabled="isLoading"
@@ -158,7 +198,23 @@
                                 <label for="editCategoryName">Name *</label>
                               </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                              <div class="form-floating">
+                                <select class="form-select" id="editCategoryType" v-model="form.type"
+                                  :disabled="isLoading || (editingCategory && hasChildren(editingCategory.id))">
+                                  <option value="expense">Expense</option>
+                                  <option value="income">Income</option>
+                                </select>
+                                <label for="editCategoryType">Type</label>
+                                <div v-if="editingCategory && hasChildren(editingCategory.id)" class="form-text">
+                                  <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Type cannot be changed because this category has child categories
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="col-md-4">
                               <div class="form-floating">
                                 <select class="form-select" id="editCategoryParent" v-model="form.parent_category_id"
                                   :disabled="isLoading">
@@ -214,14 +270,24 @@
                       <div class="card-body px-0">
                         <form @submit.prevent="handleSubmit">
                           <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                               <div class="form-floating">
                                 <input type="text" class="form-control" id="childCategoryName" v-model="form.name"
                                   required :disabled="isLoading" placeholder="e.g., Groceries, Fast Food">
                                 <label for="childCategoryName">Name *</label>
                               </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                              <div class="form-floating">
+                                <select class="form-select" id="childCategoryType" v-model="form.type" :disabled="true">
+                                  <option :value="parentForNewChild.type">
+                                    {{ parentForNewChild.type === 'expense' ? 'Expense' : 'Income' }} (inherited)
+                                  </option>
+                                </select>
+                                <label for="childCategoryType">Type</label>
+                              </div>
+                            </div>
+                            <div class="col-md-4">
                               <div class="form-floating">
                                 <select class="form-select" id="childCategoryParent" v-model="form.parent_category_id"
                                   :disabled="true">
@@ -279,70 +345,80 @@
                   </div>
 
                   <!-- Edit Child Category Form (inline when editing this child category) -->
-                  <div v-if="showForm && editingCategory && editingCategory.id === childCategory.id"
-                    v-for="childCategory in getChildCategories(category.id)" :key="`edit-${childCategory.id}`"
-                    class="list-group-item ps-5 bg-body-tertiary">
-                    <div class="card border-0 bg-transparent">
-                      <div class="card-header bg-transparent border-0 px-0 py-2">
-                        <h6 class="card-title mb-0 d-flex justify-content-between align-items-center">
-                          <span>
-                            <i class="bi bi-pencil me-2"></i>
-                            Edit Child Category
-                          </span>
-                          <button type="button" class="btn btn-sm btn-outline-secondary" @click="hideForm"
-                            aria-label="Close form">
-                            <i class="bi bi-x"></i>
-                          </button>
-                        </h6>
-                      </div>
-                      <div class="card-body px-0">
-                        <form @submit.prevent="handleSubmit">
-                          <div class="row">
-                            <div class="col-md-6">
-                              <div class="form-floating">
-                                <input type="text" class="form-control"
-                                  :id="`editChildCategoryName-${childCategory.id}`" v-model="form.name" required
-                                  :disabled="isLoading" placeholder="e.g., Groceries, Fast Food">
-                                <label :for="`editChildCategoryName-${childCategory.id}`">Name *</label>
+                  <template v-for="childCategory in getChildCategories(category.id)" :key="`edit-${childCategory.id}`">
+                    <div v-if="showForm && editingCategory && editingCategory.id === childCategory.id"
+                      class="list-group-item ps-5 bg-body-tertiary">
+                      <div class="card border-0 bg-transparent">
+                        <div class="card-header bg-transparent border-0 px-0 py-2">
+                          <h6 class="card-title mb-0 d-flex justify-content-between align-items-center">
+                            <span>
+                              <i class="bi bi-pencil me-2"></i>
+                              Edit Child Category
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="hideForm"
+                              aria-label="Close form">
+                              <i class="bi bi-x"></i>
+                            </button>
+                          </h6>
+                        </div>
+                        <div class="card-body px-0">
+                          <form @submit.prevent="handleSubmit">
+                            <div class="row">
+                              <div class="col-md-4">
+                                <div class="form-floating">
+                                  <input type="text" class="form-control"
+                                    :id="`editChildCategoryName-${childCategory.id}`" v-model="form.name" required
+                                    :disabled="isLoading" placeholder="e.g., Groceries, Fast Food">
+                                  <label :for="`editChildCategoryName-${childCategory.id}`">Name *</label>
+                                </div>
+                              </div>
+                              <div class="col-md-4">
+                                <div class="form-floating">
+                                  <input type="text" class="form-control"
+                                    :id="`editChildCategoryType-${childCategory.id}`"
+                                    :value="`${form.type === 'expense' ? 'Expense' : 'Income'} (inherited from parent)`"
+                                    readonly disabled>
+                                  <label :for="`editChildCategoryType-${childCategory.id}`">Type</label>
+                                </div>
+                              </div>
+                              <div class="col-md-4">
+                                <div class="form-floating">
+                                  <select class="form-select" :id="`editChildCategoryParent-${childCategory.id}`"
+                                    v-model="form.parent_category_id" :disabled="isLoading">
+                                    <option value="">None (Root Category)</option>
+                                    <option v-for="cat in availableParentCategories" :key="cat.id" :value="cat.id">
+                                      {{ cat.name }}
+                                    </option>
+                                  </select>
+                                  <label :for="`editChildCategoryParent-${childCategory.id}`">Parent Category</label>
+                                </div>
                               </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="mt-3">
                               <div class="form-floating">
-                                <select class="form-select" :id="`editChildCategoryParent-${childCategory.id}`"
-                                  v-model="form.parent_category_id" :disabled="isLoading">
-                                  <option value="">None (Root Category)</option>
-                                  <option v-for="cat in availableParentCategories" :key="cat.id" :value="cat.id">
-                                    {{ cat.name }}
-                                  </option>
-                                </select>
-                                <label :for="`editChildCategoryParent-${childCategory.id}`">Parent Category</label>
+                                <textarea class="form-control textarea-description"
+                                  :id="`editChildCategoryDescription-${childCategory.id}`" v-model="form.description"
+                                  rows="2" :disabled="isLoading"
+                                  placeholder="Optional description of this category..."></textarea>
+                                <label :for="`editChildCategoryDescription-${childCategory.id}`">Description</label>
                               </div>
                             </div>
-                          </div>
-                          <div class="mt-3">
-                            <div class="form-floating">
-                              <textarea class="form-control textarea-description"
-                                :id="`editChildCategoryDescription-${childCategory.id}`" v-model="form.description"
-                                rows="2" :disabled="isLoading"
-                                placeholder="Optional description of this category..."></textarea>
-                              <label :for="`editChildCategoryDescription-${childCategory.id}`">Description</label>
+                            <div class="mt-3">
+                              <button type="submit" class="btn btn-primary me-2"
+                                :disabled="isLoading || !form.name.trim()">
+                                <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
+                                  aria-hidden="true"></span>
+                                Update Category
+                              </button>
+                              <button type="button" class="btn btn-secondary" @click="hideForm" :disabled="isLoading">
+                                Cancel
+                              </button>
                             </div>
-                          </div>
-                          <div class="mt-3">
-                            <button type="submit" class="btn btn-primary me-2"
-                              :disabled="isLoading || !form.name.trim()">
-                              <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
-                                aria-hidden="true"></span>
-                              Update Category
-                            </button>
-                            <button type="button" class="btn btn-secondary" @click="hideForm" :disabled="isLoading">
-                              Cancel
-                            </button>
-                          </div>
-                        </form>
+                          </form>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -413,13 +489,15 @@ const modalElement = ref(null)
 const form = ref({
   name: '',
   description: '',
-  parent_category_id: null
+  parent_category_id: null,
+  type: 'expense'
 })
 
 const editingCategory = ref(null)
 const isLoading = ref(false)
 const showForm = ref(false)
 const parentForNewChild = ref(null)
+const categoryFilter = ref('all') // 'all', 'expense', 'income'
 
 // Notification state
 const notification = ref({
@@ -433,8 +511,15 @@ const notification = ref({
 let bsModal = null
 
 // Computed properties
+const filteredCategories = computed(() => {
+  if (categoryFilter.value === 'all') {
+    return categoriesStore.categories
+  }
+  return categoriesStore.categories.filter(c => c.type === categoryFilter.value)
+})
+
 const rootCategories = computed(() => {
-  return categoriesStore.categories.filter(c => !c.parent_category_id)
+  return filteredCategories.value.filter(c => !c.parent_category_id)
 })
 
 const availableParentCategories = computed(() => {
@@ -444,15 +529,23 @@ const availableParentCategories = computed(() => {
     return categoriesStore.categories.filter(c =>
       c.id !== editingCategory.value.id &&
       !childIds.includes(c.id) &&
-      !c.parent_category_id // Only show root categories as potential parents
+      !c.parent_category_id && // Only show root categories as potential parents
+      c.type === form.value.type // Only show categories of the same type
     )
   }
-  return categoriesStore.categories.filter(c => !c.parent_category_id)
+  return categoriesStore.categories.filter(c =>
+    !c.parent_category_id &&
+    c.type === form.value.type // Only show categories of the same type
+  )
 })
 
 // Helper functions
 function getChildCategories(parentId) {
-  return categoriesStore.categories.filter(c => c.parent_category_id === parentId)
+  return filteredCategories.value.filter(c => c.parent_category_id === parentId)
+}
+
+function hasChildren(categoryId) {
+  return categoriesStore.categories.some(c => c.parent_category_id === categoryId)
 }
 
 function getAllChildIds(parentId) {
@@ -505,6 +598,7 @@ function showAddRootCategory() {
 function showAddChildCategory(parentCategory) {
   resetForm()
   form.value.parent_category_id = parentCategory.id
+  form.value.type = parentCategory.type // Inherit type from parent
   parentForNewChild.value = parentCategory
   showForm.value = true
 }
@@ -550,7 +644,8 @@ function resetForm() {
   form.value = {
     name: '',
     description: '',
-    parent_category_id: null
+    parent_category_id: null,
+    type: 'expense'
   }
   editingCategory.value = null
   parentForNewChild.value = null
@@ -570,6 +665,7 @@ async function handleSubmit() {
       name: form.value.name.trim(),
       description: form.value.description?.trim() || '',
       parent_category_id: form.value.parent_category_id || null,
+      type: form.value.type,
       workspace_id: props.workspace.id
     }
 
@@ -604,7 +700,8 @@ function editCategory(category) {
   form.value = {
     name: category.name,
     description: category.description || '',
-    parent_category_id: category.parent_category_id || null
+    parent_category_id: category.parent_category_id || null,
+    type: category.type || 'expense'
   }
   parentForNewChild.value = null
   showForm.value = true

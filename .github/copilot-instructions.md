@@ -27,3 +27,10 @@ Whenever possible split components into smaller, reusable components. This will 
 We use Pinia for state management. Please ensure that any new components or pages are compatible with Pinia.
 We use Pinia with the Composition API. Please ensure that any new components or pages use the Composition API.
 We use Pinia with the `defineStore` function. Please ensure that any new stores use the `defineStore` function.
+
+## Credit vs debit accounts
+
+For credit accounts, the logic is reversed because:
+
+Debit accounts: Expenses decrease the balance (negative), Income increases the balance (positive)
+Credit accounts: Expenses increase the debt/balance (positive), Income/payments decrease the debt/balance (negative)

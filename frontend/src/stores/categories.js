@@ -17,8 +17,32 @@ export const useCategoriesStore = defineStore('categories', () => {
     return (id) => categories.value.find(c => c.id === id);
   });
 
+  const expenseCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'expense');
+  });
+
+  const incomeCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'income');
+  });
+
   const categoryTree = computed(() => {
     const rootCategories = categories.value.filter(c => !c.parent_category_id);
+    return rootCategories.map(category => ({
+      ...category,
+      children: getChildCategories(category.id)
+    }));
+  });
+
+  const expenseCategoryTree = computed(() => {
+    const rootCategories = categories.value.filter(c => !c.parent_category_id && c.type === 'expense');
+    return rootCategories.map(category => ({
+      ...category,
+      children: getChildCategories(category.id)
+    }));
+  });
+
+  const incomeCategoryTree = computed(() => {
+    const rootCategories = categories.value.filter(c => !c.parent_category_id && c.type === 'income');
     return rootCategories.map(category => ({
       ...category,
       children: getChildCategories(category.id)
@@ -146,7 +170,11 @@ export const useCategoriesStore = defineStore('categories', () => {
     // Getters
     categoriesByName,
     getCategoryById,
+    expenseCategories,
+    incomeCategories,
     categoryTree,
+    expenseCategoryTree,
+    incomeCategoryTree,
     // Actions
     fetchCategories,
     addCategory,
