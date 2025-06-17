@@ -1,7 +1,7 @@
 <template>
   <!-- Bootstrap Modal Container -->
-  <div class="modal fade transaction-modal" :class="{ show: modelValue }"
-    :style="{ display: modelValue ? 'block' : 'none' }" tabindex="-1" ref="modalElement">
+  <div class="modal fade" :class="{ show: modelValue }" :style="{ display: modelValue ? 'block' : 'none' }"
+    tabindex="-1" ref="modalElement">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <!-- Modal Header -->

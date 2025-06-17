@@ -1,6 +1,6 @@
 <template>
   <!-- New/Edit Workspace Modal -->
-  <div class="modal fade workspace-modal" id="workspaceModal" tabindex="-1" ref="modalElement">
+  <div class="modal fade" id="workspaceModal" tabindex="-1" ref="modalElement">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
