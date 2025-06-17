@@ -47,7 +47,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
-import packageInfo from '../../../package.json'
 
 const router = useRouter()
 const usersStore = useUsersStore()
@@ -56,7 +55,7 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const isLoading = ref(false)
-const version = ref(packageInfo.version)
+const version = ref('0.1.0') // Update this manually when needed
 
 async function handleLogin() {
   try {
