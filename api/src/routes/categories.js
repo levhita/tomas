@@ -98,16 +98,17 @@ router.get('/:id', async (req, res) => {
  * @body {string} note - Optional category description
  * @body {number} parent_category_id - Optional parent category ID for hierarchical categories
  * @body {number} workspace_id - Required workspace ID
- * @body {string} type - Category type (expense or income), defaults to expense
+ * @body {string} type - Category type (expense or income), defaults to expense. Ignored if parent_category_id is provided.
  * @permission Write access to the workspace (admin, collaborator)
  * @returns {Object} Newly created category
  * 
  * Hierarchy constraints:
  * - If parent_category_id is provided, that category must not have a parent itself
  * - Parent category must belong to the same workspace
+ * - Child categories automatically inherit parent type (type parameter is ignored)
  */
 router.post('/', async (req, res) => {
-  const { name, note = null, parent_category_id = null, workspace_id, type = 'expense' } = req.body;
+  let { name, note = null, parent_category_id = null, workspace_id, type = 'expense' } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -150,6 +151,9 @@ router.post('/', async (req, res) => {
           error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
         });
       }
+
+      // Enforce type inheritance - child category MUST inherit parent type, ignore passed type
+      type = parentCategories[0].type;
     }
 
     // Create the new category
@@ -188,9 +192,12 @@ router.post('/', async (req, res) => {
  * - A category with children cannot become a child of another category
  * - Parent category must belong to the same workspace
  * - If parent_category_id is provided, that category must not have a parent itself
+ * - Child categories must have the same type as their parent
+ * - When a parent category type changes, all child categories inherit the new type
+ * - When moving a category to a different parent, type is inherited from new parent
  */
 router.put('/:id', async (req, res) => {
-  const { name, note, type, parent_category_id } = req.body;
+  let { name, note, type, parent_category_id } = req.body;
 
   try {
     // First fetch the category to check workspace access
@@ -204,6 +211,7 @@ router.put('/:id', async (req, res) => {
 
     const workspaceId = categories[0].workspace_id;
     const categoryId = parseInt(req.params.id);
+    const currentCategory = categories[0];
 
     // Verify user has write access to the workspace
     const { allowed, message } = await canWrite(workspaceId, req.user.id);
@@ -211,8 +219,16 @@ router.put('/:id', async (req, res) => {
       return res.status(403).json({ error: message });
     }
 
+    // Check if this category has children to enforce type inheritance
+    const [childCheck] = await db.query(`
+      SELECT COUNT(*) AS child_count
+      FROM category
+      WHERE parent_category_id = ?
+    `, [categoryId]);
+
+    const hasChildren = childCheck[0].child_count > 0;
+
     // If parent category is being updated, perform additional checks
-    // to maintain the two-level hierarchy constraint
     if (parent_category_id) {
       // Check if trying to assign itself as parent (circular reference)
       if (parseInt(parent_category_id) === categoryId) {
@@ -243,41 +259,72 @@ router.put('/:id', async (req, res) => {
       }
 
       // Check if this category has children (can't make a category with children a child of another category)
-      // This ensures we maintain the max two-level hierarchy
-      const [childCheck] = await db.query(`
-        SELECT COUNT(*) AS child_count
-        FROM category
-        WHERE parent_category_id = ?
-      `, [categoryId]);
-
-      if (childCheck[0].child_count > 0) {
+      if (hasChildren) {
         return res.status(400).json({
           error: 'Cannot assign a parent to this category because it already has child categories'
         });
       }
+
+      // Enforce type inheritance - when setting a parent, type must inherit from parent
+      type = parentCategories[0].type;
+    } else if (parent_category_id === null && currentCategory.parent_category_id !== null) {
+      // Category is being moved from child to root level - type can be changed
+      // but must be provided
+      if (!type) {
+        return res.status(400).json({ error: 'Type is required when moving category to root level' });
+      }
+    } else if (currentCategory.parent_category_id !== null) {
+      // Category remains a child - cannot change type independently
+      const [parentCategories] = await db.query(`
+        SELECT type FROM category WHERE id = ?
+      `, [currentCategory.parent_category_id]);
+
+      if (parentCategories.length > 0) {
+        type = parentCategories[0].type;
+      }
     }
 
-    // Update the category
-    const [result] = await db.query(`
-      UPDATE category
-      SET name = ?,
-          note = ?,
-          type = ?,
-          parent_category_id = ?
-      WHERE id = ?
-    `, [name, note, type, parent_category_id, categoryId]);
+    // Start a transaction for the update operation
+    await db.query('START TRANSACTION');
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Category not found' });
+    try {
+      // Update the category
+      const [result] = await db.query(`
+        UPDATE category
+        SET name = ?,
+            note = ?,
+            type = ?,
+            parent_category_id = ?
+        WHERE id = ?
+      `, [name, note, type, parent_category_id, categoryId]);
+
+      if (result.affectedRows === 0) {
+        await db.query('ROLLBACK');
+        return res.status(404).json({ error: 'Category not found' });
+      }
+
+      // If this category has children and the type changed, update all children
+      if (hasChildren && type !== currentCategory.type) {
+        await db.query(`
+          UPDATE category
+          SET type = ?
+          WHERE parent_category_id = ?
+        `, [type, categoryId]);
+      }
+
+      await db.query('COMMIT');
+
+      // Fetch the updated category
+      const [updatedCategories] = await db.query(`
+        SELECT * FROM category 
+        WHERE id = ?
+      `, [categoryId]);
+
+      res.status(200).json(updatedCategories[0]);
+    } catch (transactionError) {
+      await db.query('ROLLBACK');
+      throw transactionError;
     }
-
-    // Fetch the updated category
-    const [updatedCategories] = await db.query(`
-      SELECT * FROM category 
-      WHERE id = ?
-    `, [categoryId]);
-
-    res.status(200).json(updatedCategories[0]);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update category' });
