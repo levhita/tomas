@@ -26,28 +26,30 @@ export const useCategoriesStore = defineStore('categories', () => {
   });
 
   const categoryTree = computed(() => {
-    const rootCategories = categories.value.filter(c => !c.parent_category_id);
-    return rootCategories.map(category => ({
-      ...category,
-      children: getChildCategories(category.id)
-    }));
+    return buildCategoryTree();
   });
 
   const expenseCategoryTree = computed(() => {
-    const rootCategories = categories.value.filter(c => !c.parent_category_id && c.type === 'expense');
-    return rootCategories.map(category => ({
-      ...category,
-      children: getChildCategories(category.id)
-    }));
+    return buildCategoryTree('expense');
   });
 
   const incomeCategoryTree = computed(() => {
-    const rootCategories = categories.value.filter(c => !c.parent_category_id && c.type === 'income');
+    return buildCategoryTree('income');
+  });
+
+  // Helper function to build category tree with optional type filter
+  function buildCategoryTree(typeFilter = null) {
+    const rootCategories = categories.value.filter(c => {
+      const isRoot = !c.parent_category_id;
+      const matchesType = typeFilter ? c.type === typeFilter : true;
+      return isRoot && matchesType;
+    });
+
     return rootCategories.map(category => ({
       ...category,
       children: getChildCategories(category.id)
     }));
-  });
+  }
 
   // Helper function for Tree
   function getChildCategories(parentId) {
