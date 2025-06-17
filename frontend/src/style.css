@@ -17,3 +17,25 @@ main {
 .totals {
   margin-left: 1rem;
 }
+
+/* Custom component styles */
+
+/* Textarea heights for form-floating */
+.textarea-description {
+  height: 100px !important;
+}
+
+/* Transaction modal textarea */
+.textarea-details {
+  min-height: 6rem;
+}
+
+/* Login card width */
+.login-card {
+  width: 24rem;
+}
+
+/* Calendar view sidebar */
+.calendar-sidebar {
+  height: calc(100vh - 170px);
+}

@@ -14,7 +14,7 @@
         v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
 
       <div class="row w-100 ps-2">
-        <div class="col-4 overflow-scroll" :style="{ height: 'calc(100vh - 170px) ' }">
+        <div class="col-4 overflow-scroll calendar-sidebar">
           <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
             @edit-transaction="showTransactionModal" />
         </div>

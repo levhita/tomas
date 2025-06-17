@@ -47,6 +47,18 @@
               Calendar
             </RouterLink>
           </li>
+
+          <li class="nav-item">
+            <!-- 
+              Categories management button
+              Opens CategoriesModal for managing workspace categories
+              Only visible when workspace is active
+            -->
+            <button v-if="workspace" class="btn btn-link nav-link" @click="openCategoriesModal">
+              <i class="bi bi-tags me-1"></i>
+              Categories
+            </button>
+          </li>
           <!-- Additional workspace-specific navigation items can be added here -->
         </ul>
 
@@ -99,6 +111,12 @@
     Uses the reusable WorkspaceModal component for editing workspace details
   -->
   <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
+
+  <!-- 
+    Categories management modal
+    Uses the CategoriesModal component for managing workspace categories
+  -->
+  <CategoriesModal ref="categoriesModal" :workspace="workspace" />
 </template>
 
 <script setup>
@@ -173,6 +191,7 @@ import { ref } from 'vue'
 import UserMenu from './UserMenu.vue'
 import DarkModeToggle from './DarkModeToggle.vue'
 import WorkspaceModal from './modals/WorkspaceModal.vue'
+import CategoriesModal from './modals/CategoriesModal.vue'
 import { useWorkspacesStore } from '../stores/workspaces'
 
 const props = defineProps({
@@ -184,10 +203,17 @@ const workspacesStore = useWorkspacesStore()
 
 // Template refs
 const workspaceModal = ref(null)
+const categoriesModal = ref(null)
 
 function openWorkspaceSettings() {
   if (props.workspace && workspaceModal.value) {
     workspaceModal.value.showEdit(props.workspace)
+  }
+}
+
+function openCategoriesModal() {
+  if (props.workspace && categoriesModal.value) {
+    categoriesModal.value.show()
   }
 }
 

@@ -119,7 +119,10 @@ export const useCategoriesStore = defineStore('categories', () => {
 
       if (!response.ok && response.status !== 204) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete category');
+        const error = new Error(errorData.error || 'Failed to delete category');
+        error.status = response.status;
+        error.code = response.status === 428 ? 'CATEGORY_HAS_TRANSACTIONS' : 'UNKNOWN_ERROR';
+        throw error;
       }
 
       const index = categories.value.findIndex(c => c.id === id);

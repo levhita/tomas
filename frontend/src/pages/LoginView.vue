@@ -1,6 +1,6 @@
 <template>
   <div class="login-page d-flex align-items-center justify-content-center">
-    <div class="card" style="width: 24rem;">
+    <div class="card login-card">
       <div class="card-body">
         <h2 class="card-title text-center mb-4">Login</h2>
         <form @submit.prevent="handleSubmit">
