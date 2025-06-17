@@ -5,7 +5,7 @@ We use Bootstrap 5.3 for styling and layout. Please ensure that any new componen
 
 We use Bootstrap 5.3 which has native dark mode support. Please ensure that any new components or pages are compatible with dark mode.
 
-Including using bg-secondary, bg-primary, bg-tertiary for backgrounds, instead of bg-light, bg-dark, etc.
+Including using bg-body-secondary, bg-body-primary, bg-body-tertiary for backgrounds, instead of bg-light, bg-dark, etc.
 
 Prefer to use bootstrap styles and classes, when in need add the custom styles to the main style.css file instead of inline or scoped styles.
 
