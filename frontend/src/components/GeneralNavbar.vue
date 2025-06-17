@@ -1,9 +1,8 @@
 <template>
-  <nav class="navbar navbar-expand-lg bg-body-secondary shadow-sm">
+  <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
-      <RouterLink class="navbar-brand  d-flex align-items-center" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo me-2">
-        Tomás
+      <RouterLink class="navbar-brand fw-bold fs-4 d-flex align-items-center" to="/workspaces">
+        <img src="/logo/logotype_512.png" alt="Tomás - Purrfect Budgets" class="navbar-logo me-2">
       </RouterLink>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -43,20 +42,3 @@ import DarkModeToggle from './DarkModeToggle.vue'
 
 const usersStore = useUsersStore()
 </script>
-
-<style scoped>
-nav {
-  padding: 1rem;
-}
-
-.navbar-brand {
-  font-weight: bold;
-  font-size: 1.5rem;
-}
-
-.navbar-logo {
-  height: 64px;
-  width: auto;
-  margin: -1rem 0;
-}
-</style>

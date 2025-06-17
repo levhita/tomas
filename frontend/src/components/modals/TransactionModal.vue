@@ -67,7 +67,7 @@
             </div>
 
             <div class="form-floating mb-3">
-              <textarea id="noteTextarea" class="form-control textarea-details" v-model="transaction.note"
+              <textarea id="noteTextarea" class="form-control" v-model="transaction.note"
                 placeholder="Additional details..."></textarea>
               <label for="noteTextarea">Note</label>
             </div>

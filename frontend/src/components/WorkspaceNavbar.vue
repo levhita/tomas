@@ -3,7 +3,7 @@
     Workspace-specific navigation bar
     Adapts styling based on dark/light mode and displays workspace context
   -->
-  <nav class="navbar navbar-expand-lg bg-body-secondary">
+  <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
       <!-- 
         Brand logo and name - always links back to workspaces overview
@@ -227,35 +227,3 @@ async function handleSaveWorkspace(workspaceData) {
   }
 }
 </script>
-
-<style scoped>
-/**
- * Component-specific styles for workspace navigation
- * 
- * Provides custom styling for workspace-specific elements while
- * maintaining Bootstrap compatibility and responsive design.
- */
-
-/**
- * Base navbar styling
- * 
- * Adds consistent padding to the navbar container for
- * better visual spacing and content alignment.
- */
-nav {
-  padding: 1rem;
-}
-
-/**
- * Logo image styling
- * 
- * Sets appropriate size for the logo while maintaining aspect ratio.
- * Negative margin compensates for navbar padding to align logo properly.
- * Auto width maintains proportions based on height constraint.
- */
-.navbar-logo {
-  height: 64px;
-  width: auto;
-  margin: -1rem 0;
-}
-</style>
