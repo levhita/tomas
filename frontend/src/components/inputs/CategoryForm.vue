@@ -23,17 +23,11 @@
           </div>
           <div v-if="!isChildForm && !isEditingChildCategory" class="col-md-4">
             <div class="form-floating">
-              <select class="form-select" :id="typeFieldId" v-model="form.type" :disabled="isLoading || typeDisabled">
+              <select class="form-select" :id="typeFieldId" v-model="form.type" :disabled="isLoading">
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
               </select>
               <label :for="typeFieldId">Type</label>
-              <div v-if="typeDisabled && typeDisabledReason" class="form-text">
-                <small class="text-muted">
-                  <i class="bi bi-info-circle me-1"></i>
-                  {{ typeDisabledReason }}
-                </small>
-              </div>
             </div>
           </div>
           <div v-if="mode !== 'add'" :class="(isChildForm || isEditingChildCategory) ? 'col-md-8' : 'col-md-4'">
@@ -99,14 +93,6 @@ const props = defineProps({
   editingCategory: {
     type: Object,
     default: null
-  },
-  typeDisabled: {
-    type: Boolean,
-    default: false
-  },
-  typeDisabledReason: {
-    type: String,
-    default: ''
   },
   parentDisabled: {
     type: Boolean,

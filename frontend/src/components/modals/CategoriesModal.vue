@@ -112,8 +112,6 @@
                     class="list-group-item bg-body-tertiary">
                     <CategoryForm :form="form" :is-loading="isLoading"
                       :available-parent-categories="availableParentCategories" :editing-category="editingCategory"
-                      :type-disabled="hasChildren(editingCategory.id)"
-                      :type-disabled-reason="hasChildren(editingCategory.id) ? 'Type cannot be changed because this category has child categories' : ''"
                       mode="edit" @submit="handleSubmit" @cancel="hideForm" />
                   </div>
 
