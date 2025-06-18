@@ -76,14 +76,15 @@ async function authenticateToken(req, res, next) {
     );
 
     if (users.length === 0) {
-      return res.status(403).json({ error: 'Invalid user' });
+      console.log('Token validation failed: user not found or username mismatch for user ID:', decoded.userId);
+      return res.status(403).json({ error: 'Invalid token' });
     }
 
     // Validate admin claim from token against database
     // This prevents using a token with outdated privileges
     if (decoded.superadmin !== !!users[0].superadmin) {
-      console.warn('Token superadmin claim mismatch for user:', decoded.userId);
-      return res.status(403).json({ error: 'Token privileges invalid' });
+      console.log('Token validation failed: superadmin claim mismatch for user:', decoded.userId);
+      return res.status(403).json({ error: 'Invalid token' });
     }
 
     // Convert database 0/1 to boolean for consistency
@@ -98,7 +99,7 @@ async function authenticateToken(req, res, next) {
   } catch (err) {
     // Handle JWT verification errors
     // This captures expired tokens, invalid signatures, etc.
-    console.error('Token verification error:', err);
+    console.log('Token verification failed:', err.name, err.message);
     return res.status(403).json({ error: 'Invalid token' });
   }
 }
