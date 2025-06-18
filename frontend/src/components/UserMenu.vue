@@ -14,7 +14,7 @@
       <li>
         <span class="dropdown-item-text">
           <small class="text-muted">
-            {{ usersStore.isSuperAdmin ? 'Super Administrator' : 'User' }}
+            {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
           </small>
         </span>
       </li>

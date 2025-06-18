@@ -1,11 +1,12 @@
 <template>
   <!-- New/Edit Workspace Modal -->
-  <div class="modal fade" id="workspaceModal" tabindex="-1" ref="modalElement">
+  <div class="modal fade" :class="{ show: modelValue }" :style="{ display: modelValue ? 'block' : 'none' }"
+    tabindex="-1" ref="modalElement">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">{{ isEditing ? 'Edit' : 'New' }} Workspace</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
@@ -71,7 +72,7 @@
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" :disabled="isLoading">
+          <button type="button" class="btn btn-secondary" @click="close" :disabled="isLoading">
             Cancel
           </button>
           <button type="button" class="btn btn-primary" @click="handleSubmit"
@@ -84,6 +85,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Bootstrap Modal Backdrop -->
+  <div v-if="modelValue" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
@@ -128,11 +132,12 @@
  * @component
  */
 
-import { ref, computed } from 'vue'
-import { Modal } from 'bootstrap'
+import { ref, computed, watch } from 'vue'
 
 // Props
 const props = defineProps({
+  modelValue: Boolean,
+  workspace: Object,
   isLoading: {
     type: Boolean,
     default: false
@@ -140,7 +145,7 @@ const props = defineProps({
 })
 
 // Events
-const emit = defineEmits(['save'])
+const emit = defineEmits(['update:modelValue', 'save'])
 
 // Template refs
 const modalElement = ref(null)
@@ -154,10 +159,9 @@ const form = ref({
   id: null
 })
 
-const isEditing = ref(false)
-
-// Bootstrap modal instance
-let bsModal = null
+const isEditing = computed(() => {
+  return !!(props.workspace && props.workspace.id)
+})
 
 /**
  * Computed property to capitalize the first letter of a string
@@ -172,73 +176,6 @@ const capitalizeFirst = computed(() => {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 })
-
-/**
- * Initialize Bootstrap modal when component mounts
- * Creates a new Bootstrap Modal instance if one doesn't exist
- */
-function initializeModal() {
-  if (modalElement.value && !bsModal) {
-    bsModal = new Modal(modalElement.value)
-  }
-}
-
-/**
- * Shows the modal for creating a new workspace
- * Resets form data to default values and sets editing mode to false
- * 
- * @function showNew
- * @returns {void}
- */
-function showNew() {
-  initializeModal()
-  form.value = {
-    name: '',
-    description: '',
-    currency_symbol: '$',
-    week_start: 'monday',
-    id: null
-  }
-  isEditing.value = false
-  bsModal?.show()
-}
-
-/**
- * Shows the modal for editing an existing workspace
- * Pre-populates form with workspace data and sets editing mode to true
- * 
- * @function showEdit
- * @param {Object} workspace - Workspace object to edit
- * @param {number} workspace.id - Workspace ID
- * @param {string} workspace.name - Workspace name
- * @param {string} workspace.description - Workspace description
- * @param {string} workspace.currency_symbol - Currency symbol
- * @param {string} workspace.week_start - Week start day
- * @returns {void}
- */
-function showEdit(workspace) {
-  initializeModal()
-  form.value = {
-    name: workspace.name || '',
-    description: workspace.description || '',
-    currency_symbol: workspace.currency_symbol || '$',
-    week_start: workspace.week_start || 'monday',
-    id: workspace.id
-  }
-  isEditing.value = true
-  bsModal?.show()
-}
-
-/**
- * Hides the modal
- * Uses Bootstrap's modal hide method to close the modal
- * 
- * @function hide
- * @returns {void}
- */
-function hide() {
-  bsModal?.hide()
-}
 
 /**
  * Handles form submission
@@ -269,10 +206,40 @@ function handleSubmit() {
   emit('save', workspaceData)
 }
 
-// Expose methods for parent component access
-defineExpose({
-  showNew,
-  showEdit,
-  hide
+/**
+ * Close the modal
+ */
+function close() {
+  emit('update:modelValue', false)
+}
+
+// Watch for modal visibility changes
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    // Show modal - add modal-open class to body and populate form
+    document.body.classList.add('modal-open')
+    if (props.workspace) {
+      // Editing existing workspace
+      form.value = {
+        name: props.workspace.name || '',
+        description: props.workspace.description || '',
+        currency_symbol: props.workspace.currency_symbol || '$',
+        week_start: props.workspace.week_start || 'monday',
+        id: props.workspace.id
+      }
+    } else {
+      // Creating new workspace
+      form.value = {
+        name: '',
+        description: '',
+        currency_symbol: '$',
+        week_start: 'monday',
+        id: null
+      }
+    }
+  } else {
+    // Remove modal-open class from body when modal hides
+    document.body.classList.remove('modal-open')
+  }
 })
 </script>

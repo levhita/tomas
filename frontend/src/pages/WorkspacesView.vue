@@ -56,7 +56,8 @@
       </div>
 
       <!-- Workspace Modal Component -->
-      <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
+      <WorkspaceModal v-model="showWorkspaceModal" :workspace="selectedWorkspace" :isLoading="workspacesStore.isLoading"
+        @save="handleSaveWorkspace" />
 
       <!-- Delete Confirmation Modal -->
       <div class="modal fade" id="deleteModal" tabindex="-1" ref="deleteModal">
@@ -95,7 +96,9 @@ import WorkspaceModal from '../components/modals/WorkspaceModal.vue';
 const router = useRouter();
 const workspacesStore = useWorkspacesStore();
 
-const workspaceModal = ref(null);
+// Component state
+const showWorkspaceModal = ref(false)
+const selectedWorkspace = ref(null)
 const deleteModal = ref(null);
 const workspaceToDelete = ref(null);
 
@@ -120,17 +123,19 @@ function formatDate(dateString) {
 }
 
 function showNewWorkspaceModal() {
-  workspaceModal.value?.showNew();
+  selectedWorkspace.value = null
+  showWorkspaceModal.value = true
 }
 
 function editWorkspace(workspace) {
-  workspaceModal.value?.showEdit(workspace);
+  selectedWorkspace.value = workspace
+  showWorkspaceModal.value = true
 }
 
 async function handleSaveWorkspace(workspaceData) {
   try {
     await workspacesStore.saveWorkspace(workspaceData)
-    workspaceModal.value?.hide()
+    showWorkspaceModal.value = false
   } catch (error) {
     alert('Error saving workspace: ' + error.message)
   }
