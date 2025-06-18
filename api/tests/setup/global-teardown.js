@@ -22,8 +22,19 @@ module.exports = async () => {
   });
 
   try {
-    // Clean up test data (optional - could leave for debugging)
-    const tables = ['transaction', 'total', 'category', 'account', 'workspace_user', 'workspace', 'user'];
+    // Temporarily disable foreign key checks to handle circular references
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+    // Clean up test data in correct order (children before parents)
+    const tables = [
+      'transaction',    // references account, category
+      'total',          // references account
+      'category',       // references category (self), workspace  
+      'account',        // references workspace
+      'workspace_user', // references workspace, user
+      'workspace',      // referenced by account, category, workspace_user
+      'user'           // referenced by workspace_user
+    ];
 
     for (const table of tables) {
       try {
@@ -34,8 +45,17 @@ module.exports = async () => {
       }
     }
 
+    // Re-enable foreign key checks
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+
     console.log('✅ Test database cleanup complete');
   } catch (error) {
+    // Make sure to re-enable foreign key checks even if there's an error
+    try {
+      await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+    } catch (fkError) {
+      // Ignore FK re-enable errors during cleanup
+    }
     console.error('❌ Failed to cleanup test database:', error);
   } finally {
     await connection.end();

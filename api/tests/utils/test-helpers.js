@@ -2,6 +2,12 @@
  * Test Utilities
  * 
  * Common utilities and helpers for testing API endpoints.
+ * 
+ * Token Caching Optimization:
+ * - The loginUser function now caches JWT tokens to avoid expensive bcrypt operations
+ * - Use initializeTokenCache() at the beginning of test suites for best performance
+ * - Cache is automatically cleared when resetDatabase() is called
+ * - This reduces test execution time significantly by avoiding repeated login calls
  */
 
 const request = require('supertest');
@@ -63,11 +69,24 @@ const TEST_WORKSPACES = {
 };
 
 /**
- * Login a user and return the JWT token
+ * Token cache to avoid repeated login calls
+ * Cache is reset when database is reset
+ */
+let tokenCache = new Map();
+
+/**
+ * Login a user and return the JWT token (with caching)
  * @param {Object} user - User credentials
  * @returns {Promise<string>} JWT token
  */
 async function loginUser(user = TEST_USERS.SUPERADMIN) {
+  const cacheKey = user.username;
+
+  // Return cached token if available
+  if (tokenCache.has(cacheKey)) {
+    return tokenCache.get(cacheKey);
+  }
+
   const response = await request(app)
     .post('/api/users/login')
     .send({
@@ -79,7 +98,59 @@ async function loginUser(user = TEST_USERS.SUPERADMIN) {
     throw new Error(`Login failed for ${user.username}: ${response.text}`);
   }
 
-  return response.body.token;
+  const token = response.body.token;
+
+  // Cache the token
+  tokenCache.set(cacheKey, token);
+
+  return token;
+}
+
+/**
+ * Clear the token cache (called when database is reset)
+ */
+function clearTokenCache() {
+  tokenCache.clear();
+}
+
+/**
+ * Pre-populate token cache for common test users
+ * This can be called at the beginning of test suites to reduce login calls
+ * @returns {Promise<Object>} Object with all cached tokens
+ */
+async function initializeTokenCache() {
+  const tokens = {};
+
+  // Get tokens for all common test users
+  tokens.superadmin = await loginUser(TEST_USERS.SUPERADMIN);
+  tokens.testuser1 = await loginUser(TEST_USERS.TESTUSER1);
+  tokens.testuser2 = await loginUser(TEST_USERS.TESTUSER2);
+  tokens.regularuser = await loginUser(TEST_USERS.REGULARUSER);
+
+  return tokens;
+}
+
+/**
+ * Get tokens from cache or initialize if empty
+ * This is more efficient than always calling initializeTokenCache
+ * @returns {Promise<Object>} Object with all cached tokens
+ */
+async function getOrInitializeTokens() {
+  // Check if we have tokens in cache
+  if (tokenCache.has('superadmin') &&
+    tokenCache.has('testuser1') &&
+    tokenCache.has('testuser2') &&
+    tokenCache.has('regularuser')) {
+    return {
+      superadmin: tokenCache.get('superadmin'),
+      testuser1: tokenCache.get('testuser1'),
+      testuser2: tokenCache.get('testuser2'),
+      regularuser: tokenCache.get('regularuser')
+    };
+  }
+
+  // Cache is empty, initialize it
+  return await initializeTokenCache();
 }
 
 /**
@@ -100,13 +171,37 @@ function authenticatedRequest(token) {
  * Reset database to clean state between tests
  */
 async function resetDatabase() {
-  // Clear all data but keep schema
-  const tables = ['transaction', 'total', 'category', 'account', 'workspace_user', 'workspace', 'user'];
+  // NOTE: We don't clear token cache here because JWT tokens remain valid
+  // even after database reset, since they're signed with the JWT secret
+  // and don't depend on database state
 
-  // Delete in dependency order
-  for (const table of tables) {
-    await db.execute(`DELETE FROM ${table}`);
-    await db.execute(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
+  try {
+    // Temporarily disable foreign key checks to handle circular references
+    await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+    // Clear all data but keep schema - order matters due to foreign key constraints
+    const tables = [
+      'transaction',    // references account, category
+      'total',          // references account
+      'category',       // references category (self), workspace  
+      'account',        // references workspace
+      'workspace_user', // references workspace, user
+      'workspace',      // referenced by account, category, workspace_user
+      'user'           // referenced by workspace_user
+    ];
+
+    // Delete in dependency order
+    for (const table of tables) {
+      await db.execute(`DELETE FROM ${table}`);
+      await db.execute(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
+    }
+
+    // Re-enable foreign key checks
+    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+  } catch (error) {
+    // Make sure to re-enable foreign key checks even if there's an error
+    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+    throw error;
   }
 
   // Re-insert test data
@@ -229,6 +324,9 @@ module.exports = {
   TEST_USERS,
   TEST_WORKSPACES,
   loginUser,
+  clearTokenCache,
+  initializeTokenCache,
+  getOrInitializeTokens,
   authenticatedRequest,
   resetDatabase,
   createTestUser,

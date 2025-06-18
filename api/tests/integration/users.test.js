@@ -9,6 +9,7 @@ const request = require('supertest');
 const {
   TEST_USERS,
   loginUser,
+  initializeTokenCache,
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
@@ -22,9 +23,10 @@ describe('User Management API', () => {
   let testUserToken;
 
   beforeAll(async () => {
-    // Login once at the beginning - the global setup has already created test data
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
+    // Use token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   // Only reset between test suites if needed

@@ -8,6 +8,7 @@ const request = require('supertest');
 const app = require('../../src/app');
 const {
   loginUser,
+  initializeTokenCache,
   authenticatedRequest,
   validateApiResponse,
   TEST_USERS
@@ -17,8 +18,10 @@ describe('Categories Management API', () => {
   let superadminToken, testUserToken;
 
   beforeAll(async () => {
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
+    // Use the new token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   describe('GET /api/categories', () => {

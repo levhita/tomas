@@ -8,15 +8,20 @@ const request = require('supertest');
 const {
   TEST_USERS,
   loginUser,
+  initializeTokenCache,
   validateApiResponse,
   app
 } = require('../utils/test-helpers');
 
 describe('Health Check API', () => {
   let superadminToken;
+  let testUserToken;
 
   beforeAll(async () => {
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
+    // Use token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   describe('GET /api/health', () => {
@@ -102,8 +107,6 @@ describe('Health Check API', () => {
     });
 
     it('should deny access for non-superadmin users', async () => {
-      const testUserToken = await loginUser(TEST_USERS.TESTUSER1);
-
       const response = await request(app)
         .get('/api/health/admin')
         .set('Authorization', `Bearer ${testUserToken}`);

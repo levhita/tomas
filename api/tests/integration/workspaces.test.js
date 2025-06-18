@@ -10,11 +10,13 @@ const {
   TEST_USERS,
   TEST_WORKSPACES,
   loginUser,
+  getOrInitializeTokens,
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
   validateWorkspaceObject,
   generateRandomData,
+  createTestUser,
   app
 } = require('../utils/test-helpers');
 
@@ -25,19 +27,25 @@ describe('Workspace Management API', () => {
   let regularUserToken;
 
   beforeAll(async () => {
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
-    regularUserToken = await loginUser(TEST_USERS.REGULARUSER);
-  });
-
-  beforeEach(async () => {
-    await resetDatabase();
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
-    regularUserToken = await loginUser(TEST_USERS.REGULARUSER);
+    // Initialize token cache once for all tests
+    const tokens = await getOrInitializeTokens();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
+    regularUserToken = tokens.regularuser;
     // testuser1 is admin of workspace 2
     adminUserToken = testUserToken;
   });
+
+  // Reset database only before tests that modify data or create conflicts
+  const resetBeforeTest = async () => {
+    await resetDatabase();
+    // Tokens should still be valid, but get them from cache or re-initialize if needed
+    const tokens = await getOrInitializeTokens();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
+    regularUserToken = tokens.regularuser;
+    adminUserToken = testUserToken;
+  };
 
   describe('GET /api/workspaces', () => {
     it('should return user workspaces for authenticated user', async () => {
@@ -60,21 +68,19 @@ describe('Workspace Management API', () => {
 
       // Create a new user with no workspace access
       const userData = generateRandomData();
-      await auth.post('/api/users')
-        .send({
-          username: userData.username,
-          password: userData.password
-        });
+      const newUser = await createTestUser({
+        username: userData.username,
+        password: userData.password
+      }, superadminToken);
 
-      // Login as the new user
-      const loginResponse = await request(app)
-        .post('/api/users/login')
-        .send({
-          username: userData.username,
-          password: userData.password
-        });
+      // Get token for the new user directly through cache
+      const newUserToken = await loginUser({
+        username: userData.username,
+        password: userData.password,
+        id: newUser.id
+      });
 
-      const newUserAuth = authenticatedRequest(loginResponse.body.token);
+      const newUserAuth = authenticatedRequest(newUserToken);
       const response = await newUserAuth.get('/api/workspaces');
 
       validateApiResponse(response, 200);
@@ -212,6 +218,8 @@ describe('Workspace Management API', () => {
   });
 
   describe('POST /api/workspaces', () => {
+    beforeEach(resetBeforeTest);
+
     it('should create new workspace', async () => {
       const auth = authenticatedRequest(testUserToken);
       const workspaceData = generateRandomData();
@@ -272,6 +280,8 @@ describe('Workspace Management API', () => {
   });
 
   describe('PUT /api/workspaces/:id', () => {
+    beforeEach(resetBeforeTest);
+
     it('should update workspace as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const newName = `Updated ${Date.now()}`;
@@ -317,6 +327,8 @@ describe('Workspace Management API', () => {
   });
 
   describe('DELETE /api/workspaces/:id', () => {
+    beforeEach(resetBeforeTest);
+
     it('should soft delete workspace as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
@@ -351,6 +363,7 @@ describe('Workspace Management API', () => {
 
   describe('POST /api/workspaces/:id/restore', () => {
     beforeEach(async () => {
+      await resetBeforeTest();
       // Soft delete a workspace first
       const auth = authenticatedRequest(adminUserToken);
       await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
@@ -402,6 +415,7 @@ describe('Workspace Management API', () => {
     let deletableWorkspaceId;
 
     beforeEach(async () => {
+      await resetBeforeTest();
       // Create a fresh workspace with no dependent data for deletion testing
       const auth = authenticatedRequest(superadminToken);
       const createResponse = await auth.post('/api/workspaces')
@@ -519,6 +533,7 @@ describe('Workspace Management API', () => {
   });
 
   describe('POST /api/workspaces/:id/users', () => {
+    beforeEach(resetBeforeTest);
     it('should add user to workspace as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const userData = {
@@ -681,6 +696,7 @@ describe('Workspace Management API', () => {
 
   describe('PUT /api/workspaces/:id/users/:userId', () => {
     beforeEach(async () => {
+      await resetBeforeTest();
       // Add regularuser to workspace2 as viewer
       const auth = authenticatedRequest(adminUserToken);
       await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
@@ -802,6 +818,7 @@ describe('Workspace Management API', () => {
 
   describe('DELETE /api/workspaces/:id/users/:userId', () => {
     beforeEach(async () => {
+      await resetBeforeTest();
       // Add regularuser to workspace2 as viewer
       const auth = authenticatedRequest(adminUserToken);
       await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
