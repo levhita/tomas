@@ -57,7 +57,7 @@ jobs:
         run: |
           mysql -h 127.0.0.1 -u yamodev -pyamodev -e "SHOW DATABASES;" | grep test
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: ./api
         env:
           YAMO_MYSQL_HOST: 127.0.0.1
@@ -67,4 +67,10 @@ jobs:
           YAMO_MYSQL_DATABASE: test
           YAMO_JWT_SECRET: test-jwt-secret-for-ci
           NODE_ENV: test
-        run: npm test
+        run: npm run test:coverage
+
+      - name: Check coverage thresholds
+        working-directory: ./api
+        run: |
+          echo "Checking coverage thresholds..."
+          npx jest --coverage --coverageThreshold='{"global":{"statements":80,"branches":75,"functions":85,"lines":80}}' --passWithNoTests

@@ -198,6 +198,20 @@ describe('Index Routes and Core Application', () => {
       // Should either serve the file or return 404 if not found
       expect([200, 404]).toContain(response.status);
     });
+
+    it('should return 404 for missing static files without authentication', async () => {
+      const response = await request(app).get('/non-existent-static-file.css');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toBe('Page not found');
+    });
+
+    it('should return 404 for missing assets without authentication', async () => {
+      const response = await request(app).get('/assets/non-existent-file.js');
+
+      expect(response.status).toBe(404);
+      expect(response.text).toBe('Page not found');
+    });
   });
 
   describe('Express Application Configuration', () => {
@@ -238,6 +252,7 @@ describe('Index Routes and Core Application', () => {
         .send('{ malformed json }');
 
       expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid JSON format');
     });
   });
 });

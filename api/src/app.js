@@ -45,6 +45,15 @@ const app = express();
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Handle JSON parsing errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.log('Malformed JSON in request body for path:', req.path);
+    return res.status(400).json({ error: 'Invalid JSON format' });
+  }
+  next(err);
+});
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -89,6 +98,18 @@ app.use('/api/workspaces', workspacesRouter);
  */
 app.use(express.static('public'));
 
+// Error handler middleware for any unhandled errors
+app.use((err, req, res, next) => {
+  // Log the error for debugging but don't expose details to client
+  console.log('Unhandled error for path:', req.path, err.message);
+
+  if (req.path.startsWith('/api')) {
+    res.status(500).json({ error: 'Internal server error' });
+  } else {
+    res.status(500).send('Internal server error');
+  }
+});
+
 /**
  * SPA Fallback Route
  * 
@@ -100,7 +121,18 @@ app.use(express.static('public'));
  */
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile('public/index.html', { root: '.' });
+    // Try to serve the SPA index.html file
+    res.sendFile('public/index.html', { root: '.' }, (err) => {
+      if (err) {
+        // SPA index.html not found, log and return 404
+        console.log('SPA index file not found for path:', req.path);
+        res.status(404).send('Page not found');
+      }
+    });
+  } else {
+    // API route not found
+    console.log('API endpoint not found:', req.path);
+    res.status(404).json({ error: 'API endpoint not found' });
   }
 });
 

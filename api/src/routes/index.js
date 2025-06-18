@@ -51,7 +51,7 @@ router.get('/', function (req, res, next) {
     // Send the HTML response
     res.send(htmlTemplate);
   } catch (err) {
-    console.error('Error rendering welcome page:', err);
+    console.log('Error rendering welcome page:', err);
     res.status(500).send('Error loading welcome page');
   }
 });
