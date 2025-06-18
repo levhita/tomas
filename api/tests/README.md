@@ -454,18 +454,6 @@ jobs:
           YAMO_JWT_SECRET: test-jwt-secret-for-ci
           NODE_ENV: test
         run: npm test
-
-      - name: Run tests with coverage
-        working-directory: ./api
-        env:
-          YAMO_MYSQL_HOST: 127.0.0.1
-          YAMO_MYSQL_USER: yamodev
-          YAMO_MYSQL_PASSWORD: yamodev
-          YAMO_MYSQL_PORT: 3306
-          YAMO_MYSQL_DATABASE: test
-          YAMO_JWT_SECRET: test-jwt-secret-for-ci
-          NODE_ENV: test
-        run: npm run test:coverage
 ```
 
 #### Branch Protection Setup
