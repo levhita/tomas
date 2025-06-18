@@ -5,10 +5,6 @@
         <div class="col-12">
           <!-- Page Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>
-              <i class="bi bi-people me-2"></i>
-              User Management
-            </h1>
             <button class="btn btn-primary" @click="showCreateUserModal">
               <i class="bi bi-person-plus me-1"></i>
               Add User
@@ -165,9 +161,9 @@
  */
 
 import { ref, computed, onMounted } from 'vue'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import UserModal from '../components/modals/UserModal.vue'
-import { useUsersStore } from '../stores/users'
+import AdminLayout from '../../layouts/AdminLayout.vue'
+import UserModal from '../../components/modals/UserModal.vue'
+import { useUsersStore } from '../../stores/users'
 
 const usersStore = useUsersStore()
 

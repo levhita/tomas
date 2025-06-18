@@ -3,62 +3,24 @@
     <div class="container-fluid py-4">
       <div class="row">
         <div class="col-12">
-          <h1 class="mb-4">
-            <i class="bi bi-speedometer2 me-2"></i>
-            Admin Dashboard
-          </h1>
-
           <!-- Quick Stats Row -->
           <div class="row mb-4 admin-dashboard-stats">
             <div class="col-md-4">
-              <div class="card bg-primary text-white">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between">
-                    <div>
-                      <h6 class="card-title">Total Users</h6>
-                      <h3 class="mb-0">{{ usersStore.userStats.total || 0 }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                      <i class="bi bi-people fs-1 opacity-75"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-4">
-              <div class="card bg-info text-white">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between">
-                    <div>
-                      <h6 class="card-title">Super Admins</h6>
-                      <h3 class="mb-0">{{ usersStore.userStats.superAdmins || 0 }}</h3>
-                    </div>
-                    <div class="align-self-center">
-                      <i class="bi bi-shield-check fs-1 opacity-75"></i>
+              <RouterLink to="/admin/users" class="text-decoration-none">
+                <div class="card bg-primary text-white">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                      <div>
+                        <h6 class="card-title">Total Users</h6>
+                        <h3 class="mb-0">{{ usersStore.userStats.total || 0 }}</h3>
+                      </div>
+                      <div class="align-self-center">
+                        <i class="bi bi-people fs-1 opacity-75"></i>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div class="col-md-4">
-              <div class="card bg-success text-white">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between">
-                    <div>
-                      <h6 class="card-title">System Status</h6>
-                      <h5 class="mb-0">
-                        <i class="bi bi-check-circle me-1"></i>
-                        Healthy
-                      </h5>
-                    </div>
-                    <div class="align-self-center">
-                      <i class="bi bi-activity fs-1 opacity-75"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </RouterLink>
             </div>
           </div>
 
@@ -108,8 +70,8 @@
  */
 
 import { ref, onMounted } from 'vue'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import { useUsersStore } from '../stores/users'
+import AdminLayout from '../../layouts/AdminLayout.vue'
+import { useUsersStore } from '../../stores/users'
 
 const usersStore = useUsersStore()
 
