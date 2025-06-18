@@ -107,12 +107,29 @@ describe('Accounts Management API', () => {
       const auth = authenticatedRequest(freshTestUserToken);
       const superAuth = authenticatedRequest(superadminToken);
 
-      // Verify testuser1 has admin permissions in workspace 2 before proceeding
+      // Verify testuser1 has admin permissions in workspace 2, if not, add them
       const workspace2Users = await superAuth.get('/api/workspaces/2/users');
       const testuser1InWorkspace2 = workspace2Users.body?.find(u => u.username === 'testuser1');
-      
-      if (!testuser1InWorkspace2 || testuser1InWorkspace2.role !== 'admin') {
-        throw new Error(`testuser1 should be admin of workspace 2, but found: ${JSON.stringify(testuser1InWorkspace2)}`);
+
+      if (!testuser1InWorkspace2) {
+        // testuser1 is not in workspace 2, add them as admin
+        const addUserResponse = await superAuth.post('/api/workspaces/2/users').send({
+          user_id: 2, // testuser1's ID from test schema
+          role: 'admin'
+        });
+        
+        if (addUserResponse.status !== 201) {
+          throw new Error(`Failed to add testuser1 to workspace 2. Status: ${addUserResponse.status}, Body: ${JSON.stringify(addUserResponse.body)}`);
+        }
+      } else if (testuser1InWorkspace2.role !== 'admin') {
+        // testuser1 is in workspace 2 but not as admin, update their role
+        const updateRoleResponse = await superAuth.put('/api/workspaces/2/users/2').send({
+          role: 'admin'
+        });
+        
+        if (updateRoleResponse.status !== 200) {
+          throw new Error(`Failed to update testuser1 role to admin. Status: ${updateRoleResponse.status}, Body: ${JSON.stringify(updateRoleResponse.body)}`);
+        }
       }
 
       // Create a fresh account for this test 
@@ -131,7 +148,7 @@ describe('Accounts Management API', () => {
 
       // Test that testuser1 can access the account they just created in workspace 2
       const response = await auth.get(`/api/accounts/${testAccountId}`);
-      
+
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', testAccountId);
       expect(response.body).toHaveProperty('workspace_id', 2);
