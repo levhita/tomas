@@ -104,29 +104,20 @@ describe('Accounts Management API', () => {
     it('should allow access to account in workspace with permission', async () => {
       // testuser1 is admin of workspace 2, so should have access to accounts in that workspace
       const auth = authenticatedRequest(testUserToken);
-      const superAuth = authenticatedRequest(superadminToken);
-      
-      // First check if the expected test account (ID 3) exists in workspace 2
-      const expectedAccountResponse = await superAuth.get('/api/accounts/3');
-      
-      let testAccountId;
-      if (expectedAccountResponse.status === 200 && expectedAccountResponse.body.workspace_id === 2) {
-        // Expected account exists, use it
-        testAccountId = 3;
-      } else {
-        // Expected account doesn't exist, create one as fallback
-        const createAccountResponse = await superAuth.post('/api/accounts').send({
-          name: 'Test Account for CI',
-          note: 'Created dynamically for CI test',
-          type: 'debit',
-          workspace_id: 2
-        });
-        
-        expect(createAccountResponse.status).toBe(201);
-        testAccountId = createAccountResponse.body.id;
-      }
 
-      // Test that testuser1 can access the account in workspace 2
+      // Always create a fresh account for this test to ensure consistent behavior
+      // between local and CI environments
+      const createAccountResponse = await auth.post('/api/accounts').send({
+        name: 'Test Account for Permission Check',
+        note: 'Created for testing workspace permission access',
+        type: 'debit',
+        workspace_id: 2
+      });
+
+      expect(createAccountResponse.status).toBe(201);
+      const testAccountId = createAccountResponse.body.id;
+
+      // Test that testuser1 can access the account they just created in workspace 2
       const response = await auth.get(`/api/accounts/${testAccountId}`);
       
       validateApiResponse(response, 200);
