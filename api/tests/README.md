@@ -384,37 +384,113 @@ mysql -h localhost -u your_user -p your_database_test
 ## Continuous Integration
 
 ### GitHub Actions Setup
+
+For running tests in CI/CD pipelines, create `.github/workflows/tests.yml`:
+
 ```yaml
 name: API Tests
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
 jobs:
   test:
+    name: Run API Tests
     runs-on: ubuntu-latest
+    
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: test
-          MYSQL_DATABASE: tomas_test
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: test
+          MYSQL_USER: yamodev
+          MYSQL_PASSWORD: yamodev
+        ports:
+          - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=5
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
-      - run: npm install
-      - run: npm test
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./api
+        run: npm ci
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u yamodev -pyamodev --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run tests
+        working-directory: ./api
         env:
           YAMO_MYSQL_HOST: 127.0.0.1
-          YAMO_MYSQL_USER: root
-          YAMO_MYSQL_PASSWORD: test
-          YAMO_MYSQL_DATABASE: tomas_test
-          YAMO_JWT_SECRET: test-secret
+          YAMO_MYSQL_USER: yamodev
+          YAMO_MYSQL_PASSWORD: yamodev
+          YAMO_MYSQL_PORT: 3306
+          YAMO_MYSQL_DATABASE: test
+          YAMO_JWT_SECRET: test-jwt-secret-for-ci
+          NODE_ENV: test
+        run: npm test
+
+      - name: Run tests with coverage
+        working-directory: ./api
+        env:
+          YAMO_MYSQL_HOST: 127.0.0.1
+          YAMO_MYSQL_USER: yamodev
+          YAMO_MYSQL_PASSWORD: yamodev
+          YAMO_MYSQL_PORT: 3306
+          YAMO_MYSQL_DATABASE: test
+          YAMO_JWT_SECRET: test-jwt-secret-for-ci
+          NODE_ENV: test
+        run: npm run test:coverage
 ```
+
+#### Branch Protection Setup
+
+To require tests to pass before merging:
+
+1. **Go to your GitHub repository settings**
+2. **Navigate to "Branches"**
+3. **Add a branch protection rule for `main` (and optionally `develop`)**
+4. **Enable the following options**:
+   - ✅ "Require a pull request before merging"
+   - ✅ "Require status checks to pass before merging"
+   - ✅ "Require branches to be up to date before merging"
+   - ✅ Select "Run API Tests" as a required status check
+   - ✅ "Restrict pushes that create files larger than 100 MB"
+   - ✅ "Do not allow bypassing the above settings"
+
+#### GitHub Secrets (if needed)
+
+For production environments, you may want to use GitHub Secrets:
+- `MYSQL_ROOT_PASSWORD`
+- `MYSQL_PASSWORD` 
+- `JWT_SECRET`
+
+Add these in your repository settings under "Secrets and variables" → "Actions".
 
 ## Performance Considerations
 

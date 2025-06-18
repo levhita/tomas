@@ -1,0 +1,88 @@
+name: API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Run API Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: test
+          MYSQL_USER: yamodev
+          MYSQL_PASSWORD: yamodev
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./api
+        run: npm ci
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u yamodev -pyamodev --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Verify test database access
+        run: |
+          mysql -h 127.0.0.1 -u yamodev -pyamodev -e "SHOW DATABASES;" | grep test
+
+      - name: Run tests
+        working-directory: ./api
+        env:
+          YAMO_MYSQL_HOST: 127.0.0.1
+          YAMO_MYSQL_USER: yamodev
+          YAMO_MYSQL_PASSWORD: yamodev
+          YAMO_MYSQL_PORT: 3306
+          YAMO_MYSQL_DATABASE: test
+          YAMO_JWT_SECRET: test-jwt-secret-for-ci
+          NODE_ENV: test
+        run: npm test
+
+      - name: Run tests with coverage
+        working-directory: ./api
+        env:
+          YAMO_MYSQL_HOST: 127.0.0.1
+          YAMO_MYSQL_USER: yamodev
+          YAMO_MYSQL_PASSWORD: yamodev
+          YAMO_MYSQL_PORT: 3306
+          YAMO_MYSQL_DATABASE: test
+          YAMO_JWT_SECRET: test-jwt-secret-for-ci
+          NODE_ENV: test
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./api/coverage/lcov.info
+          fail_ci_if_error: false
