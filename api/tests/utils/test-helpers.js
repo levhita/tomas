@@ -115,11 +115,17 @@ async function resetDatabase() {
   const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
   const schema = await fs.readFile(schemaPath, 'utf8');
 
-  // Extract and execute only INSERT statements
-  const insertStatements = schema
+  // Extract and execute only INSERT statements - parse the same way as global setup
+  const statements = schema
+    .split('\n')
+    .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
+    .join('\n')
     .split(';')
-    .filter(stmt => stmt.trim().toUpperCase().startsWith('INSERT'))
-    .filter(stmt => stmt.trim().length > 0);
+    .map(stmt => stmt.trim())
+    .filter(stmt => stmt.length > 0);
+
+  const insertStatements = statements
+    .filter(stmt => stmt.toUpperCase().startsWith('INSERT'));
 
   for (const statement of insertStatements) {
     await db.execute(statement);

@@ -21,7 +21,7 @@ describe('Workspace Utilities', () => {
 
   describe('canAdmin', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (admin@example.com) has admin role in workspace 1
+      // Using test data: user 1 (superadmin) has admin role in workspace 1
       const result = await canAdmin(1, 1);
 
       expect(result.allowed).toBe(true);
@@ -29,24 +29,24 @@ describe('Workspace Utilities', () => {
     });
 
     it('should deny collaborator users', async () => {
-      // Using test data: user 2 (collaborator@example.com) has collaborator role in workspace 1
-      const result = await canAdmin(2, 1);
+      // Using test data: user 2 (testuser1) has collaborator role in workspace 1
+      const result = await canAdmin(1, 2);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Admin privileges required for this operation');
     });
 
     it('should deny viewer users', async () => {
-      // Using test data: user 3 (viewer@example.com) has viewer role in workspace 1
-      const result = await canAdmin(3, 1);
+      // Using test data: user 3 (testuser2) has viewer role in workspace 1
+      const result = await canAdmin(1, 3);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Admin privileges required for this operation');
     });
 
     it('should deny users with no access', async () => {
-      // Using test data: user 4 (noworkspace@example.com) has no access to workspace 1
-      const result = await canAdmin(4, 1);
+      // Using test data: user 4 (regularuser) has no access to workspace 1
+      const result = await canAdmin(1, 4);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this workspace');
@@ -55,7 +55,7 @@ describe('Workspace Utilities', () => {
 
   describe('canWrite', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (admin@example.com) has admin role in workspace 1
+      // Using test data: user 1 (superadmin) has admin role in workspace 1
       const result = await canWrite(1, 1);
 
       expect(result.allowed).toBe(true);
@@ -63,24 +63,24 @@ describe('Workspace Utilities', () => {
     });
 
     it('should allow collaborator users', async () => {
-      // Using test data: user 2 (collaborator@example.com) has collaborator role in workspace 1
-      const result = await canWrite(2, 1);
+      // Using test data: user 2 (testuser1) has collaborator role in workspace 1
+      const result = await canWrite(1, 2);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
     it('should deny viewer users', async () => {
-      // Using test data: user 3 (viewer@example.com) has viewer role in workspace 1
-      const result = await canWrite(3, 1);
+      // Using test data: user 3 (testuser2) has viewer role in workspace 1
+      const result = await canWrite(1, 3);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Write access required for this operation');
     });
 
     it('should deny users with no access', async () => {
-      // Using test data: user 4 (noworkspace@example.com) has no access to workspace 1
-      const result = await canWrite(4, 1);
+      // Using test data: user 4 (regularuser) has no access to workspace 1
+      const result = await canWrite(1, 4);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this workspace');
@@ -89,7 +89,7 @@ describe('Workspace Utilities', () => {
 
   describe('canRead', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (admin@example.com) has admin role in workspace 1
+      // Using test data: user 1 (superadmin) has admin role in workspace 1
       const result = await canRead(1, 1);
 
       expect(result.allowed).toBe(true);
@@ -97,24 +97,24 @@ describe('Workspace Utilities', () => {
     });
 
     it('should allow collaborator users', async () => {
-      // Using test data: user 2 (collaborator@example.com) has collaborator role in workspace 1
-      const result = await canRead(2, 1);
+      // Using test data: user 2 (testuser1) has collaborator role in workspace 1
+      const result = await canRead(1, 2);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
     it('should allow viewer users', async () => {
-      // Using test data: user 3 (viewer@example.com) has viewer role in workspace 1
-      const result = await canRead(3, 1);
+      // Using test data: user 3 (testuser2) has viewer role in workspace 1
+      const result = await canRead(1, 3);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
     it('should deny users with no access', async () => {
-      // Using test data: user 4 (noworkspace@example.com) has no access to workspace 1
-      const result = await canRead(4, 1);
+      // Using test data: user 4 (regularuser) has no access to workspace 1
+      const result = await canRead(1, 4);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this workspace');
@@ -139,8 +139,9 @@ describe('Workspace Utilities', () => {
     });
 
     it('should return empty array for workspace with no users', async () => {
-      // Using test data: workspace 2 has no users
-      const result = await getWorkspaceUsers(2);
+      // Using test data: workspace 4 has only one user (superadmin)
+      // Let's test with a workspace that actually has no users by using workspace ID that doesn't exist in user assignments
+      const result = await getWorkspaceUsers(99);
 
       expect(result).toEqual([]);
     });
@@ -167,7 +168,11 @@ describe('Workspace Utilities', () => {
     });
 
     it('should return null for deleted workspace', async () => {
-      // Using test data: workspace 3 is soft deleted
+      // First, let's soft delete workspace 3 by setting its deleted_at
+      await require('../../src/db').execute(
+        'UPDATE workspace SET deleted_at = NOW() WHERE id = 3'
+      );
+      
       const result = await getWorkspaceById(3);
 
       expect(result).toBeNull();

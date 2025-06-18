@@ -39,7 +39,7 @@ const {
 router.get('/', async (req, res) => {
   try {
     const [workspaces] = await db.query(`
-      SELECT w.* 
+      SELECT w.*, wu.role 
       FROM workspace w
       INNER JOIN workspace_user wu ON w.id = wu.workspace_id
       WHERE wu.user_id = ? AND w.deleted_at IS NULL
@@ -150,14 +150,16 @@ router.get('/all', requireSuperAdmin, async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const { allowed, message } = await canRead(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
+    // First check if the workspace exists
     const workspace = await getWorkspaceById(req.params.id);
     if (!workspace) {
       return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Then check if user has read access
+    const { allowed, message } = await canRead(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     res.status(200).json(workspace);
@@ -230,7 +232,7 @@ router.post('/', async (req, res) => {
  * @body {string} description - Optional workspace description
  * @body {string} currency_symbol - Currency symbol
  * @body {string} week_start - First day of the week
- * @permission Write access to the workspace (admin, collaborator)
+ * @permission Admin access to the workspace (admin only)
  * @returns {Object} Updated workspace details
  */
 router.put('/:id', async (req, res) => {
@@ -241,15 +243,16 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const { allowed, message } = await canWrite(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
-    // Get existing workspace to keep current values if not provided
+    // First check if the workspace exists
     const existingWorkspace = await getWorkspaceById(req.params.id);
     if (!existingWorkspace) {
       return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Then check if user has admin access
+    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const currencySymbol = currency_symbol !== undefined ? currency_symbol : existingWorkspace.currency_symbol;
@@ -286,6 +289,13 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    // First check if the workspace exists
+    const workspace = await getWorkspaceById(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Then check if user has admin access
     const { allowed, message } = await canAdmin(req.params.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
@@ -301,7 +311,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Workspace not found or already deleted' });
     }
 
-    res.status(204).send();
+    res.status(200).json({ message: 'Workspace deleted successfully' });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to delete workspace' });

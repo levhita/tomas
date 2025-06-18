@@ -244,6 +244,13 @@ describe('User Management API', () => {
       validateUserObject(response.body);
       expect(response.body.username).toBe(newUsername);
       expect(response.body.superadmin).toBe(true);
+
+      // Restore original state to prevent token invalidation for other tests
+      await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: TEST_USERS.TESTUSER1.username,
+          superadmin: false
+        });
     });
 
     it('should update user password', async () => {
@@ -266,6 +273,13 @@ describe('User Management API', () => {
         });
 
       validateApiResponse(loginResponse, 200);
+
+      // Restore original password to prevent issues for other tests
+      await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: TEST_USERS.TESTUSER1.username,
+          password: TEST_USERS.TESTUSER1.password
+        });
     });
 
     it('should return 404 for non-existent user', async () => {

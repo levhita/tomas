@@ -64,12 +64,11 @@ CREATE TABLE
 CREATE TABLE
   `account` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `workspace_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
+    `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
-    `description` TEXT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    `workspace_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
   ) ENGINE = InnoDB;
@@ -78,13 +77,14 @@ CREATE TABLE
 CREATE TABLE
   `category` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `workspace_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
-    `color` VARCHAR(7) NOT NULL DEFAULT '#007bff',
-    `description` TEXT NULL,
+    `note` TEXT NULL,
+    `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
+    `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    `workspace_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
+    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`),
     FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
   ) ENGINE = InnoDB;
 
@@ -92,16 +92,15 @@ CREATE TABLE
 CREATE TABLE
   `transaction` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `description` VARCHAR(255) NOT NULL,
+    `note` TEXT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+    `date` DATE NOT NULL,
+    `exercised` BOOLEAN DEFAULT FALSE,
     `account_id` INT UNSIGNED NOT NULL,
     `category_id` INT UNSIGNED NULL,
-    `amount` DECIMAL(10, 2) NOT NULL,
-    `description` TEXT NULL,
-    `date` DATE NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
     FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
   ) ENGINE = InnoDB;
@@ -110,14 +109,11 @@ CREATE TABLE
 CREATE TABLE
   `total` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `workspace_id` INT UNSIGNED NOT NULL,
-    `account_id` INT UNSIGNED NOT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
     `date` DATE NOT NULL,
-    `amount` DECIMAL(10, 2) NOT NULL,
+    `account_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `unique_account_date` (`account_id`, `date`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`)
   ) ENGINE = InnoDB;
 
@@ -128,22 +124,22 @@ INSERT INTO
 VALUES
   (
     'superadmin',
-    '$2b$10$NiA4WKu8pQZg4Np7wM5RNOlC2Gwi3osF12Lu90d33eQ40VKp4Zg3G',
+    '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     TRUE
   ),
   (
     'testuser1',
-    '$2b$10$NiA4WKu8pQZg4Np7wM5RNOlC2Gwi3osF12Lu90d33eQ40VKp4Zg3G',
+    '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
   ),
   (
     'testuser2',
-    '$2b$10$NiA4WKu8pQZg4Np7wM5RNOlC2Gwi3osF12Lu90d33eQ40VKp4Zg3G',
+    '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
   ),
   (
     'regularuser',
-    '$2b$10$NiA4WKu8pQZg4Np7wM5RNOlC2Gwi3osF12Lu90d33eQ40VKp4Zg3G',
+    '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
   );
 
@@ -183,76 +179,95 @@ VALUES
 -- superadmin is admin of workspace 4
 -- Test Accounts
 INSERT INTO
-  `account` (`workspace_id`, `name`, `type`, `description`)
+  `account` (`name`, `note`, `type`, `workspace_id`)
 VALUES
   (
-    1,
     'Test Checking Account',
+    'Main checking account for testing',
     'debit',
-    'Main checking account for testing'
+    1
   ),
   (
-    1,
     'Test Credit Card',
+    'Credit card for testing',
     'credit',
-    'Credit card for testing'
+    1
   ),
   (
-    2,
     'Savings Account',
+    'Savings account in workspace 2',
     'debit',
-    'Savings account in workspace 2'
+    2
   );
 
 -- Test Categories
 INSERT INTO
-  `category` (`workspace_id`, `name`, `color`, `description`)
+  `category` (`name`, `note`, `type`, `workspace_id`)
 VALUES
   (
-    1,
     'Food & Dining',
-    '#ff6b6b',
-    'Restaurant and grocery expenses'
+    'Restaurant and grocery expenses',
+    'expense',
+    1
   ),
   (
-    1,
     'Transportation',
-    '#4ecdc4',
-    'Car, gas, and public transport'
+    'Car, gas, and public transport',
+    'expense',
+    1
   ),
   (
-    2,
     'Entertainment',
-    '#45b7d1',
-    'Movies, games, and fun activities'
+    'Movies, games, and fun activities',
+    'expense',
+    2
   );
 
 -- Test Transactions
 INSERT INTO
   `transaction` (
-    `workspace_id`,
-    `account_id`,
-    `category_id`,
-    `amount`,
     `description`,
-    `date`
+    `note`,
+    `amount`,
+    `date`,
+    `exercised`,
+    `account_id`,
+    `category_id`
   )
 VALUES
   (
-    1,
-    1,
-    1,
-    -25.50,
     'Lunch at restaurant',
-    '2024-12-01'
+    'Test transaction note',
+    -25.50,
+    '2024-12-01',
+    TRUE,
+    1,
+    1
   ),
-  (1, 1, 2, -45.00, 'Gas for car', '2024-12-02'),
   (
+    'Gas for car',
+    NULL,
+    -45.00,
+    '2024-12-02',
+    TRUE,
     1,
-    2,
-    1,
-    75.25,
-    'Grocery shopping payment',
-    '2024-12-03'
+    2
   ),
-  (2, 3, 3, -12.99, 'Movie ticket', '2024-12-04');
+  (
+    'Grocery shopping payment',
+    'Credit card payment',
+    75.25,
+    '2024-12-03',
+    FALSE,
+    2,
+    1
+  ),
+  (
+    'Movie ticket',
+    NULL,
+    -12.99,
+    '2024-12-04',
+    TRUE,
+    3,
+    3
+  );

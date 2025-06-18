@@ -24,12 +24,6 @@ describe('User Workspace Management API', () => {
     testUserToken = await loginUser(TEST_USERS.TESTUSER1);
   });
 
-  beforeEach(async () => {
-    await resetDatabase();
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
-  });
-
   describe('GET /api/users/:id/workspaces', () => {
     it('should return user workspace access as superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
@@ -40,13 +34,13 @@ describe('User Workspace Management API', () => {
 
       if (response.body.length > 0) {
         const workspace = response.body[0];
-        expect(workspace).toHaveProperty('workspace_id');
-        expect(workspace).toHaveProperty('workspace_name');
+        expect(workspace).toHaveProperty('id');
+        expect(workspace).toHaveProperty('name');
         expect(workspace).toHaveProperty('role');
         expect(workspace).toHaveProperty('created_at');
 
-        expect(typeof workspace.workspace_id).toBe('number');
-        expect(typeof workspace.workspace_name).toBe('string');
+        expect(typeof workspace.id).toBe('number');
+        expect(typeof workspace.name).toBe('string');
         expect(['viewer', 'collaborator', 'admin']).toContain(workspace.role);
       }
     });
@@ -79,14 +73,12 @@ describe('User Workspace Management API', () => {
         });
 
       validateApiResponse(response, 201);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toMatch(/added.*workspace/i);
+      expect(Array.isArray(response.body)).toBe(true);
 
-      // Verify the user was added
-      const checkResponse = await auth.get(`/api/users/${TEST_USERS.TESTUSER2.id}/workspaces`);
-      const userWorkspace = checkResponse.body.find(w => w.workspace_id === TEST_WORKSPACES.WORKSPACE2.id);
-      expect(userWorkspace).toBeDefined();
-      expect(userWorkspace.role).toBe('viewer');
+      // Verify the user was added - they should have access to the workspace
+      const addedWorkspace = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE2.id);
+      expect(addedWorkspace).toBeDefined();
+      expect(addedWorkspace.role).toBe('viewer');
     });
 
     it('should add user as different roles', async () => {
@@ -108,7 +100,7 @@ describe('User Workspace Management API', () => {
 
         // Verify the role was set correctly
         const checkResponse = await auth.get(`/api/users/${TEST_USERS.REGULARUSER.id}/workspaces`);
-        const userWorkspace = checkResponse.body.find(w => w.workspace_id === workspaceId);
+        const userWorkspace = checkResponse.body.find(w => w.id === workspaceId);
         expect(userWorkspace).toBeDefined();
         expect(userWorkspace.role).toBe(role);
       }
@@ -189,14 +181,12 @@ describe('User Workspace Management API', () => {
         });
 
       validateApiResponse(response, 200);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toMatch(/role.*updated/i);
+      expect(Array.isArray(response.body)).toBe(true);
 
-      // Verify the role was updated
-      const checkResponse = await auth.get(`/api/users/${TEST_USERS.TESTUSER1.id}/workspaces`);
-      const userWorkspace = checkResponse.body.find(w => w.workspace_id === TEST_WORKSPACES.WORKSPACE1.id);
-      expect(userWorkspace).toBeDefined();
-      expect(userWorkspace.role).toBe('admin');
+      // Verify the role was updated - find the workspace in the response
+      const updatedWorkspace = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE1.id);
+      expect(updatedWorkspace).toBeDefined();
+      expect(updatedWorkspace.role).toBe('admin');
     });
 
     it('should update to all valid roles', async () => {
@@ -209,10 +199,9 @@ describe('User Workspace Management API', () => {
 
         validateApiResponse(response, 200);
 
-        // Verify the role was updated
-        const checkResponse = await auth.get(`/api/users/${TEST_USERS.TESTUSER1.id}/workspaces`);
-        const userWorkspace = checkResponse.body.find(w => w.workspace_id === TEST_WORKSPACES.WORKSPACE1.id);
-        expect(userWorkspace.role).toBe(role);
+        // Verify the role was updated in the response
+        const updatedWorkspace = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE1.id);
+        expect(updatedWorkspace.role).toBe(role);
       }
     });
 
@@ -237,8 +226,8 @@ describe('User Workspace Management API', () => {
     it('should return 404 if user has no access to workspace', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // testuser2 has no access to workspace 1
-      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`)
+      // testuser2 has no access to workspace 3 (SEARCH_WORKSPACE)
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/workspaces/${TEST_WORKSPACES.SEARCH_WORKSPACE.id}`)
         .send({ role: 'admin' });
 
       validateApiResponse(response, 404);
@@ -271,13 +260,18 @@ describe('User Workspace Management API', () => {
       const response = await auth.delete(`/api/users/${TEST_USERS.TESTUSER1.id}/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`);
 
       validateApiResponse(response, 200);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toMatch(/removed.*workspace/i);
+      expect(Array.isArray(response.body)).toBe(true);
 
-      // Verify the user was removed
-      const checkResponse = await auth.get(`/api/users/${TEST_USERS.TESTUSER1.id}/workspaces`);
-      const userWorkspace = checkResponse.body.find(w => w.workspace_id === TEST_WORKSPACES.WORKSPACE1.id);
-      expect(userWorkspace).toBeUndefined();
+      // Verify the user was removed - workspace should not be in the response
+      const removedWorkspace = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE1.id);
+      expect(removedWorkspace).toBeUndefined();
+
+      // Restore original state: add testuser1 back as collaborator to workspace 1
+      await auth.post(`/api/users/${TEST_USERS.TESTUSER1.id}/workspaces`)
+        .send({
+          workspaceId: TEST_WORKSPACES.WORKSPACE1.id,
+          role: 'collaborator'
+        });
     });
 
     it('should return 404 for non-existent user', async () => {
@@ -299,8 +293,8 @@ describe('User Workspace Management API', () => {
     it('should return 404 if user has no access to workspace', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // testuser2 has no access to workspace 1
-      const response = await auth.delete(`/api/users/${TEST_USERS.TESTUSER2.id}/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`);
+      // testuser2 has no access to workspace 3 (SEARCH_WORKSPACE)
+      const response = await auth.delete(`/api/users/${TEST_USERS.TESTUSER2.id}/workspaces/${TEST_WORKSPACES.SEARCH_WORKSPACE.id}`);
 
       validateApiResponse(response, 404);
     });

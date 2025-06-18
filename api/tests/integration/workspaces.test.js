@@ -113,7 +113,7 @@ describe('Workspace Management API', () => {
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/permission/i);
+      expect(response.body.error).toMatch(/admin privileges required/i);
     });
   });
 
