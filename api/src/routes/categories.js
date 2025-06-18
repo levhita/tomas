@@ -23,11 +23,11 @@ const { canRead, canWrite } = require('../utils/workspace');
 
 /**
  * GET /categories
- * List all categories for a workspace
+ * List all categories for a workspace in alphabetical order by name
  * 
  * @query {number} workspace_id - Required workspace ID
  * @permission Read access to workspace (admin, collaborator, viewer)
- * @returns {Array} List of categories
+ * @returns {Array} List of categories ordered alphabetically by name
  */
 router.get('/', async (req, res) => {
   const workspaceId = req.query.workspace_id;
@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
     const [categories] = await db.query(`
       SELECT * FROM category 
       WHERE workspace_id = ?
-      ORDER BY name ASC
+      ORDER BY name COLLATE utf8mb4_unicode_ci ASC
     `, [workspaceId]);
 
     res.status(200).json(categories);

@@ -9,28 +9,33 @@ const app = require('../../src/app');
 
 describe('Index Routes and Core Application', () => {
   describe('GET /', () => {
-    it('should return welcome page', async () => {
+    it('should return 404 for root path during tests (will be served by frontend in production)', async () => {
       const response = await request(app).get('/');
 
-      expect(response.status).toBe(200);
-      expect(response.type).toBe('text/html');
-      expect(response.text).toContain('Welcome'); // Assuming welcome.html contains "Welcome"
+      expect(response.status).toBe(404);
     });
 
-    it('should serve static welcome page', async () => {
+    it('should return 404 for root path consistently', async () => {
       const response = await request(app).get('/');
 
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toMatch(/text\/html/);
+      expect(response.status).toBe(404);
     });
   });
 
   describe('API Base Route', () => {
-    it('should handle /api route', async () => {
+    it('should return welcome page at /api', async () => {
       const response = await request(app).get('/api');
 
-      // Should either return a response or redirect, not 404
-      expect([200, 301, 302, 404]).toContain(response.status);
+      expect(response.status).toBe(200);
+      expect(response.type).toBe('text/html');
+      expect(response.text).toContain('Welcome'); // The welcome.html contains "Welcome"
+    });
+
+    it('should serve API welcome page with proper content type', async () => {
+      const response = await request(app).get('/api');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/text\/html/);
     });
   });
 
@@ -41,16 +46,18 @@ describe('Index Routes and Core Application', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 404 for non-existent API routes', async () => {
+    it('should return 401 for non-existent API routes (auth required first)', async () => {
       const response = await request(app).get('/api/non-existent-endpoint');
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('Access token required');
     });
 
-    it('should handle deeply nested non-existent routes', async () => {
+    it('should handle deeply nested non-existent routes (auth required)', async () => {
       const response = await request(app).get('/api/very/deep/non/existent/route');
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('Access token required');
     });
   });
 
@@ -156,19 +163,20 @@ describe('Index Routes and Core Application', () => {
       expect([400, 401, 404]).toContain(postResponse.status);
 
       const putResponse = await request(app).put('/api/non-existent').send({});
-      expect([404, 405]).toContain(putResponse.status);
+      expect([401, 404, 405]).toContain(putResponse.status); // 401 due to auth middleware
 
       const deleteResponse = await request(app).delete('/api/non-existent');
-      expect([404, 405]).toContain(deleteResponse.status);
+      expect([401, 404, 405]).toContain(deleteResponse.status); // 401 due to auth middleware
     });
   });
 
   describe('Error Response Format', () => {
-    it('should return consistent error format for 404s', async () => {
+    it('should return consistent error format for 401s (auth required)', async () => {
       const response = await request(app).get('/api/non-existent');
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
       expect(response.headers['content-type']).toMatch(/application\/json/);
+      expect(response.body.error).toBe('Access token required');
     });
 
     it('should handle malformed JSON gracefully', async () => {

@@ -545,20 +545,20 @@ describe('Categories Management API', () => {
     });
 
     describe('Category Filtering and Querying', () => {
-      it('should return categories consistently ordered', async () => {
+      it('should return categories ordered alphabetically by name', async () => {
         const auth = authenticatedRequest(testUserToken);
         const response = await auth.get('/api/categories?workspace_id=1');
 
         validateApiResponse(response, 200);
         expect(response.body).toBeInstanceOf(Array);
 
-        // Check that categories are returned consistently
+        // Check that categories are returned in alphabetical order
         if (response.body.length > 1) {
-          // Make two requests and verify order is consistent
-          const response2 = await auth.get('/api/categories?workspace_id=1');
-          expect(response.body.map(cat => cat.id)).toEqual(response2.body.map(cat => cat.id));
+          const names = response.body.map(cat => cat.name);
+          const sortedNames = [...names].sort((a, b) => a.localeCompare(b));
+          expect(names).toEqual(sortedNames);
 
-          // Check that each category has the required fields
+          // Also verify each category has the required fields
           response.body.forEach(category => {
             expect(category).toHaveProperty('id');
             expect(category).toHaveProperty('name');
