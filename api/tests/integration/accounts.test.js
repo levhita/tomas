@@ -108,28 +108,12 @@ describe('Accounts Management API', () => {
       const superAuth = authenticatedRequest(superadminToken);
 
       // Verify testuser1 has admin permissions in workspace 2, if not, add them
-      const workspace2Users = await superAuth.get('/api/workspaces/2/users');
-      const testuser1InWorkspace2 = workspace2Users.body?.find(u => u.username === 'testuser1');
-
-      if (!testuser1InWorkspace2) {
-        // testuser1 is not in workspace 2, add them as admin
-        const addUserResponse = await superAuth.post('/api/workspaces/2/users').send({
-          user_id: 2, // testuser1's ID from test schema
-          role: 'admin'
-        });
-        
-        if (addUserResponse.status !== 201) {
-          throw new Error(`Failed to add testuser1 to workspace 2. Status: ${addUserResponse.status}, Body: ${JSON.stringify(addUserResponse.body)}`);
-        }
-      } else if (testuser1InWorkspace2.role !== 'admin') {
-        // testuser1 is in workspace 2 but not as admin, update their role
-        const updateRoleResponse = await superAuth.put('/api/workspaces/2/users/2').send({
-          role: 'admin'
-        });
-        
-        if (updateRoleResponse.status !== 200) {
-          throw new Error(`Failed to update testuser1 role to admin. Status: ${updateRoleResponse.status}, Body: ${JSON.stringify(updateRoleResponse.body)}`);
-        }
+      const addUserResponse = await superAuth.post('/api/workspaces/2/users').send({
+        userId: 2, // testuser1's ID from test schema
+        role: 'admin'
+      });
+      if (addUserResponse.status !== 409 && addUserResponse.status !== 201) {
+        throw new Error(`Failed to add testuser1 to workspace 2. Status: ${addUserResponse.status}, Body: ${JSON.stringify(addUserResponse.body)}`);
       }
 
       // Create a fresh account for this test 
