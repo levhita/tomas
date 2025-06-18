@@ -52,10 +52,15 @@ async function authenticateToken(req, res, next) {
   // Extract token from Authorization header
   // Format should be: "Bearer <token>"
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'Authentication token required' });
+    return res.status(401).json({ error: 'Access token required' });
   }
 
   try {
