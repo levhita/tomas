@@ -102,70 +102,36 @@ describe('Accounts Management API', () => {
     });
 
     it('should allow access to account in workspace with permission', async () => {
-      // Ensure we have a fresh token for this test to avoid CI race conditions
-      const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
-      const auth = authenticatedRequest(freshTestUserToken);
-
-      // Add comprehensive debugging for CI environment
-      console.log('=== CI DEBUG: Test Environment ===');
-      console.log('NODE_ENV:', process.env.NODE_ENV);
-      console.log('Database config:', {
-        host: process.env.DB_HOST,
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER
-      });
-
-      // Check if we're actually using the test database
-      const superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
+      // testuser1 is admin of workspace 2, so should have access to accounts in that workspace
+      const auth = authenticatedRequest(testUserToken);
       const superAuth = authenticatedRequest(superadminToken);
-
-      // Verify workspace structure
-      const workspacesResponse = await superAuth.get('/api/workspaces/all');
-      console.log('=== CI DEBUG: Available workspaces ===', workspacesResponse.body);
-
-      // Verify users in workspace 2
-      const workspace2Users = await superAuth.get('/api/workspaces/2/users');
-      console.log('=== CI DEBUG: Workspace 2 users ===', workspace2Users.body);
-
-      // Verify accounts in workspace 2 and find the account to test
-      const workspace2Accounts = await superAuth.get('/api/accounts').query({ workspace_id: 2 });
-      console.log('=== CI DEBUG: Workspace 2 accounts ===', workspace2Accounts.body);
-
-      // Check testuser1 details
-      const allUsers = await superAuth.get('/api/users');
-      const testuser1 = allUsers.body.find(u => u.username === 'testuser1');
-      console.log('=== CI DEBUG: testuser1 ===', testuser1);
-
-      // Find any account in workspace 2 instead of assuming ID 3
-      if (!workspace2Accounts.body || workspace2Accounts.body.length === 0) {
-        throw new Error('No accounts found in workspace 2 for testing');
+      
+      // First check if the expected test account (ID 3) exists in workspace 2
+      const expectedAccountResponse = await superAuth.get('/api/accounts/3');
+      
+      let testAccountId;
+      if (expectedAccountResponse.status === 200 && expectedAccountResponse.body.workspace_id === 2) {
+        // Expected account exists, use it
+        testAccountId = 3;
+      } else {
+        // Expected account doesn't exist, create one as fallback
+        const createAccountResponse = await superAuth.post('/api/accounts').send({
+          name: 'Test Account for CI',
+          note: 'Created dynamically for CI test',
+          type: 'debit',
+          workspace_id: 2
+        });
+        
+        expect(createAccountResponse.status).toBe(201);
+        testAccountId = createAccountResponse.body.id;
       }
 
-      const testAccount = workspace2Accounts.body[0]; // Use the first account in workspace 2
-      const testAccountId = testAccount.id;
-      console.log('=== CI DEBUG: Using account for test ===', testAccount);
-
+      // Test that testuser1 can access the account in workspace 2
       const response = await auth.get(`/api/accounts/${testAccountId}`);
-
-      // Enhanced error reporting
-      if (response.status !== 200) {
-        console.error('=== CI DEBUG: FAILED REQUEST ===');
-        console.error('Status:', response.status);
-        console.error('Response body:', response.body);
-        console.error('Expected account ID:', testAccountId);
-
-        // Try with superadmin to see if account exists at all
-        const superadminResponse = await superAuth.get(`/api/accounts/${testAccountId}`);
-        console.error('=== CI DEBUG: Superadmin access ===');
-        console.error('Superadmin status:', superadminResponse.status);
-        console.error('Superadmin body:', superadminResponse.body);
-
-        throw new Error(`Test failed in CI - Status: ${response.status}, Body: ${JSON.stringify(response.body)}`);
-      }
-
-      // testuser1 is admin of workspace 2, so should have access to account
+      
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', testAccountId);
+      expect(response.body).toHaveProperty('workspace_id', 2);
     });
 
     it('should deny access without authentication', async () => {
