@@ -40,4 +40,15 @@ module.exports = async () => {
   } finally {
     await connection.end();
   }
+
+  // Close the database pool from the app if it exists
+  try {
+    const db = require('../../src/db');
+    if (db && typeof db.end === 'function') {
+      await db.end();
+      console.log('✅ Database pool closed');
+    }
+  } catch (error) {
+    console.warn('Warning closing database pool:', error.message);
+  }
 };

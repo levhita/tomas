@@ -54,5 +54,8 @@ module.exports = {
   clearMocks: true,
 
   // Restore mocks after each test
-  restoreMocks: true
+  restoreMocks: true,
+
+  // Force exit to handle open handles (database connections)
+  forceExit: true
 };
