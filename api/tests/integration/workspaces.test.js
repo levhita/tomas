@@ -416,7 +416,7 @@ describe('Workspace Management API', () => {
       await auth.delete(`/api/workspaces/${deletableWorkspaceId}`);
     });
 
-    it('should return 409 for workspace with existing data', async () => {
+    it('should cascade delete workspace with existing data', async () => {
       const auth = authenticatedRequest(superadminToken);
 
       // Soft delete workspace 2 first (it has accounts)
@@ -424,12 +424,11 @@ describe('Workspace Management API', () => {
 
       const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/permanent`);
 
-      validateApiResponse(response, 409);
-      expect(response.body.error).toMatch(/existing data/i);
-      expect(response.body).toHaveProperty('details');
+      validateApiResponse(response, 204);
 
-      // Restore it for other tests
-      await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      // Verify the workspace is completely deleted (should get 404)
+      const checkResponse = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      validateApiResponse(checkResponse, 404);
     });
 
     it('should permanently delete empty workspace as superadmin', async () => {

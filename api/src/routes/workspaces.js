@@ -360,11 +360,19 @@ router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
 
 /**
  * DELETE /workspaces/:id/permanent
- * Permanently delete a workspace
+ * Permanently delete a workspace and cascade delete all related data
  * 
  * @param {number} id - Workspace ID
  * @permission Superadmin only
  * @returns {void}
+ * 
+ * Note: This will cascade delete ALL related data including:
+ * - All transactions in workspace accounts
+ * - All account totals 
+ * - All categories (including hierarchical categories)
+ * - All accounts
+ * - All workspace users
+ * - The workspace itself
  */
 router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
   try {
@@ -383,54 +391,49 @@ router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
     await connection.beginTransaction();
 
     try {
-      // Check for dependent records that would prevent deletion
-      const [transactions] = await connection.query(
-        'SELECT COUNT(*) as count FROM transaction t INNER JOIN account a ON t.account_id = a.id WHERE a.workspace_id = ?',
-        [req.params.id]
-      );
+      // CASCADE DELETE ALL RELATED DATA
 
-      const [totals] = await connection.query(
-        'SELECT COUNT(*) as count FROM total t INNER JOIN account a ON t.account_id = a.id WHERE a.workspace_id = ?',
-        [req.params.id]
-      );
+      // 1. Delete transactions first (they reference accounts and categories)
+      await connection.query(`
+        DELETE t FROM transaction t 
+        INNER JOIN account a ON t.account_id = a.id 
+        WHERE a.workspace_id = ?
+      `, [req.params.id]);
 
-      const [accounts] = await connection.query(
-        'SELECT COUNT(*) as count FROM account WHERE workspace_id = ?',
-        [req.params.id]
-      );
+      // 2. Delete totals (they reference accounts)
+      await connection.query(`
+        DELETE t FROM total t 
+        INNER JOIN account a ON t.account_id = a.id 
+        WHERE a.workspace_id = ?
+      `, [req.params.id]);
 
-      const [categories] = await connection.query(
-        'SELECT COUNT(*) as count FROM category WHERE workspace_id = ?',
-        [req.params.id]
-      );
+      // 3. Delete categories (handle self-references by deleting children first)
+      // First, delete child categories (categories with parent_category_id)
+      await connection.query(`
+        DELETE FROM category 
+        WHERE workspace_id = ? AND parent_category_id IS NOT NULL
+      `, [req.params.id]);
 
-      // If there are any dependent records, return conflict
-      if (transactions[0].count > 0 || totals[0].count > 0 || accounts[0].count > 0 || categories[0].count > 0) {
-        await connection.rollback();
-        connection.release();
-        return res.status(409).json({
-          error: 'Cannot permanently delete workspace with existing data. Please delete all accounts, categories, and transactions first.',
-          details: {
-            transactions: transactions[0].count,
-            totals: totals[0].count,
-            accounts: accounts[0].count,
-            categories: categories[0].count
-          }
-        });
-      }
+      // Then delete parent categories
+      await connection.query(`
+        DELETE FROM category 
+        WHERE workspace_id = ? AND parent_category_id IS NULL
+      `, [req.params.id]);
 
-      // If no dependent records, proceed with deletion
-      // Delete workspace users first
-      await connection.query(
-        'DELETE FROM workspace_user WHERE workspace_id = ?',
-        [req.params.id]
-      );
+      // 4. Delete accounts
+      await connection.query(`
+        DELETE FROM account WHERE workspace_id = ?
+      `, [req.params.id]);
 
-      // Then delete the workspace
-      const [result] = await connection.query(
-        'DELETE FROM workspace WHERE id = ?',
-        [req.params.id]
-      );
+      // 5. Delete workspace users
+      await connection.query(`
+        DELETE FROM workspace_user WHERE workspace_id = ?
+      `, [req.params.id]);
+
+      // 6. Finally delete the workspace
+      const [result] = await connection.query(`
+        DELETE FROM workspace WHERE id = ?
+      `, [req.params.id]);
 
       if (result.affectedRows === 0) {
         await connection.rollback();
@@ -444,14 +447,6 @@ router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
     } catch (err) {
       await connection.rollback();
       connection.release();
-
-      // Handle foreign key constraint errors specifically
-      if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-        return res.status(409).json({
-          error: 'Cannot permanently delete workspace with existing data. Please delete all related records first.'
-        });
-      }
-
       throw err;
     }
   } catch (err) {
