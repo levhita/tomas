@@ -34,6 +34,8 @@ module.exports = {
     'src/**/*.js',
     '!src/public/**',
     '!src/views/**',
+    '!src/db.js',
+    '!src/app.js',
     '!bin/**'
   ],
 

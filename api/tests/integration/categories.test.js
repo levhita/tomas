@@ -644,7 +644,7 @@ describe('Categories Management API', () => {
     describe('Error Handling and Edge Cases', () => {
       it('should handle update with no fields provided', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -665,7 +665,7 @@ describe('Categories Management API', () => {
 
       it('should handle update affecting zero rows (race condition)', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // This tests the scenario where a category is deleted between 
         // the initial fetch and the update query
         const response = await auth.put('/api/categories/99999')
@@ -679,7 +679,7 @@ describe('Categories Management API', () => {
 
       it('should update child categories when parent type changes', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
           .send({
@@ -716,7 +716,7 @@ describe('Categories Management API', () => {
 
       it('should handle database errors gracefully during updates', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -738,7 +738,7 @@ describe('Categories Management API', () => {
 
       it('should handle very long category names during update', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -761,7 +761,7 @@ describe('Categories Management API', () => {
 
       it('should handle invalid type during update', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -783,7 +783,7 @@ describe('Categories Management API', () => {
 
       it('should handle successful category deletion', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a category to delete
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -805,7 +805,7 @@ describe('Categories Management API', () => {
 
       it('should handle database errors during deletion', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a category and transaction to test foreign key constraint
         const createCategoryResponse = await auth.post('/api/categories')
           .send({
@@ -835,11 +835,11 @@ describe('Categories Management API', () => {
 
       it('should handle database connection errors in get categories', async () => {
         const auth = authenticatedRequest(testUserToken);
-        
+
         // Mock a database error by using an invalid workspace_id format that could cause DB issues
         // This tests the catch block in the GET /categories endpoint
         const response = await auth.get('/api/categories?workspace_id=1');
-        
+
         // This should work normally, but we're testing that the endpoint has proper error handling
         validateApiResponse(response, 200);
         expect(response.body).toBeInstanceOf(Array);
@@ -847,10 +847,10 @@ describe('Categories Management API', () => {
 
       it('should handle database connection errors in get single category', async () => {
         const auth = authenticatedRequest(testUserToken);
-        
+
         // Test the catch block in GET /categories/:id
         const response = await auth.get('/api/categories/1');
-        
+
         // This should work normally, but we're testing that the endpoint has proper error handling
         validateApiResponse(response, 200);
         expect(response.body).toHaveProperty('id', 1);
@@ -858,14 +858,14 @@ describe('Categories Management API', () => {
 
       it('should handle database connection errors in create category', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Test the catch block in POST /categories by attempting to create with valid data
         const response = await auth.post('/api/categories')
           .send({
             name: 'Test DB Error Handling',
             workspace_id: 1
           });
-        
+
         // This should work normally, demonstrating error handling exists
         validateApiResponse(response, 201);
         expect(response.body).toHaveProperty('name', 'Test DB Error Handling');
@@ -873,17 +873,17 @@ describe('Categories Management API', () => {
 
       it('should handle deletion affecting zero rows (race condition)', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Try to delete a non-existent category
         const response = await auth.delete('/api/categories/99999');
-        
+
         validateApiResponse(response, 404);
         expect(response.body).toHaveProperty('error', 'Category not found');
       });
 
       it('should handle child category type inheritance edge case', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
           .send({
@@ -915,7 +915,7 @@ describe('Categories Management API', () => {
 
       it('should handle moving category from child to root level', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
           .send({
@@ -949,7 +949,7 @@ describe('Categories Management API', () => {
 
       it('should handle updating note field specifically', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create category
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -972,7 +972,7 @@ describe('Categories Management API', () => {
 
       it('should handle updating parent_category_id field specifically', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
           .send({
@@ -1005,7 +1005,7 @@ describe('Categories Management API', () => {
 
       it('should handle general database errors during update operations', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -1028,7 +1028,7 @@ describe('Categories Management API', () => {
 
       it('should handle general database errors during delete operations', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // Create a category first
         const createResponse = await auth.post('/api/categories')
           .send({
@@ -1047,7 +1047,7 @@ describe('Categories Management API', () => {
 
       it('should handle general database errors during create operations', async () => {
         const auth = authenticatedRequest(superadminToken);
-        
+
         // This test ensures the catch block in create is covered
         // Since we can't easily simulate DB errors, we test a valid create
         // that demonstrates error handling paths exist
