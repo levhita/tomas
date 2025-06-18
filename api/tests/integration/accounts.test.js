@@ -99,34 +99,13 @@ describe('Accounts Management API', () => {
       validateApiResponse(response, 404);
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toMatch(/account not found/i);
-    });
-
-    it('should allow access to account in workspace with permission', async () => {
+    });    it('should allow access to account in workspace with permission', async () => {
       // Ensure we have a fresh token for this test to avoid CI race conditions
       const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
       const auth = authenticatedRequest(freshTestUserToken);
       const testAccountId = 3; // Account in workspace 2, where testuser1 is admin
 
-      // Add debugging to understand CI failures
-      console.log('Debug: Testing access to account', testAccountId, 'with testuser1');
-
-      // First verify that account 3 exists
-      const allAccountsResponse = await auth.get('/api/accounts').query({ workspace_id: 2 });
-      console.log('Debug: All accounts in workspace 2:', allAccountsResponse.body);
-
       const response = await auth.get(`/api/accounts/${testAccountId}`);
-
-      // Log response for debugging
-      if (response.status !== 200) {
-        console.error('Debug: Unexpected response status:', response.status);
-        console.error('Debug: Response body:', response.body);
-
-        // Check if account exists in any workspace
-        const superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-        const superAuth = authenticatedRequest(superadminToken);
-        const allWorkspaceAccounts = await superAuth.get('/api/accounts').query({ workspace_id: 1 });
-        console.error('Debug: All accounts in workspace 1:', allWorkspaceAccounts.body);
-      }
 
       // testuser1 is admin of workspace 2, so should have access to account 3
       validateApiResponse(response, 200);
