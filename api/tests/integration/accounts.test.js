@@ -102,7 +102,9 @@ describe('Accounts Management API', () => {
     });
 
     it('should allow access to account in workspace with permission', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      // Ensure we have a fresh token for this test to avoid CI race conditions
+      const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshTestUserToken);
       const testAccountId = 3; // Account in workspace 2, where testuser1 is admin
 
       const response = await auth.get(`/api/accounts/${testAccountId}`);
