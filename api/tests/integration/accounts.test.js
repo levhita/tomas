@@ -102,11 +102,20 @@ describe('Accounts Management API', () => {
     });
 
     it('should allow access to account in workspace with permission', async () => {
-      // testuser1 is admin of workspace 2, so should have access to accounts in that workspace
-      const auth = authenticatedRequest(testUserToken);
+      // Get a fresh token for testuser1 to avoid any token caching issues
+      const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshTestUserToken);
+      const superAuth = authenticatedRequest(superadminToken);
 
-      // Always create a fresh account for this test to ensure consistent behavior
-      // between local and CI environments
+      // Verify testuser1 has admin permissions in workspace 2 before proceeding
+      const workspace2Users = await superAuth.get('/api/workspaces/2/users');
+      const testuser1InWorkspace2 = workspace2Users.body?.find(u => u.username === 'testuser1');
+      
+      if (!testuser1InWorkspace2 || testuser1InWorkspace2.role !== 'admin') {
+        throw new Error(`testuser1 should be admin of workspace 2, but found: ${JSON.stringify(testuser1InWorkspace2)}`);
+      }
+
+      // Create a fresh account for this test 
       const createAccountResponse = await auth.post('/api/accounts').send({
         name: 'Test Account for Permission Check',
         note: 'Created for testing workspace permission access',
@@ -114,7 +123,10 @@ describe('Accounts Management API', () => {
         workspace_id: 2
       });
 
-      expect(createAccountResponse.status).toBe(201);
+      if (createAccountResponse.status !== 201) {
+        throw new Error(`Failed to create account. Status: ${createAccountResponse.status}, Body: ${JSON.stringify(createAccountResponse.body)}`);
+      }
+
       const testAccountId = createAccountResponse.body.id;
 
       // Test that testuser1 can access the account they just created in workspace 2
