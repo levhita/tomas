@@ -37,6 +37,34 @@ describe('Index Routes and Core Application', () => {
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/text\/html/);
     });
+
+    it('should handle file read errors gracefully', async () => {
+      // Test error handling by temporarily making the template file unreadable
+      const fs = require('fs');
+
+      // Mock fs.readFileSync to simulate an error
+      const originalReadFileSync = fs.readFileSync;
+      fs.readFileSync = () => {
+        throw new Error('Simulated file read error');
+      };
+
+      const response = await request(app).get('/api');
+
+      // Restore original fs.readFileSync
+      fs.readFileSync = originalReadFileSync;
+
+      expect(response.status).toBe(500);
+      expect(response.text).toBe('Error loading welcome page');
+    });
+  });
+
+  describe('Static Assets', () => {
+    it('should serve CSS file without authentication', async () => {
+      const response = await request(app).get('/css/welcome.css');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/text\/css/);
+    });
   });
 
   describe('Error Handling', () => {
@@ -58,6 +86,30 @@ describe('Index Routes and Core Application', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.error).toBe('Access token required');
+    });
+
+    it('should handle welcome page template errors gracefully', async () => {
+      // This test is challenging because we need to simulate a file system error
+      // We can test the error handling by temporarily modifying the template path
+      const fs = require('fs');
+      const path = require('path');
+      const originalReadFileSync = fs.readFileSync;
+
+      // Mock fs.readFileSync to throw an error only for the welcome.html template
+      fs.readFileSync = jest.fn((filePath, encoding) => {
+        if (filePath.includes('welcome.html')) {
+          throw new Error('Simulated file read error');
+        }
+        return originalReadFileSync(filePath, encoding);
+      });
+
+      const response = await request(app).get('/api');
+
+      expect(response.status).toBe(500);
+      expect(response.text).toBe('Error loading welcome page');
+
+      // Restore original function
+      fs.readFileSync = originalReadFileSync;
     });
   });
 
