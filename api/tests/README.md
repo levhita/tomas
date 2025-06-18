@@ -25,9 +25,53 @@ tests/
     └── test-helpers.js     # Common test functions and data
 ```
 
+### Test Environment Configuration
+
+The test suite uses a separate environment configuration to ensure that tests don't interfere with the main application database.
+
+#### Environment Files
+
+**`.env` (Main Application)**
+- Contains the configuration for the main application
+- Database: `yamodev`
+- Used when running the application normally
+
+**`.env.test` (Test Environment)**
+- Contains the configuration for tests
+- Database: `test` (separate from main database)
+- Used automatically when running tests via Jest
+
+#### How It Works
+
+1. **Jest Configuration**: The test setup automatically loads `.env.test` instead of `.env`
+2. **Global Setup**: `tests/setup/global-setup.js` loads the test environment
+3. **Test Setup**: `tests/setup/test-setup.js` also loads the test environment
+4. **Database Isolation**: Tests use the `test` database, keeping the main `yamodev` database untouched
+
+#### Database Access
+
+The tests use the existing MySQL `test` database that the `yamodev` user already has access to. This avoids permission issues while maintaining complete separation from the main application data.
+
+#### Test Execution Flow
+
+When you run tests with `npm test`, the following happens:
+
+1. Jest loads the test environment from `.env.test`
+2. The test database (`test`) is set up with fresh test data
+3. Tests run against the isolated test database
+4. The test database is cleaned up after tests complete
+5. The main application database (`yamodev`) remains completely untouched
+
+#### Benefits
+
+- **Data Safety**: Main application data is never affected by test runs
+- **Test Isolation**: Each test run starts with a clean, predictable database state
+- **Parallel Development**: Developers can run tests while the main application is running
+- **CI/CD Ready**: Tests can run in CI environments without affecting production data
+
 ### Test Database
 
-The test suite uses a separate test database (`{DATABASE_NAME}_test`) that is:
+The test suite uses a separate test database that is:
 - Created fresh before each test run
 - Populated with consistent test data
 - Isolated from development/production databases

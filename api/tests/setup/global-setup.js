@@ -10,8 +10,8 @@ const fs = require('fs').promises;
 const path = require('path');
 
 module.exports = async () => {
-  // Load environment variables first
-  require('dotenv').config();
+  // Load test environment variables first
+  require('dotenv').config({ path: '.env.test' });
 
   // Set test environment variables
   process.env.NODE_ENV = 'test';

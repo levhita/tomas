@@ -4,8 +4,8 @@
  * This file runs before each test file and sets up common test utilities.
  */
 
-// Load environment variables for testing
-require('dotenv').config({ path: '.env' });
+// Load test environment variables for testing
+require('dotenv').config({ path: '.env.test' });
 
 // Extend Jest matchers for better assertions
 expect.extend({
