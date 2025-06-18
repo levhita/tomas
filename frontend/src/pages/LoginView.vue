@@ -55,7 +55,7 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const isLoading = ref(false)
-const version = ref('0.1.1') // Update this manually when needed
+const version = ref('0.2.0') // Update this manually when needed
 
 async function handleLogin() {
   try {

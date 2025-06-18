@@ -74,6 +74,7 @@
                     <tr>
                       <th>User</th>
                       <th>Role</th>
+                      <th>Workspaces</th>
                       <th>Status</th>
                       <th>Created</th>
                       <th>Actions</th>
@@ -98,6 +99,26 @@
                         <span class="badge status-badge" :class="user.superadmin ? 'bg-danger' : 'bg-secondary'">
                           {{ user.superadmin ? 'Super Admin' : 'User' }}
                         </span>
+                      </td>
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ user.workspace_count || 0 }}
+                            workspace{{ (user.workspace_count || 0) !== 1 ? 's' : '' }}</span>
+                          <small class="text-muted" v-if="user.workspace_count > 0">
+                            <span v-if="user.admin_workspaces > 0" class="me-2">
+                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_workspaces }} admin
+                            </span>
+                            <span v-if="user.collaborator_workspaces > 0" class="me-2">
+                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_workspaces }} edit
+                            </span>
+                            <span v-if="user.viewer_workspaces > 0">
+                              <i class="bi bi-eye text-info"></i> {{ user.viewer_workspaces }} view
+                            </span>
+                          </small>
+                          <small class="text-muted" v-else>
+                            No workspace access
+                          </small>
+                        </div>
                       </td>
                       <td>
                         <span class="badge status-badge bg-success">
