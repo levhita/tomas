@@ -87,8 +87,17 @@ describe('User Workspace Management API', () => {
 
       for (let i = 0; i < roles.length; i++) {
         const role = roles[i];
-        // Use different workspace for each role test
-        const workspaceId = i + 2; // Start from workspace 2
+
+        // Create a new workspace for each role test to avoid conflicts
+        const workspaceResponse = await auth.post('/api/workspaces')
+          .send({
+            name: `Test Role Workspace ${role}`,
+            description: `Workspace for testing ${role} role`,
+            currency_symbol: '$'
+          });
+
+        validateApiResponse(workspaceResponse, 201);
+        const workspaceId = workspaceResponse.body.id;
 
         const response = await auth.post(`/api/users/${TEST_USERS.REGULARUSER.id}/workspaces`)
           .send({

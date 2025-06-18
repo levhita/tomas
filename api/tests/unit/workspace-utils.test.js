@@ -172,7 +172,7 @@ describe('Workspace Utilities', () => {
       await require('../../src/db').execute(
         'UPDATE workspace SET deleted_at = NOW() WHERE id = 3'
       );
-      
+
       const result = await getWorkspaceById(3);
 
       expect(result).toBeNull();

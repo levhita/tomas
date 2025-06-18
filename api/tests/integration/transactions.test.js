@@ -53,7 +53,7 @@ describe('Transactions Management API', () => {
     it('should return transactions with date filtering', async () => {
       const auth = authenticatedRequest(superadminToken);
       const response = await auth.get('/api/transactions')
-        .query({ 
+        .query({
           accountId: testAccountId,
           startDate: '2024-12-01',
           endDate: '2024-12-31'

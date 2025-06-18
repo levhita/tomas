@@ -13,7 +13,8 @@ module.exports = {
     '**/tests/unit/**/*.test.js'
   ],
 
-  // No global setup for unit tests
+  // No global setup for unit tests, but we need teardown to close DB connections
+  globalTeardown: '<rootDir>/tests/setup/global-teardown.js',
   setupFilesAfterEnv: ['<rootDir>/tests/setup/test-setup.js'],
 
   // Test timeout
@@ -37,5 +38,8 @@ module.exports = {
   clearMocks: true,
 
   // Restore mocks after each test
-  restoreMocks: true
+  restoreMocks: true,
+
+  // Force exit to prevent hanging due to database connections
+  forceExit: true
 };
