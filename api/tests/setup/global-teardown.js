@@ -71,4 +71,7 @@ module.exports = async () => {
   } catch (error) {
     console.warn('Warning closing database pool:', error.message);
   }
+
+  // Give a moment for all connections to close
+  await new Promise(resolve => setTimeout(resolve, 100));
 };
