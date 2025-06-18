@@ -278,281 +278,213 @@ Coverage reports are generated in the `coverage/` directory with:
 - LCOV format: `coverage/lcov.info`
 - Text summary in terminal
 
-## Integration Test Categories
+## Improving Test Coverage
 
-### User Management Tests (`users.test.js`)
-- ✅ Authentication (login/logout)
-- ✅ User CRUD operations
-- ✅ Permission validation
-- ✅ Input validation
-- ✅ Error handling
+### Current Coverage Status
 
-### Workspace Management Tests (`workspaces.test.js`)
-- ✅ Workspace CRUD operations
-- ✅ User access control
-- ✅ Search functionality
-- ✅ Permission validation
-- ✅ Soft deletion
-
-### User-Workspace Management Tests (`user-workspaces.test.js`)
-- ✅ Adding users to workspaces
-- ✅ Role management (viewer/collaborator/admin)
-- ✅ Removing user access
-- ✅ Permission validation
-- ✅ Workspace statistics
-
-### Health Check Tests (`health.test.js`)
-- ✅ System health monitoring
-- ✅ Database connectivity
-- ✅ Response format validation
-- ✅ Uptime tracking
-
-## Unit Test Categories
-
-### Authentication Middleware (`auth.test.js`)
-- ✅ JWT token validation
-- ✅ Authorization header parsing
-- ✅ Token expiration handling
-- ✅ Error scenarios
-
-### Workspace Utilities (`workspace-utils.test.js`)
-- ✅ Permission checking functions
-- ✅ Role validation
-- ✅ Database interaction mocking
-- ✅ Error handling
-
-## Troubleshooting
-
-### Common Issues
-
-#### Database Connection Errors
+To check current coverage, run:
 ```bash
-# Check database credentials in .env
-./test.sh check
-
-# Verify MySQL service is running
-brew services list | grep mysql
-
-# Test direct database connection
-mysql -h localhost -u your_user -p your_database
+npm run test:coverage
 ```
 
-#### Permission Errors
-```bash
-# Ensure test script is executable
-chmod +x test.sh
+### Coverage Improvement Strategy
 
-# Check file permissions
-ls -la test.sh
+#### 1. Identify Low Coverage Areas
+```bash
+# Generate detailed coverage report
+npm run test:coverage
+
+# Open HTML coverage report
+open coverage/lcov-report/index.html
 ```
 
-#### Node Version Compatibility
-The test suite requires Node.js 16+ due to Jest compatibility:
+#### 2. Priority Coverage Areas
+
+**Critical Missing Tests (Priority 1):**
+- **Categories API** (`src/routes/categories.js`) - Currently ~8% coverage
+- **Index Routes** (`src/routes/index.js`) - Currently ~40% coverage
+
+**Enhancement Opportunities (Priority 2):**
+- **Workspace Routes** - Missing advanced features and edge cases
+- **Account Routes** - Missing complex balance calculations
+- **Transaction Routes** - Missing bulk operations and complex scenarios
+
+#### 3. Adding New Test Files
+
+**Categories Integration Tests**:
 ```bash
-node --version  # Should be 16.0.0 or higher
+# File: tests/integration/categories.test.js
+# Tests: GET, POST, PUT, DELETE /api/categories
+# Focus: CRUD operations, permissions, validation
 ```
 
-#### Memory Issues
-For large test suites, increase Node.js memory limit:
+**Index Route Tests**:
 ```bash
-export NODE_OPTIONS="--max-old-space-size=4096"
-npm test
+# File: tests/integration/index.test.js  
+# Tests: Root routes, error handling, middleware
+# Focus: Core application functionality
 ```
 
-### Test Debugging
+#### 4. Enhancing Existing Tests
 
-#### Enable Verbose Logging
-```bash
-DEBUG=* npm test
+**Add Missing Test Scenarios**:
+```javascript
+// Example: Enhanced account tests
+describe('Advanced Account Scenarios', () => {
+  it('should handle complex balance calculations', async () => {
+    // Test credit vs debit account logic
+    // Test transaction history impact
+    // Test date-range balance queries
+  });
+
+  it('should validate account archiving', async () => {
+    // Test account soft deletion
+    // Test archived account restrictions
+  });
+});
 ```
 
-#### Run Specific Test Files
-```bash
-# Run single test file
-npm test -- users.test.js
+#### 5. Coverage Enforcement
 
-# Run tests matching pattern
-npm test -- --testNamePattern="should create user"
+**Local Development**:
+```bash
+# Set coverage thresholds in jest.config.js
+module.exports = {
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  }
+};
 ```
 
-#### Database Inspection
-The test database persists during test execution, allowing inspection:
-```bash
-mysql -h localhost -u your_user -p your_database_test
-```
-
-## Continuous Integration
-
-### GitHub Actions Setup
-
-For running tests in CI/CD pipelines, create `.github/workflows/tests.yml`:
-
+**GitHub Actions Integration**:
 ```yaml
-name: API Tests
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
-
-jobs:
-  test:
-    name: Run API Tests
-    runs-on: ubuntu-latest
-    
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: test_root_password
-          MYSQL_DATABASE: test
-          MYSQL_USER: yamodev
-          MYSQL_PASSWORD: yamodev
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: api/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./api
-        run: npm ci
-
-      - name: Wait for MySQL to be ready
-        run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -u yamodev -pyamodev --silent; then
-              echo "MySQL is ready"
-              break
-            fi
-            echo "Waiting for MySQL... ($i/30)"
-            sleep 2
-          done
-
-      - name: Run tests
-        working-directory: ./api
-        env:
-          YAMO_MYSQL_HOST: 127.0.0.1
-          YAMO_MYSQL_USER: yamodev
-          YAMO_MYSQL_PASSWORD: yamodev
-          YAMO_MYSQL_PORT: 3306
-          YAMO_MYSQL_DATABASE: test
-          YAMO_JWT_SECRET: test-jwt-secret-for-ci
-          NODE_ENV: test
-        run: npm test
+# Add to .github/workflows/tests.yml
+- name: Run tests with coverage
+  run: npm run test:coverage
+  
+- name: Check coverage thresholds
+  run: npm run test:coverage -- --passWithNoTests=false
 ```
 
-#### Branch Protection Setup
+#### 6. Coverage Best Practices
 
-To require tests to pass before merging:
+**Focus on Critical Paths**:
+```javascript
+// Test main business logic flows
+it('should process complete transaction workflow', async () => {
+  // Create account -> Create transaction -> Update balance -> Generate report
+});
 
-1. **Go to your GitHub repository settings**
-2. **Navigate to "Branches"**
-3. **Add a branch protection rule for `main` (and optionally `develop`)**
-4. **Enable the following options**:
-   - ✅ "Require a pull request before merging"
-   - ✅ "Require status checks to pass before merging"
-   - ✅ "Require branches to be up to date before merging"
-   - ✅ Select "Run API Tests" as a required status check
-   - ✅ "Restrict pushes that create files larger than 100 MB"
-   - ✅ "Do not allow bypassing the above settings"
+// Test error scenarios
+it('should handle database connection failures', async () => {
+  // Mock database errors and test graceful handling
+});
 
-#### GitHub Secrets (if needed)
+// Test permission boundaries
+it('should enforce role-based access correctly', async () => {
+  // Test all permission combinations
+});
+```
 
-For production environments, you may want to use GitHub Secrets:
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_PASSWORD` 
-- `JWT_SECRET`
+**Avoid Coverage Anti-Patterns**:
+```javascript
+// ❌ Don't write tests just for coverage
+it('should call function', () => {
+  someFunction(); // No assertions
+});
 
-Add these in your repository settings under "Secrets and variables" → "Actions".
+// ✅ Write meaningful tests
+it('should return correct calculation result', () => {
+  const result = someFunction(input);
+  expect(result).toBe(expectedOutput);
+  expect(result).toMatchSnapshot();
+});
+```
 
-## Performance Considerations
+#### 7. Coverage Monitoring
 
-### Test Execution Speed
-- Database operations add latency
-- Use `beforeAll` for expensive setup when possible
-- Reset only necessary data between tests
-- Consider test parallelization for large suites
+**Set Up Coverage Tracking**:
+```bash
+# Install coverage badge generator
+npm install --save-dev coverage-badge-creator
 
-### Resource Management
-- Test database is created/destroyed per run
-- Connection pools are properly closed
-- Memory usage monitored during long test runs
+# Generate coverage badges
+npx coverage-badge-creator --help
+```
 
-## Best Practices
+**Coverage Reports**:
+```bash
+# Generate and view detailed reports
+npm run test:coverage
+open coverage/lcov-report/index.html
 
-### Test Organization
-1. **Group related tests** in describe blocks
-2. **Use descriptive test names** explaining expected behavior
-3. **Test both success and failure scenarios**
-4. **Validate complete response structure**
-5. **Test edge cases and boundary conditions**
+# Check specific file coverage
+npm run test:coverage -- --collectCoverageFrom="src/routes/categories.js"
+```
 
-### Test Data Management
-1. **Use consistent test data** from test-helpers
-2. **Reset database state** between tests
-3. **Generate unique data** when needed
-4. **Avoid hardcoded IDs** where possible
+#### 8. Integration with Development Workflow
 
-### Assertion Patterns
-1. **Validate HTTP status codes** first
-2. **Check response structure** before content
-3. **Use custom matchers** for common validations
-4. **Test error messages** are meaningful
+**Pre-commit Hooks**:
+```json
+// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run test:coverage && npm run lint"
+    }
+  }
+}
+```
 
-### Error Testing
-1. **Test all error conditions**
-2. **Validate error response format**
-3. **Check appropriate HTTP status codes**
-4. **Verify security measures** (auth, permissions)
+**Watch Mode with Coverage**:
+```bash
+# Monitor coverage while developing
+npm run test:watch -- --coverage --watchAll=false
+```
 
-## Maintenance
+### Target Coverage Goals
 
-### Adding New Tests
-1. Create test file in appropriate directory
-2. Follow existing patterns and naming conventions
-3. Add test data to `test-helpers.js` if needed
-4. Update this documentation
+**Minimum Acceptable Coverage**: 80%
+- Statements: 80%
+- Branches: 80%
+- Functions: 80%
+- Lines: 80%
 
-### Updating Test Data
-1. Modify `db/test_schema.sql` for schema changes
-2. Update `test-helpers.js` for new test constants
-3. Regenerate test database with `./test.sh setup`
+**Ideal Coverage**: 90%+
+- Focus on business-critical code paths
+- Comprehensive error handling
+- Complete API endpoint coverage
+- Edge case validation
 
-### Performance Monitoring
-1. Track test execution time trends
-2. Monitor database query performance
-3. Review coverage reports regularly
-4. Optimize slow tests
+### Coverage Improvement Checklist
 
-## Security Testing
-
-The test suite includes security validations for:
-- **Authentication bypass attempts**
-- **Authorization privilege escalation**
-- **Input validation and sanitization**
-- **SQL injection prevention**
-- **JWT token security**
-
-## Future Enhancements
-
-Planned improvements for the test suite:
-- **Load testing** with multiple concurrent users
-- **Performance benchmarking** for API endpoints
-- **Contract testing** for API versioning
-- **End-to-end testing** integration
-- **Mock external service** dependencies
+- [ ] **Create missing integration tests**
+  - [ ] Categories API tests
+  - [ ] Index route tests
+  - [ ] Enhanced workspace tests
+  
+- [ ] **Add missing unit tests**
+  - [ ] Utility function tests
+  - [ ] Helper function tests
+  - [ ] Validation logic tests
+  
+- [ ] **Enhance existing tests**
+  - [ ] Add error scenario coverage
+  - [ ] Add edge case testing
+  - [ ] Add performance testing
+  
+- [ ] **Configure coverage enforcement**
+  - [ ] Set Jest coverage thresholds
+  - [ ] Add GitHub Actions coverage checks
+  - [ ] Set up coverage reporting
+  
+- [ ] **Monitor and maintain**
+  - [ ] Regular coverage audits
+  - [ ] Update tests with new features
+  - [ ] Refactor tests for maintainability
+````
