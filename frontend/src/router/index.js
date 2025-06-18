@@ -3,7 +3,8 @@ import WorkspacesView from '../pages/WorkspacesView.vue'
 import CalendarView from '../pages/CalendarView.vue'
 import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
-import AdminView from '../pages/AdminView.vue'
+import AdminView from '../pages/admin/AdminView.vue'
+import AdminUsersView from '../pages/admin/AdminUsersView.vue'
 
 const routes = [
   {
@@ -34,6 +35,15 @@ const routes = [
     path: '/admin',
     component: AdminView,
     name: 'admin',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/users',
+    component: AdminUsersView,
+    name: 'admin-users',
     meta: {
       requiresAuth: true,
       requiresSuperAdmin: true

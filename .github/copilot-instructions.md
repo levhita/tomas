@@ -1,5 +1,11 @@
 # Copilot Instructions for Project
 
+# Scope on changes
+
+Keep the frontend following what is already implemented in the API, always check with incodeAPI.js in the frontend and with the routes in the API to validate that what is done is correct.
+
+Furthermore, check with schema.sql to validate that the database schema is correct and that the API is returning the expected data.
+
 ## styling
 We use Bootstrap 5.3 for styling and layout. Please ensure that any new components or pages adhere to the Bootstrap 5 guidelines.
 
@@ -11,7 +17,7 @@ Prefer to use bootstrap styles and classes, when in need add the custom styles t
 
 All input field should use the `form-floating` class for floating labels.
 
-
+For the admin section keep the admin styles in the `admin.css` file, and use the `admin` class to scope them.
 
 ## components
 
