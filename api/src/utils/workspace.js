@@ -27,7 +27,7 @@ async function getUserRole(workspaceId, userId) {
   try {
     // Add debugging for CI investigation
     console.log(`[DEBUG] getUserRole called - workspaceId: ${workspaceId}, userId: ${userId}`);
-    
+
     const [access] = await db.execute(`
       SELECT role FROM workspace_user 
       WHERE workspace_id = ? AND user_id = ?
@@ -36,7 +36,7 @@ async function getUserRole(workspaceId, userId) {
     console.log(`[DEBUG] getUserRole query result:`, access);
     const role = access.length > 0 ? access[0].role : null;
     console.log(`[DEBUG] getUserRole returning role:`, role);
-    
+
     return role;
   } catch (error) {
     console.error('Error getting user role:', error);

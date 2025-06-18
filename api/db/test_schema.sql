@@ -151,7 +151,12 @@ VALUES
 INSERT INTO
   `workspace` (`id`, `name`, `description`, `currency_symbol`)
 VALUES
-  (1, 'Test Workspace 1', 'Main testing workspace', '$'),
+  (
+    1,
+    'Test Workspace 1',
+    'Main testing workspace',
+    '$'
+  ),
   (
     2,
     'Test Workspace 2',

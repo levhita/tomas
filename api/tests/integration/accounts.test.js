@@ -118,19 +118,19 @@ describe('Accounts Management API', () => {
       // Check if we're actually using the test database
       const superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
       const superAuth = authenticatedRequest(superadminToken);
-      
+
       // Verify workspace structure
       const workspacesResponse = await superAuth.get('/api/workspaces/all');
       console.log('=== CI DEBUG: Available workspaces ===', workspacesResponse.body);
-      
+
       // Verify users in workspace 2
       const workspace2Users = await superAuth.get('/api/workspaces/2/users');
       console.log('=== CI DEBUG: Workspace 2 users ===', workspace2Users.body);
-      
+
       // Verify accounts in workspace 2 and find the account to test
       const workspace2Accounts = await superAuth.get('/api/accounts').query({ workspace_id: 2 });
       console.log('=== CI DEBUG: Workspace 2 accounts ===', workspace2Accounts.body);
-      
+
       // Check testuser1 details
       const allUsers = await superAuth.get('/api/users');
       const testuser1 = allUsers.body.find(u => u.username === 'testuser1');
@@ -140,7 +140,7 @@ describe('Accounts Management API', () => {
       if (!workspace2Accounts.body || workspace2Accounts.body.length === 0) {
         throw new Error('No accounts found in workspace 2 for testing');
       }
-      
+
       const testAccount = workspace2Accounts.body[0]; // Use the first account in workspace 2
       const testAccountId = testAccount.id;
       console.log('=== CI DEBUG: Using account for test ===', testAccount);
@@ -153,13 +153,13 @@ describe('Accounts Management API', () => {
         console.error('Status:', response.status);
         console.error('Response body:', response.body);
         console.error('Expected account ID:', testAccountId);
-        
+
         // Try with superadmin to see if account exists at all
         const superadminResponse = await superAuth.get(`/api/accounts/${testAccountId}`);
         console.error('=== CI DEBUG: Superadmin access ===');
         console.error('Superadmin status:', superadminResponse.status);
         console.error('Superadmin body:', superadminResponse.body);
-        
+
         throw new Error(`Test failed in CI - Status: ${response.status}, Body: ${JSON.stringify(response.body)}`);
       }
 
