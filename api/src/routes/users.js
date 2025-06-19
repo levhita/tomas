@@ -330,7 +330,12 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const existingUser = existingUsers[0];
+    const existingUser = existingUsers.length > 0 ? existingUsers[0] : null;
+    if (!existingUser) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
 
     // Check permissions
     const isOwnAccount = req.user.id === parseInt(id);
