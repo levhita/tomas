@@ -9,6 +9,7 @@ const request = require('supertest');
 const {
   TEST_USERS,
   loginUser,
+  initializeTokenCache,
   authenticatedRequest,
   validateApiResponse,
   generateRandomData,
@@ -21,9 +22,10 @@ describe('Accounts Management API', () => {
   let testWorkspaceId = 1; // From test data
 
   beforeAll(async () => {
-    // Login once at the beginning - the global setup has already created test data
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
+    // Use token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   describe('GET /api/accounts', () => {
@@ -100,14 +102,40 @@ describe('Accounts Management API', () => {
     });
 
     it('should allow access to account in workspace with permission', async () => {
-      const auth = authenticatedRequest(testUserToken);
-      const testAccountId = 3; // Account in workspace 2, where testuser1 is admin
+      // Get a fresh token for testuser1 to avoid any token caching issues
+      const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshTestUserToken);
+      const superAuth = authenticatedRequest(superadminToken);
 
+      // Verify testuser1 has admin permissions in workspace 2, if not, add them
+      const addUserResponse = await superAuth.post('/api/workspaces/2/users').send({
+        userId: 2, // testuser1's ID from test schema
+        role: 'admin'
+      });
+      if (addUserResponse.status !== 409 && addUserResponse.status !== 201) {
+        throw new Error(`Failed to add testuser1 to workspace 2. Status: ${addUserResponse.status}, Body: ${JSON.stringify(addUserResponse.body)}`);
+      }
+
+      // Create a fresh account for this test 
+      const createAccountResponse = await auth.post('/api/accounts').send({
+        name: 'Test Account for Permission Check',
+        note: 'Created for testing workspace permission access',
+        type: 'debit',
+        workspace_id: 2
+      });
+
+      if (createAccountResponse.status !== 201) {
+        throw new Error(`Failed to create account. Status: ${createAccountResponse.status}, Body: ${JSON.stringify(createAccountResponse.body)}`);
+      }
+
+      const testAccountId = createAccountResponse.body.id;
+
+      // Test that testuser1 can access the account they just created in workspace 2
       const response = await auth.get(`/api/accounts/${testAccountId}`);
 
-      // testuser1 is admin of workspace 2, so should have access to account 3
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', testAccountId);
+      expect(response.body).toHaveProperty('workspace_id', 2);
     });
 
     it('should deny access without authentication', async () => {

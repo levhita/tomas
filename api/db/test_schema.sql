@@ -120,24 +120,28 @@ CREATE TABLE
 -- Test Data --
 -- Test Users (passwords are 'password123' hashed with bcryptjs)
 INSERT INTO
-  `user` (`username`, `password_hash`, `superadmin`)
+  `user` (`id`, `username`, `password_hash`, `superadmin`)
 VALUES
   (
+    1,
     'superadmin',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     TRUE
   ),
   (
+    2,
     'testuser1',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
   ),
   (
+    3,
     'testuser2',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
   ),
   (
+    4,
     'regularuser',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE
@@ -145,23 +149,37 @@ VALUES
 
 -- Test Workspaces
 INSERT INTO
-  `workspace` (`name`, `description`, `currency_symbol`)
+  `workspace` (`id`, `name`, `description`, `currency_symbol`)
 VALUES
-  ('Test Workspace 1', 'Main testing workspace', '$'),
   (
+    1,
+    'Test Workspace 1',
+    'Main testing workspace',
+    '$'
+  ),
+  (
+    2,
     'Test Workspace 2',
     'Secondary testing workspace',
     '€'
   ),
   (
+    3,
     'Search Test Workspace',
     'Workspace for search testing',
     '£'
   ),
   (
+    4,
     'Inactive Workspace',
     'Workspace for deletion testing',
     '$'
+  ),
+  (
+    5,
+    'No Superadmin Workspace',
+    'Workspace where superadmin has no access',
+    '¥'
   );
 
 -- Test Workspace Users
@@ -174,30 +192,43 @@ VALUES
   (2, 1, 'admin'), -- superadmin is admin of workspace 2
   (2, 2, 'admin'), -- testuser1 is admin of workspace 2
   (3, 1, 'admin'), -- superadmin is admin of workspace 3
-  (4, 1, 'admin');
+  (4, 1, 'admin'), -- superadmin is admin of workspace 4
+  (5, 2, 'admin'), -- testuser1 is admin of workspace 5 (superadmin is NOT a member)
+  (5, 4, 'collaborator');
 
+-- regularuser is collaborator of workspace 5
 -- superadmin is admin of workspace 4
 -- Test Accounts
 INSERT INTO
-  `account` (`name`, `note`, `type`, `workspace_id`)
+  `account` (`id`, `name`, `note`, `type`, `workspace_id`)
 VALUES
   (
+    1,
     'Test Checking Account',
     'Main checking account for testing',
     'debit',
     1
   ),
   (
+    2,
     'Test Credit Card',
     'Credit card for testing',
     'credit',
     1
   ),
   (
+    3,
     'Savings Account',
     'Savings account in workspace 2',
     'debit',
     2
+  ),
+  (
+    4,
+    'Workspace 5 Account',
+    'Account in workspace without superadmin',
+    'debit',
+    5
   );
 
 -- Test Categories
@@ -221,6 +252,12 @@ VALUES
     'Movies, games, and fun activities',
     'expense',
     2
+  ),
+  (
+    'Workspace 5 Category',
+    'Category in workspace without superadmin',
+    'expense',
+    5
   );
 
 -- Test Transactions
@@ -270,4 +307,13 @@ VALUES
     TRUE,
     3,
     3
+  ),
+  (
+    'Workspace 5 transaction',
+    'Transaction in workspace without superadmin access',
+    -30.00,
+    '2024-12-05',
+    TRUE,
+    4,
+    4
   );

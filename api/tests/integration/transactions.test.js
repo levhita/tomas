@@ -9,6 +9,7 @@ const request = require('supertest');
 const {
   TEST_USERS,
   loginUser,
+  initializeTokenCache,
   authenticatedRequest,
   validateApiResponse,
   generateRandomData,
@@ -23,9 +24,10 @@ describe('Transactions Management API', () => {
   let testCategoryId = 1; // From test data
 
   beforeAll(async () => {
-    // Login once at the beginning - the global setup has already created test data
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
+    // Use token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   describe('GET /api/transactions', () => {

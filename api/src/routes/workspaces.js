@@ -26,7 +26,8 @@ const {
   canWrite,
   canRead,
   getWorkspaceUsers,
-  getWorkspaceById
+  getWorkspaceById,
+  getWorkspaceByIdIncludingDeleted
 } = require('../utils/workspace');
 
 /**
@@ -323,14 +324,20 @@ router.delete('/:id', async (req, res) => {
  * Restore a soft-deleted workspace
  * 
  * @param {number} id - Workspace ID
- * @permission Admin access to the workspace
+ * @permission Superadmin only
  * @returns {Object} Restored workspace details
  */
-router.post('/:id/restore', async (req, res) => {
+router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
   try {
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if workspace exists (including soft-deleted ones)
+    const workspace = await getWorkspaceByIdIncludingDeleted(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Check if workspace is already active
+    if (!workspace.deleted_at) {
+      return res.status(400).json({ error: 'Workspace is already active' });
     }
 
     const [result] = await db.query(`
@@ -343,8 +350,8 @@ router.post('/:id/restore', async (req, res) => {
       return res.status(404).json({ error: 'Workspace not found or already restored' });
     }
 
-    const workspace = await getWorkspaceById(req.params.id);
-    res.status(200).json(workspace);
+    const restoredWorkspace = await getWorkspaceById(req.params.id);
+    res.status(200).json(restoredWorkspace);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to restore workspace' });
@@ -353,34 +360,80 @@ router.post('/:id/restore', async (req, res) => {
 
 /**
  * DELETE /workspaces/:id/permanent
- * Permanently delete a workspace
+ * Permanently delete a workspace and cascade delete all related data
  * 
  * @param {number} id - Workspace ID
- * @permission Admin access to the workspace
+ * @permission Superadmin only
  * @returns {void}
+ * 
+ * Note: This will cascade delete ALL related data including:
+ * - All transactions in workspace accounts
+ * - All account totals 
+ * - All categories (including hierarchical categories)
+ * - All accounts
+ * - All workspace users
+ * - The workspace itself
  */
-router.delete('/:id/permanent', async (req, res) => {
+router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
   try {
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if workspace exists (including soft-deleted ones)
+    const workspace = await getWorkspaceByIdIncludingDeleted(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Check if workspace is soft-deleted (requirement for permanent deletion)
+    if (!workspace.deleted_at) {
+      return res.status(400).json({ error: 'Workspace must be soft-deleted before permanent deletion' });
     }
 
     const connection = await db.getConnection();
     await connection.beginTransaction();
 
     try {
-      // Delete workspace users first (foreign key constraint)
-      await connection.query(
-        'DELETE FROM workspace_user WHERE workspace_id = ?',
-        [req.params.id]
-      );
+      // CASCADE DELETE ALL RELATED DATA
 
-      // Then delete the workspace
-      const [result] = await connection.query(
-        'DELETE FROM workspace WHERE id = ?',
-        [req.params.id]
-      );
+      // 1. Delete transactions first (they reference accounts and categories)
+      await connection.query(`
+        DELETE t FROM transaction t 
+        INNER JOIN account a ON t.account_id = a.id 
+        WHERE a.workspace_id = ?
+      `, [req.params.id]);
+
+      // 2. Delete totals (they reference accounts)
+      await connection.query(`
+        DELETE t FROM total t 
+        INNER JOIN account a ON t.account_id = a.id 
+        WHERE a.workspace_id = ?
+      `, [req.params.id]);
+
+      // 3. Delete categories (handle self-references by deleting children first)
+      // First, delete child categories (categories with parent_category_id)
+      await connection.query(`
+        DELETE FROM category 
+        WHERE workspace_id = ? AND parent_category_id IS NOT NULL
+      `, [req.params.id]);
+
+      // Then delete parent categories
+      await connection.query(`
+        DELETE FROM category 
+        WHERE workspace_id = ? AND parent_category_id IS NULL
+      `, [req.params.id]);
+
+      // 4. Delete accounts
+      await connection.query(`
+        DELETE FROM account WHERE workspace_id = ?
+      `, [req.params.id]);
+
+      // 5. Delete workspace users
+      await connection.query(`
+        DELETE FROM workspace_user WHERE workspace_id = ?
+      `, [req.params.id]);
+
+      // 6. Finally delete the workspace
+      const [result] = await connection.query(`
+        DELETE FROM workspace WHERE id = ?
+      `, [req.params.id]);
 
       if (result.affectedRows === 0) {
         await connection.rollback();
@@ -409,7 +462,7 @@ router.delete('/:id/permanent', async (req, res) => {
  * @param {number} id - Workspace ID
  * @body {number} userId - User ID to add
  * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Admin access to the workspace
+ * @permission Admin access to the workspace or superadmin
  * @returns {Array} Updated list of workspace users
  */
 router.post('/:id/users', async (req, res) => {
@@ -424,9 +477,18 @@ router.post('/:id/users', async (req, res) => {
   }
 
   try {
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if the workspace exists
+    const workspace = await getWorkspaceById(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Then check if user has admin access (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
     }
 
     // Check if user exists
@@ -465,24 +527,45 @@ router.post('/:id/users', async (req, res) => {
  * 
  * @param {number} id - Workspace ID
  * @param {number} userId - User ID to remove
- * @permission Admin access to the workspace
+ * @permission Admin access to the workspace or superadmin
  * @returns {void}
  */
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if workspace exists
+    const workspace = await getWorkspaceById(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    // Prevent removing the last user
-    const [userCount] = await db.query(`
-      SELECT COUNT(*) as count FROM workspace_user 
-      WHERE workspace_id = ?
-    `, [req.params.id]);
+    // Then check admin permission (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
 
-    if (userCount[0].count === 1) {
-      return res.status(400).json({ error: 'Cannot remove the last user from the workspace' });
+    // Check if user exists in workspace first
+    const [existingUser] = await db.query(`
+      SELECT role FROM workspace_user 
+      WHERE workspace_id = ? AND user_id = ?
+    `, [req.params.id, req.params.userId]);
+
+    if (existingUser.length === 0) {
+      return res.status(404).json({ error: 'User not found in workspace' });
+    }
+
+    // Prevent removing the last admin (unless user is superadmin)
+    if (existingUser[0].role === 'admin' && !req.user.superadmin) {
+      const [adminCount] = await db.query(`
+        SELECT COUNT(*) as count FROM workspace_user 
+        WHERE workspace_id = ? AND role = 'admin'
+      `, [req.params.id]);
+
+      if (adminCount[0].count === 1) {
+        return res.status(409).json({ error: 'Cannot remove the last admin from the workspace' });
+      }
     }
 
     // Remove user from workspace
@@ -490,10 +573,6 @@ router.delete('/:id/users/:userId', async (req, res) => {
       DELETE FROM workspace_user 
       WHERE workspace_id = ? AND user_id = ?
     `, [req.params.id, req.params.userId]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'User not found in workspace' });
-    }
 
     res.status(204).send();
   } catch (err) {
@@ -509,7 +588,7 @@ router.delete('/:id/users/:userId', async (req, res) => {
  * @param {number} id - Workspace ID
  * @param {number} userId - User ID to update
  * @body {string} role - New role to assign (admin, collaborator, viewer)
- * @permission Admin access to the workspace
+ * @permission Admin access to the workspace or superadmin
  * @returns {Array} Updated list of workspace users
  */
 router.put('/:id/users/:userId', async (req, res) => {
@@ -520,13 +599,22 @@ router.put('/:id/users/:userId', async (req, res) => {
   }
 
   try {
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if the workspace exists
+    const workspace = await getWorkspaceById(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
     }
 
-    // Prevent removing the last admin
-    if (role !== 'admin') {
+    // Then check if user has admin access (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Prevent removing the last admin (unless user is superadmin)
+    if (role !== 'admin' && !req.user.superadmin) {
       const [adminCount] = await db.query(`
         SELECT COUNT(*) as count 
         FROM workspace_user 
@@ -540,7 +628,7 @@ router.put('/:id/users/:userId', async (req, res) => {
       `, [req.params.id, req.params.userId]);
 
       if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
-        return res.status(400).json({ error: 'Cannot remove the last admin from the workspace' });
+        return res.status(409).json({ error: 'Cannot remove the last admin from the workspace' });
       }
     }
 
@@ -568,14 +656,23 @@ router.put('/:id/users/:userId', async (req, res) => {
  * List all users in a workspace
  * 
  * @param {number} id - Workspace ID
- * @permission Read access to the workspace (admin, collaborator, viewer)
+ * @permission Read access to the workspace (admin, collaborator, viewer) or superadmin
  * @returns {Array} List of workspace users
  */
 router.get('/:id/users', async (req, res) => {
   try {
-    const { allowed, message } = await canRead(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // First check if the workspace exists
+    const workspace = await getWorkspaceById(req.params.id);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+
+    // Superadmin can access users of any workspace
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canRead(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
     }
 
     const users = await getWorkspaceUsers(req.params.id);

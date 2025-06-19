@@ -23,11 +23,11 @@ const { canRead, canWrite } = require('../utils/workspace');
 
 /**
  * GET /categories
- * List all categories for a workspace
+ * List all categories for a workspace in alphabetical order by name
  * 
  * @query {number} workspace_id - Required workspace ID
  * @permission Read access to workspace (admin, collaborator, viewer)
- * @returns {Array} List of categories
+ * @returns {Array} List of categories ordered alphabetically by name
  */
 router.get('/', async (req, res) => {
   const workspaceId = req.query.workspace_id;
@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
     const [categories] = await db.query(`
       SELECT * FROM category 
       WHERE workspace_id = ?
-      ORDER BY name ASC
+      ORDER BY name COLLATE utf8mb4_unicode_ci ASC
     `, [workspaceId]);
 
     res.status(200).json(categories);
@@ -110,12 +110,22 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   let { name, note = null, parent_category_id = null, workspace_id, type = 'expense' } = req.body;
 
-  if (!name) {
+  if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Name is required' });
   }
 
   if (!workspace_id) {
     return res.status(400).json({ error: 'workspace_id is required' });
+  }
+
+  // Validate name length (VARCHAR(255) limit)
+  if (name.length > 255) {
+    return res.status(400).json({ error: 'Category name cannot exceed 255 characters' });
+  }
+
+  // Validate type enum
+  if (type && !['expense', 'income'].includes(type)) {
+    return res.status(400).json({ error: 'Type must be either "expense" or "income"' });
   }
 
   try {
@@ -228,75 +238,128 @@ router.put('/:id', async (req, res) => {
 
     const hasChildren = childCheck[0].child_count > 0;
 
-    // If parent category is being updated, perform additional checks
-    if (parent_category_id) {
-      // Check if trying to assign itself as parent (circular reference)
-      if (parseInt(parent_category_id) === categoryId) {
-        return res.status(400).json({ error: 'A category cannot be its own parent' });
-      }
+    // Handle parent category updates and type inheritance
+    if (parent_category_id !== undefined) {
+      // parent_category_id is explicitly provided in the request
+      if (parent_category_id !== null) {
+        // Setting a new parent category
 
-      const [parentCategories] = await db.query(`
-        SELECT c.*, 
-               (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
-        FROM category c
-        WHERE c.id = ?
-      `, [parent_category_id]);
+        // Check if trying to assign itself as parent (circular reference)
+        if (parseInt(parent_category_id) === categoryId) {
+          return res.status(400).json({ error: 'A category cannot be its own parent' });
+        }
 
-      if (parentCategories.length === 0) {
-        return res.status(404).json({ error: 'Parent category not found' });
-      }
+        const [parentCategories] = await db.query(`
+          SELECT c.*, 
+                 (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
+          FROM category c
+          WHERE c.id = ?
+        `, [parent_category_id]);
 
-      // Ensure parent belongs to the same workspace
-      if (parentCategories[0].workspace_id !== workspaceId) {
-        return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
-      }
+        if (parentCategories.length === 0) {
+          return res.status(404).json({ error: 'Parent category not found' });
+        }
 
-      // Enforce two-level nesting limit - if parent already has a parent, reject
-      if (parentCategories[0].parent_id !== null) {
-        return res.status(400).json({
-          error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
-        });
-      }
+        // Ensure parent belongs to the same workspace
+        if (parentCategories[0].workspace_id !== workspaceId) {
+          return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
+        }
 
-      // Check if this category has children (can't make a category with children a child of another category)
-      if (hasChildren) {
-        return res.status(400).json({
-          error: 'Cannot assign a parent to this category because it already has child categories'
-        });
-      }
+        // Enforce two-level nesting limit - if parent already has a parent, reject
+        if (parentCategories[0].parent_id !== null) {
+          return res.status(400).json({
+            error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
+          });
+        }
 
-      // Enforce type inheritance - when setting a parent, type must inherit from parent
-      type = parentCategories[0].type;
-    } else if (parent_category_id === null && currentCategory.parent_category_id !== null) {
-      // Category is being moved from child to root level - type can be changed
-      // but must be provided
-      if (!type) {
-        return res.status(400).json({ error: 'Type is required when moving category to root level' });
-      }
-    } else if (currentCategory.parent_category_id !== null) {
-      // Category remains a child - cannot change type independently
-      const [parentCategories] = await db.query(`
-        SELECT type FROM category WHERE id = ?
-      `, [currentCategory.parent_category_id]);
+        // Check if this category has children (can't make a category with children a child of another category)
+        if (hasChildren) {
+          return res.status(400).json({
+            error: 'Cannot assign a parent to this category because it already has child categories'
+          });
+        }
 
-      if (parentCategories.length > 0) {
+        // Enforce type inheritance - when setting a parent, type must inherit from parent
         type = parentCategories[0].type;
+      } else {
+        // parent_category_id is explicitly set to null - moving to root level
+        // Type can be changed when moving to root level, but if not provided, keep current type
+        if (type === undefined) {
+          type = currentCategory.type;
+        }
       }
+    } else {
+      // parent_category_id is not provided - keeping current parent relationship
+      if (currentCategory.parent_category_id !== null && type !== undefined) {
+        // Category currently has a parent and type is being updated
+        // Child categories must inherit type from parent, cannot change independently
+        const [parentCategories] = await db.query(`
+          SELECT type FROM category WHERE id = ?
+        `, [currentCategory.parent_category_id]);
+
+        if (parentCategories.length > 0) {
+          type = parentCategories[0].type;
+        }
+      }
+      // If no parent currently, or no type update requested, no additional logic needed
     }
 
     // Start a transaction for the update operation
     await db.query('START TRANSACTION');
 
     try {
+      // Build dynamic update query - only update fields that are provided
+      const updateFields = [];
+      const updateValues = [];
+
+      if (name !== undefined) {
+        // Validate name if provided
+        if (!name || name.trim() === '') {
+          await db.query('ROLLBACK');
+          return res.status(400).json({ error: 'Name cannot be empty' });
+        }
+        if (name.length > 255) {
+          await db.query('ROLLBACK');
+          return res.status(400).json({ error: 'Category name cannot exceed 255 characters' });
+        }
+        updateFields.push('name = ?');
+        updateValues.push(name);
+      }
+
+      if (note !== undefined) {
+        updateFields.push('note = ?');
+        updateValues.push(note);
+      }
+
+      if (type !== undefined) {
+        // Validate type if provided
+        if (!['expense', 'income'].includes(type)) {
+          await db.query('ROLLBACK');
+          return res.status(400).json({ error: 'Type must be either "expense" or "income"' });
+        }
+        updateFields.push('type = ?');
+        updateValues.push(type);
+      }
+
+      if (parent_category_id !== undefined) {
+        updateFields.push('parent_category_id = ?');
+        updateValues.push(parent_category_id);
+      }
+
+      // If no fields to update, return current category
+      if (updateFields.length === 0) {
+        await db.query('ROLLBACK');
+        return res.status(200).json(currentCategory);
+      }
+
+      updateValues.push(categoryId);
+
       // Update the category
       const [result] = await db.query(`
         UPDATE category
-        SET name = ?,
-            note = ?,
-            type = ?,
-            parent_category_id = ?
+        SET ${updateFields.join(', ')}
         WHERE id = ?
-      `, [name, note, type, parent_category_id, categoryId]);
+      `, updateValues);
 
       if (result.affectedRows === 0) {
         await db.query('ROLLBACK');
@@ -304,7 +367,7 @@ router.put('/:id', async (req, res) => {
       }
 
       // If this category has children and the type changed, update all children
-      if (hasChildren && type !== currentCategory.type) {
+      if (hasChildren && type !== undefined && type !== currentCategory.type) {
         await db.query(`
           UPDATE category
           SET type = ?

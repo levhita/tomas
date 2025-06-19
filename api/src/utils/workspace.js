@@ -175,6 +175,24 @@ async function getWorkspaceById(workspaceId) {
 }
 
 /**
+ * Get workspace by ID (includes deleted workspaces)
+ * 
+ * Retrieves a workspace's full details by its ID, including soft-deleted ones.
+ * This is primarily used for restore operations and admin functions.
+ * 
+ * @param {number} workspaceId - The workspace ID to get
+ * @returns {Promise<Object|null>} - Returns workspace object or null if not found
+ */
+async function getWorkspaceByIdIncludingDeleted(workspaceId) {
+  const [workspaces] = await db.execute(
+    'SELECT * FROM workspace WHERE id = ?',
+    [workspaceId]
+  );
+
+  return workspaces[0] || null;
+}
+
+/**
  * Function exports
  * 
  * These utility functions enable consistent permission checking across the API.
@@ -192,5 +210,6 @@ module.exports = {
   canWrite,
   canRead,
   getWorkspaceUsers,
-  getWorkspaceById
+  getWorkspaceById,
+  getWorkspaceByIdIncludingDeleted
 };

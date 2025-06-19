@@ -51,19 +51,9 @@ router.get('/', function (req, res, next) {
     // Send the HTML response
     res.send(htmlTemplate);
   } catch (err) {
-    console.error('Error rendering welcome page:', err);
+    console.error('Error rendering welcome page');
     res.status(500).send('Error loading welcome page');
   }
-});
-
-/**
- * For serving the welcome page CSS file directly if needed
- * This is a fallback in case the static middleware isn't configured
- */
-router.get('/welcome.css', function (req, res) {
-  const cssPath = path.join(__dirname, '../public/css/welcome.css');
-  res.setHeader('Content-Type', 'text/css');
-  fs.createReadStream(cssPath).pipe(res);
 });
 
 module.exports = router;

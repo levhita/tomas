@@ -9,6 +9,7 @@ const {
   TEST_USERS,
   TEST_WORKSPACES,
   loginUser,
+  initializeTokenCache,
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
@@ -20,8 +21,10 @@ describe('User Workspace Management API', () => {
   let testUserToken;
 
   beforeAll(async () => {
-    superadminToken = await loginUser(TEST_USERS.SUPERADMIN);
-    testUserToken = await loginUser(TEST_USERS.TESTUSER1);
+    // Use token cache initialization for better performance
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    testUserToken = tokens.testuser1;
   });
 
   describe('GET /api/users/:id/workspaces', () => {

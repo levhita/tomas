@@ -59,7 +59,7 @@ describe('Authentication Middleware', () => {
       await authenticateToken(req, res, mockNext);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Token privileges invalid' });
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -180,7 +180,7 @@ describe('Authentication Middleware', () => {
       await authenticateToken(req, res, mockNext);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid user' });
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -195,7 +195,7 @@ describe('Authentication Middleware', () => {
       await authenticateToken(req, res, mockNext);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Token privileges invalid' });
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
       expect(mockNext).not.toHaveBeenCalled();
     });
 

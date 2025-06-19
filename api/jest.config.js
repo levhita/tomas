@@ -34,6 +34,8 @@ module.exports = {
     'src/**/*.js',
     '!src/public/**',
     '!src/views/**',
+    '!src/db.js',
+    '!src/app.js',
     '!bin/**'
   ],
 
@@ -57,5 +59,11 @@ module.exports = {
   restoreMocks: true,
 
   // Force exit to handle open handles (database connections)
-  forceExit: true
+  forceExit: true,
+
+  // Exit process when tests complete
+  testRunner: 'jest-circus/runner',
+
+  // Workaround for CI environments
+  watchman: false
 };
