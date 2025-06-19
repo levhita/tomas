@@ -1,0 +1,20 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{server_url}}/users/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: {{userId}}
+}
+
+script:pre-request {
+  const userId = await bru.prompt('userId', 'userId', bru.getVar('userId'))
+  bru.setVar("userId", userId);
+}

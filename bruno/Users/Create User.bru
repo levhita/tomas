@@ -1,0 +1,31 @@
+meta {
+  name: Create User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{server_url}}/users
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "username": "{{username}}",
+    "password": "{{password}}"
+  }
+}
+
+script:pre-request {
+  const username = await bru.prompt('Username', 'Username', '')
+  const password = await bru.promptKey('Password', 'Password')
+  
+  bru.setVar("username", username);
+  bru.setVar("password", password);
+}
+
+script:post-response {
+  bru.setVar("userId", res.body.id);
+  bru.setVar("username", res.body.username);
+}

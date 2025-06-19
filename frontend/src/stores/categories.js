@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import fetchWithAuth from '../utils/fetch';
 
 export const useCategoriesStore = defineStore('categories', () => {
   // State
@@ -16,13 +17,39 @@ export const useCategoriesStore = defineStore('categories', () => {
     return (id) => categories.value.find(c => c.id === id);
   });
 
+  const expenseCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'expense');
+  });
+
+  const incomeCategories = computed(() => {
+    return categories.value.filter(c => c.type === 'income');
+  });
+
   const categoryTree = computed(() => {
-    const rootCategories = categories.value.filter(c => !c.parent_category_id);
+    return buildCategoryTree();
+  });
+
+  const expenseCategoryTree = computed(() => {
+    return buildCategoryTree('expense');
+  });
+
+  const incomeCategoryTree = computed(() => {
+    return buildCategoryTree('income');
+  });
+
+  // Helper function to build category tree with optional type filter
+  function buildCategoryTree(typeFilter = null) {
+    const rootCategories = categories.value.filter(c => {
+      const isRoot = !c.parent_category_id;
+      const matchesType = typeFilter ? c.type === typeFilter : true;
+      return isRoot && matchesType;
+    });
+
     return rootCategories.map(category => ({
       ...category,
       children: getChildCategories(category.id)
     }));
-  });
+  }
 
   // Helper function for Tree
   function getChildCategories(parentId) {
@@ -35,11 +62,25 @@ export const useCategoriesStore = defineStore('categories', () => {
   }
 
   // Actions
-  async function fetchCategories() {
+  async function fetchCategories(workspaceId) {
     try {
-      const response = await fetch('/api/categories');
+      // Check if workspaceId is provided
+      if (!workspaceId) {
+        console.error('fetchCategories: workspaceId is required');
+        throw new Error('Workspace ID is required to fetch categories');
+      }
+
+      // Fetch categories for the specified workspace
+      const response = await fetchWithAuth(`/api/categories?workspace_id=${workspaceId}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch categories');
+      }
+
       const data = await response.json();
       categories.value = data;
+      return data;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -48,13 +89,21 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function addCategory(category) {
     try {
-      const response = await fetch('/api/categories', {
+      // Make sure category has a workspace_id
+      if (!category.workspace_id) {
+        throw new Error('workspace_id is required when creating a category');
+      }
+
+      const response = await fetchWithAuth('/api/categories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(category),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add category');
+      }
+
       const newCategory = await response.json();
       categories.value.push(newCategory);
       return newCategory;
@@ -66,13 +115,16 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function updateCategory(id, updates) {
     try {
-      const response = await fetch(`/api/categories/${id}`, {
+      const response = await fetchWithAuth(`/api/categories/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updates),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update category');
+      }
+
       const updatedCategory = await response.json();
       const index = categories.value.findIndex(c => c.id === id);
       if (index !== -1) {
@@ -87,9 +139,18 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function deleteCategory(id) {
     try {
-      await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
+      const response = await fetchWithAuth(`/api/categories/${id}`, {
+        method: 'DELETE'
       });
+
+      if (!response.ok && response.status !== 204) {
+        const errorData = await response.json();
+        const error = new Error(errorData.error || 'Failed to delete category');
+        error.status = response.status;
+        error.code = response.status === 428 ? 'CATEGORY_HAS_TRANSACTIONS' : 'UNKNOWN_ERROR';
+        throw error;
+      }
+
       const index = categories.value.findIndex(c => c.id === id);
       if (index !== -1) {
         categories.value.splice(index, 1);
@@ -100,17 +161,28 @@ export const useCategoriesStore = defineStore('categories', () => {
     }
   }
 
+  // Add this function to the store
+  function resetState() {
+    categories.value = [];
+  }
+
   return {
     // State
     categories,
     // Getters
     categoriesByName,
     getCategoryById,
+    expenseCategories,
+    incomeCategories,
     categoryTree,
+    expenseCategoryTree,
+    incomeCategoryTree,
     // Actions
     fetchCategories,
     addCategory,
     updateCategory,
     deleteCategory,
+    // New action
+    resetState,
   };
 });

@@ -1,13 +1,10 @@
-<script setup>
-import Navigation from './components/Navigation.vue'
-
-</script>
-
 <template>
-  <Navigation />
   <main>
-    <RouterView />
+    <router-view />
   </main>
 </template>
 
-<style scoped></style>
+<script setup>
+import { useRoute } from 'vue-router';
+const route = useRoute();
+</script>

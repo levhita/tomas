@@ -7,13 +7,15 @@ meta {
 post {
   url: {{server_url}}/categories
   body: json
-  auth: none
+  auth: inherit
 }
 
 body:json {
   {
     "name": "Some Name",
     "note": "Just some random category",
-    "parent_category_id": null
+    "parent_category_id": null,
+    "type": "expense",
+    "workspace_id":{{workspaceId}}
   }
 }

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import fetchWithAuth from '../utils/fetch';
 
 export const useTransactionsStore = defineStore('transactions', () => {
   // State
@@ -12,6 +13,11 @@ export const useTransactionsStore = defineStore('transactions', () => {
     })
   })
 
+  // Reset state method to clear transactions when switching workspaces
+  function resetState() {
+    transactions.value = [];
+  }
+
   // Actions
   async function fetchTransactions(accountId, startDate, endDate) {
     try {
@@ -21,7 +27,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
       if (endDate) params.append('endDate', endDate);
 
       const url = `/api/transactions${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
+      const response = await fetchWithAuth(url);
       const data = await response.json();
       transactions.value = data;
     } catch (error) {
@@ -32,7 +38,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function fetchTransactionById(id) {
     try {
-      const response = await fetch(`/api/transactions/${id}`);
+      const response = await fetchWithAuth(`/api/transactions/${id}`);
       if (!response.ok) {
         const json = await response.json();
         throw new Error(json.error);
@@ -56,11 +62,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function addTransaction(transaction) {
     try {
-      const response = await fetch('/api/transactions', {
+      const response = await fetchWithAuth('/api/transactions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(transaction),
       });
       const newTransaction = await response.json();
@@ -74,11 +77,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function updateTransaction(id, updates) {
     try {
-      const response = await fetch(`/api/transactions/${id}`, {
+      const response = await fetchWithAuth(`/api/transactions/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updates),
       });
       const updatedTransaction = await response.json();
@@ -95,8 +95,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
 
   async function deleteTransaction(id) {
     try {
-      const response = await fetch(`/api/transactions/${id}`, {
-        method: 'DELETE',
+      const response = await fetchWithAuth(`/api/transactions/${id}`, {
+        method: 'DELETE'
       });
       if (!response.ok) {
         const json = await response.json()
@@ -118,6 +118,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
     transactions,
     // Getters
     transactionsByDate,
+    // Reset method
+    resetState,
     // Actions
     fetchTransactions,
     fetchTransactionById,

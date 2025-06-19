@@ -1,4 +1,4 @@
-# YAMO - Yet Another Money Organizer and planification software for couples that love eachother
+# Tomas - Purrfect Budgets
 
 Personal and Home finance projection and expense tracking application.
 
@@ -8,7 +8,6 @@ Personal and Home finance projection and expense tracking application.
 - 📊 Monthly reports and summaries
 - 💰 Multiple account management
 - 🏷️ Category organization
-- 📱 Responsive design
 
 ## Tech Stack
 
@@ -26,7 +25,7 @@ Personal and Home finance projection and expense tracking application.
 
 ### 1.- Clone the repository:
 ```bash
-git clone https://github.com/yourusername/yamo.git
+git clone https://github.com/yourusername/tomas.git
 cd yamo
 ```
 
@@ -93,5 +92,22 @@ Start production server:
 cd api
 npm start
 ```
+
+## Deploy to DigitalOcean
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/levhita/yamo/tree/develop)
+
+This will deploy:
+- A single App Platform instance running both frontend and backend
+- Requires external MySQL database credentials (not included)
+- Automatically deploys from the `develop` branch
+
+### Environment Variables Required
+- `YAMO_MYSQL_HOST`: MySQL server hostname
+- `YAMO_MYSQL_USER`: Database username
+- `YAMO_MYSQL_PASSWORD`: Database password
+- `YAMO_MYSQL_DATABASE`: Database name
+- `YAMO_MYSQL_PORT`: Database port (default: 3306)
+
 # License
 General Public License v3, check LICENSE.md for details

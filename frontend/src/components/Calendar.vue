@@ -1,14 +1,12 @@
 <template>
   <FullCalendar ref="calendarRef" :options="calendarOptions" />
-
-  <TransactionDialog v-model="showTransactionDialog" :transaction="currentTransaction" :is-editing="isEditing"
-    @save="saveTransaction" @delete="deleteTransaction" />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import TransactionDialog from './inputs/TransactionDialog.vue'
 import { useTransactionsStore } from '../stores/transactions'
+import { useWorkspacesStore } from '../stores/workspaces'
+import { formatCurrency } from '../utils/utilities'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
@@ -20,25 +18,36 @@ const props = defineProps({
   rangeType: String
 })
 
+const emit = defineEmits(['show-transaction', 'update-transaction'])
+
+// Get workspace store to access week_start setting
+const workspacesStore = useWorkspacesStore()
+const transactionsStore = useTransactionsStore()
+
 const accountId = computed(() => props.account?.id)
 
 const emptyTransaction = {
-  id: null,
-  description: '',
-  amount: null,
-  date: null,
-  category_id: '',
+  //id: null,
+  //description: '',
+  //amount: null,
+  //date: null,
+  //category_id: '',
   account_id: accountId,
   isExpense: true,
   exercised: false,
-  note: ''
+  //note: ''
 }
-const showTransactionDialog = ref(false)
-const currentTransaction = ref({ ...emptyTransaction })
-const isEditing = ref(false)
-const transactionsStore = useTransactionsStore()
+const selectedDate = computed(() => moment().format('YYYY-MM-DD'))
 
-const currentDate = computed(() => moment().format('YYYY-MM-DD'))
+// Helper function to convert week_start setting to day index
+const getFirstDayIndex = computed(() => {
+  // Default to Monday (1) if no current workspace or setting
+  if (!workspacesStore.currentWorkspace) return 1
+
+  // Convert week_start string to numerical index for FullCalendar
+  // FullCalendar uses: 0=Sunday, 1=Monday, 2=Tuesday, etc.
+  return workspacesStore.currentWorkspace.week_start === 'sunday' ? 0 : 1
+})
 
 const calendarOptions = computed(() => {
   const events = transactionsStore.transactions.map(transaction => ({
@@ -46,17 +55,18 @@ const calendarOptions = computed(() => {
     title: `
       <div class="transaction-title">
         <div class="transaction-description">${transaction.description}</div>
-        <div class="transaction-amount">${formatAmount(transaction.amount, transaction.isExpense)}</div>
+        <div class="transaction-amount text-end">${formatAmount(transaction.amount, transaction.isExpense)}</div>
       </div>
     `,
     date: transaction.date,
     html: true
   }))
+
   return {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
-    firstDay: 0, // Start week on Sunday, this should probably be a user setting
+    firstDay: getFirstDayIndex.value, // Use workspace setting for first day of week
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
@@ -84,42 +94,41 @@ async function updateDate() {
 }
 
 async function updateView() {
-  console.log('updateView');
   if (calendarRef.value) {
     const api = calendarRef.value.getApi()
     api.changeView(props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth')
   }
 }
 
+// Watch for changes to first day setting from workspace
+watch(() => workspacesStore.currentWorkspace?.week_start, () => {
+  if (calendarRef.value) {
+    const api = calendarRef.value.getApi()
+    api.setOption('firstDay', getFirstDayIndex.value)
+  }
+})
+
 watch(() => props.selectedDate, updateDate)
 watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
-  if (isExpense) { amount = -amount }
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'EUR', //TODO: Change to user's currency
-    currencyDisplay: "narrowSymbol"
-  }).format(amount)
+  const signedAmount = isExpense ? -amount : amount
+  return formatCurrency(signedAmount, workspacesStore.currentWorkspace.currency_symbol)
 }
 
 function handleDateClick(arg) {
-  isEditing.value = false
-  currentTransaction.value = { ...emptyTransaction };
-  currentTransaction.value.date = arg.dateStr
-  if (currentTransaction.value.date <= currentDate.value) {
-    currentTransaction.value.exercised = true
+  const transaction = {
+    ...emptyTransaction,
+    date: arg.dateStr,
+    exercised: arg.dateStr <= selectedDate.value
   }
-  showTransactionDialog.value = true
+  emit('show-transaction', { transaction, editing: false })
 }
 
 async function handleEventClick(info) {
   const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
-
   if (transaction) {
-    isEditing.value = true
-    currentTransaction.value = { ...transaction }
-    showTransactionDialog.value = true
+    emit('show-transaction', { transaction, editing: true })
   }
 }
 
@@ -127,7 +136,7 @@ async function handleEventDrop(info) {
   try {
     const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
     if (transaction) {
-      await transactionsStore.updateTransaction(transaction.id, {
+      emit('update-transaction', {
         ...transaction,
         date: info.event.startStr
       })
@@ -135,28 +144,6 @@ async function handleEventDrop(info) {
   } catch (error) {
     console.error('Failed to update transaction date:', error)
     info.revert() // Revert the drag if update fails
-  }
-}
-
-async function saveTransaction(transaction) {
-  try {
-    if (isEditing.value) {
-      await transactionsStore.updateTransaction(transaction.id, transaction)
-    } else {
-      await transactionsStore.addTransaction(transaction)
-    }
-    showTransactionDialog.value = false
-  } catch (error) {
-    console.error('Failed to save transaction:', error)
-  }
-}
-
-async function deleteTransaction(id) {
-  try {
-    await transactionsStore.deleteTransaction(id)
-    showTransactionDialog.value = false
-  } catch (error) {
-    console.error('Failed to delete transaction:', error)
   }
 }
 </script>

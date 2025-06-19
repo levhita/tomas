@@ -17,3 +17,31 @@ main {
 .totals {
   margin-left: 1rem;
 }
+
+/* Custom component styles */
+
+/* Calendar view sidebar */
+.calendar-sidebar {
+  height: calc(100vh - 170px);
+}
+
+/* Category select child category indentation */
+.child-category {
+  padding-left: 1.5em;
+}
+
+/* Workspace loading state */
+.workspace-loading {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Navbar logo styling */
+.navbar-logo {
+  height: 50px;
+  width: auto;
+  margin: -1rem 0;
+}
