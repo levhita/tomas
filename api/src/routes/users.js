@@ -316,11 +316,11 @@ router.post('/', requireSuperAdmin, async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, superadmin } = req.body;
+    const { username, password, currentPassword, superadmin, active } = req.body;
 
     // Check if user exists
     const [existingUsers] = await db.query(
-      'SELECT id, superadmin FROM user WHERE id = ?',
+      'SELECT id, superadmin, password_hash FROM user WHERE id = ?',
       [id]
     );
 
@@ -330,13 +330,26 @@ router.put('/:id', async (req, res) => {
       });
     }
 
+    const existingUser = existingUsers.length > 0 ? existingUsers[0] : null;
+    if (!existingUser) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
     // Check permissions
     const isOwnAccount = req.user.id === parseInt(id);
 
-    // Only admins can update admin flag
+    // Only admins can update admin flag and active status
     if (superadmin !== undefined && !req.user.superadmin) {
       return res.status(403).json({
         error: 'Only administrators can change admin privileges'
+      });
+    }
+
+    if (active !== undefined && !req.user.superadmin) {
+      return res.status(403).json({
+        error: 'Only administrators can change user active status'
       });
     }
 
@@ -345,6 +358,22 @@ router.put('/:id', async (req, res) => {
       return res.status(403).json({
         error: 'You can only update your own user information'
       });
+    }
+
+    // Verify current password if user is updating their own password
+    if (password && isOwnAccount && !req.user.superadmin) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          error: 'Current password is required to change password'
+        });
+      }
+
+      const isValidCurrentPassword = await bcrypt.compare(currentPassword, existingUser.password_hash);
+      if (!isValidCurrentPassword) {
+        return res.status(401).json({
+          error: 'Current password is incorrect'
+        });
+      }
     }
 
     // Check if new username is already taken by another user
@@ -383,6 +412,12 @@ router.put('/:id', async (req, res) => {
       params.push(superadmin);
     }
 
+    // Only include active update if the current user is a superadmin
+    if (active !== undefined && req.user.superadmin) {
+      updates.push('active = ?');
+      params.push(active);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({
         error: 'No fields to update'
@@ -401,13 +436,14 @@ router.put('/:id', async (req, res) => {
 
     // Get updated user
     const [updatedUser] = await db.query(`
-      SELECT id, username, superadmin, created_at 
+      SELECT id, username, superadmin, active, created_at 
       FROM user 
       WHERE id = ?
     `, [id]);
     const user = updatedUser[0];
-    // Convert admin flag from 0/1 to boolean
+    // Convert boolean fields from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
+    user.active = user.active === 1;
     res.status(200).json(user);
 
   } catch (err) {
