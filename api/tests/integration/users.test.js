@@ -359,4 +359,175 @@ describe('User Management API', () => {
       expect(response.body.error).toMatch(/cannot delete.*own account/i);
     });
   });
+
+  describe('User Enable/Disable', () => {
+    describe('PUT /api/users/:id/enable', () => {
+      it('should enable a user as superadmin', async () => {
+        // First create a disabled user
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testuser_${Date.now()}`,
+            password: 'password123',
+            active: false
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+        expect(createResponse.body.active).toBe(false);
+
+        // Now enable the user
+        const enableResponse = await auth.put(`/api/users/${userId}/enable`);
+
+        validateApiResponse(enableResponse, 200);
+        expect(enableResponse.body).toHaveProperty('message');
+        expect(enableResponse.body.message).toMatch(/enabled successfully/i);
+        expect(enableResponse.body).toHaveProperty('user');
+        expect(enableResponse.body.user.active).toBe(true);
+        expect(enableResponse.body.user.id).toBe(userId);
+      });
+
+      it('should return 400 for user already enabled', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        // Try to enable an already active user
+        const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}/enable`);
+
+        validateApiResponse(response, 400);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/already enabled/i);
+      });
+
+      it('should return 404 for non-existent user', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.put('/api/users/99999/enable');
+
+        validateApiResponse(response, 404);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/user not found/i);
+      });
+
+      it('should deny access for non-superadmin', async () => {
+        const auth = authenticatedRequest(testUserToken);
+
+        const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/enable`);
+
+        validateApiResponse(response, 403);
+        expect(response.body).toHaveProperty('error');
+      });
+    });
+
+    describe('PUT /api/users/:id/disable', () => {
+      it('should disable a user as superadmin', async () => {
+        // First create an enabled user
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testuser_${Date.now()}`,
+            password: 'password123',
+            active: true
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+        expect(createResponse.body.active).toBe(true);
+
+        // Now disable the user
+        const disableResponse = await auth.put(`/api/users/${userId}/disable`);
+
+        validateApiResponse(disableResponse, 200);
+        expect(disableResponse.body).toHaveProperty('message');
+        expect(disableResponse.body.message).toMatch(/disabled successfully/i);
+        expect(disableResponse.body).toHaveProperty('user');
+        expect(disableResponse.body.user.active).toBe(false);
+        expect(disableResponse.body.user.id).toBe(userId);
+      });
+
+      it('should prevent superadmin from disabling themselves', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.put(`/api/users/${TEST_USERS.SUPERADMIN.id}/disable`);
+
+        validateApiResponse(response, 400);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/cannot disable.*own account/i);
+      });
+
+      it('should return 400 for user already disabled', async () => {
+        // First create and then disable a user
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testuser_${Date.now()}`,
+            password: 'password123',
+            active: false
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Try to disable an already disabled user
+        const response = await auth.put(`/api/users/${userId}/disable`);
+
+        validateApiResponse(response, 400);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/already disabled/i);
+      });
+
+      it('should return 404 for non-existent user', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.put('/api/users/99999/disable');
+
+        validateApiResponse(response, 404);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/user not found/i);
+      });
+
+      it('should deny access for non-superadmin', async () => {
+        const auth = authenticatedRequest(testUserToken);
+
+        const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/disable`);
+
+        validateApiResponse(response, 403);
+        expect(response.body).toHaveProperty('error');
+      });
+    });
+
+    describe('Login with disabled user', () => {
+      it('should prevent login for disabled user', async () => {
+        // First create a user and then disable them
+        const auth = authenticatedRequest(superadminToken);
+        const username = `testuser_${Date.now()}`;
+        const password = 'password123';
+
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: username,
+            password: password,
+            active: true
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Disable the user
+        const disableResponse = await auth.put(`/api/users/${userId}/disable`);
+        validateApiResponse(disableResponse, 200);
+
+        // Try to login with disabled user
+        const loginResponse = await request(app)
+          .post('/api/users/login')
+          .send({
+            username: username,
+            password: password
+          });
+
+        validateApiResponse(loginResponse, 401);
+        expect(loginResponse.body).toHaveProperty('error');
+        expect(loginResponse.body.error).toMatch(/account is disabled/i);
+      });
+    });
+  });
 });

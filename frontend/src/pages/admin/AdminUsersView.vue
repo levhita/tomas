@@ -121,8 +121,8 @@
                         </div>
                       </td>
                       <td>
-                        <span class="badge status-badge bg-success">
-                          Active
+                        <span class="badge status-badge" :class="user.active ? 'bg-success' : 'bg-danger'">
+                          {{ user.active ? 'Active' : 'Inactive' }}
                         </span>
                       </td>
                       <td>
@@ -134,9 +134,11 @@
                             title="Edit user">
                             <i class="bi bi-pencil"></i>
                           </button>
-                          <button type="button" class="btn btn-outline-warning" @click="toggleUserStatus(user)"
-                            title="Toggle user status">
-                            <i class="bi bi-pause"></i>
+                          <button type="button" class="btn"
+                            :class="user.active ? 'btn-outline-warning' : 'btn-outline-success'"
+                            @click="toggleUserStatus(user)" :title="user.active ? 'Disable user' : 'Enable user'"
+                            :disabled="user.id === usersStore.currentUser?.id">
+                            <i class="bi" :class="user.active ? 'bi-pause-circle' : 'bi-play-circle'"></i>
                           </button>
                           <button type="button" class="btn btn-outline-danger" @click="deleteUser(user)"
                             title="Delete user" :disabled="user.id === usersStore.currentUser?.id">
@@ -216,11 +218,13 @@ const filteredUsers = computed(() => {
     })
   }
 
-  // Status filter - for now, all users are considered active
-  // TODO: Add status field to user model if needed
+  // Status filter
   if (filterStatus.value) {
-    // For now, treat all users as active
-    if (filterStatus.value === 'inactive') return []
+    filtered = filtered.filter(user => {
+      if (filterStatus.value === 'active') return user.active
+      if (filterStatus.value === 'inactive') return !user.active
+      return true
+    })
   }
 
   return filtered
@@ -263,9 +267,33 @@ function handleUserSaved() {
   loadUsers()
 }
 
-function toggleUserStatus(user) {
-  // TODO: Implement user status toggle when API supports it
-  alert('User status toggle not yet implemented')
+async function toggleUserStatus(user) {
+  if (user.id === usersStore.currentUser?.id) {
+    alert('You cannot disable your own account!')
+    return
+  }
+
+  const action = user.active ? 'disable' : 'enable'
+  const actionPast = user.active ? 'disabled' : 'enabled'
+
+  const isConfirmed = confirm(
+    `Are you sure you want to ${action} user "${user.username}"?`
+  )
+
+  if (!isConfirmed) {
+    return
+  }
+
+  try {
+    if (user.active) {
+      await usersStore.disableUser(user.id)
+    } else {
+      await usersStore.enableUser(user.id)
+    }
+    alert(`User ${actionPast} successfully!`)
+  } catch (error) {
+    alert(`Error ${action}ing user: ` + error.message)
+  }
 }
 
 async function deleteUser(user) {

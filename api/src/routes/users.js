@@ -45,9 +45,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Get user with password_hash and admin flag
+    // Get user with password_hash, admin flag, and active status
     const [users] = await db.query(`
-      SELECT id, username, password_hash, superadmin, created_at 
+      SELECT id, username, password_hash, superadmin, active, created_at 
       FROM user 
       WHERE username = ?
     `, [username]);
@@ -62,6 +62,14 @@ router.post('/login', async (req, res) => {
     const user = users[0];
     // Convert admin flag from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
+    user.active = user.active === 1;
+
+    // Check if user is active
+    if (!user.active) {
+      return res.status(401).json({
+        error: 'Account is disabled'
+      });
+    }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -111,6 +119,7 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         u.id, 
         u.username, 
         u.superadmin, 
+        u.active,
         u.created_at,
         COUNT(DISTINCT wu.workspace_id) as workspace_count,
         COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.workspace_id END) as admin_workspaces,
@@ -119,15 +128,16 @@ router.get('/', requireSuperAdmin, async (req, res) => {
       FROM user u
       LEFT JOIN workspace_user wu ON u.id = wu.user_id 
       LEFT JOIN workspace w ON wu.workspace_id = w.id AND w.deleted_at IS NULL
-      GROUP BY u.id, u.username, u.superadmin, u.created_at
+      GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
     `);
 
     res.status(200).json(users.map(user => {
-      // Convert admin flag from 0/1 to boolean and workspace counts to numbers
+      // Convert admin and active flags from 0/1 to boolean and workspace counts to numbers
       return {
         ...user,
         superadmin: user.superadmin === 1,
+        active: user.active === 1,
         workspace_count: parseInt(user.workspace_count) || 0,
         admin_workspaces: parseInt(user.admin_workspaces) || 0,
         collaborator_workspaces: parseInt(user.collaborator_workspaces) || 0,
@@ -152,7 +162,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     // The user information is already available from the auth middleware
     // But we'll fetch fresh data from the database to ensure it's up to date
     const [users] = await db.query(`
-      SELECT id, username, superadmin, created_at 
+      SELECT id, username, superadmin, active, created_at 
       FROM user 
       WHERE id = ?
     `, [req.user.id]);
@@ -164,8 +174,9 @@ router.get('/me', authenticateToken, async (req, res) => {
     }
 
     const user = users[0];
-    // Convert superadmin flag from 0/1 to boolean
+    // Convert superadmin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
+    user.active = user.active === 1;
 
     res.status(200).json(user);
   } catch (err) {
@@ -196,7 +207,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const [users] = await db.query(`
-      SELECT id, username, superadmin, created_at 
+      SELECT id, username, superadmin, active, created_at 
       FROM user 
       WHERE id = ?
     `, [id]);
@@ -207,8 +218,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
     const user = users[0];
-    // Convert admin flag from 0/1 to boolean
+    // Convert admin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
+    user.active = user.active === 1;
     res.status(200).json(user);
 
   } catch (err) {
@@ -225,13 +237,15 @@ router.get('/:id', authenticateToken, async (req, res) => {
  * 
  * @body {string} username - Required unique username
  * @body {string} password - Required password
- * @body {boolean} admin - Optional admin flag, defaults to false
+ * @body {string} password - Required password
+ * @body {boolean} superadmin - Optional admin flag, defaults to false
+ * @body {boolean} active - Optional active flag, defaults to true
  * @permission Admin only
  * @returns {Object} Newly created user (excluding password)
  */
 router.post('/', requireSuperAdmin, async (req, res) => {
   try {
-    const { username, password, superadmin = false } = req.body;
+    const { username, password, superadmin = false, active = true } = req.body;
 
     // Validate input
     if (!username || !password) {
@@ -258,20 +272,21 @@ router.post('/', requireSuperAdmin, async (req, res) => {
 
     // Insert new user
     const [result] = await db.query(`
-      INSERT INTO user (username, password_hash, superadmin)
-      VALUES (?, ?, ?)
-    `, [username, passwordHash, superadmin]);
+      INSERT INTO user (username, password_hash, superadmin, active)
+      VALUES (?, ?, ?, ?)
+    `, [username, passwordHash, superadmin, active]);
 
     // Fetch the newly created user to ensure consistent data format
     const [newUser] = await db.query(`
-      SELECT id, username, superadmin, created_at 
+      SELECT id, username, superadmin, active, created_at 
       FROM user 
       WHERE id = ?
     `, [result.insertId]);
 
     const user = newUser[0];
-    // Convert superadmin flag from 0/1 to boolean
+    // Convert superadmin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
+    user.active = user.active === 1;
 
     // Return new user (without sensitive data)
     res.status(201).json(user);
@@ -718,6 +733,135 @@ router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to remove user from workspace'
+    });
+  }
+});
+
+/**
+ * PUT /users/:id/enable
+ * Enable a user account
+ * 
+ * @permission SuperAdmin only
+ * @param {number} id - User ID
+ * @returns {Object} Updated user data
+ */
+router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const [users] = await db.query(`
+      SELECT id, username, active, superadmin, created_at
+      FROM user 
+      WHERE id = ?
+    `, [id]);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    const user = users[0];
+
+    // Check if user is already active
+    if (user.active) {
+      return res.status(400).json({
+        error: 'User is already enabled'
+      });
+    }
+
+    // Enable the user
+    await db.query(`
+      UPDATE user 
+      SET active = 1 
+      WHERE id = ?
+    `, [id]);
+
+    // Return updated user data
+    const updatedUser = {
+      ...user,
+      active: true,
+      superadmin: user.superadmin === 1
+    };
+
+    res.status(200).json({
+      message: 'User enabled successfully',
+      user: updatedUser
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to enable user'
+    });
+  }
+});
+
+/**
+ * PUT /users/:id/disable
+ * Disable a user account
+ * 
+ * @permission SuperAdmin only
+ * @param {number} id - User ID
+ * @returns {Object} Updated user data
+ */
+router.put('/:id/disable', requireSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent superadmins from disabling themselves
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({
+        error: 'Cannot disable your own account'
+      });
+    }
+
+    // Check if user exists
+    const [users] = await db.query(`
+      SELECT id, username, active, superadmin, created_at
+      FROM user 
+      WHERE id = ?
+    `, [id]);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    const user = users[0];
+
+    // Check if user is already inactive
+    if (!user.active) {
+      return res.status(400).json({
+        error: 'User is already disabled'
+      });
+    }
+
+    // Disable the user
+    await db.query(`
+      UPDATE user 
+      SET active = 0 
+      WHERE id = ?
+    `, [id]);
+
+    // Return updated user data
+    const updatedUser = {
+      ...user,
+      active: false,
+      superadmin: user.superadmin === 1
+    };
+
+    res.status(200).json({
+      message: 'User disabled successfully',
+      user: updatedUser
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to disable user'
     });
   }
 });

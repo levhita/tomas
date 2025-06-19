@@ -121,31 +121,41 @@ CREATE TABLE
 -- Test Data --
 -- Test Users (passwords are 'password123' hashed with bcryptjs)
 INSERT INTO
-  `user` (`id`, `username`, `password_hash`, `superadmin`)
+  `user` (
+    `id`,
+    `username`,
+    `password_hash`,
+    `superadmin`,
+    `active`
+  )
 VALUES
   (
     1,
     'superadmin',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
+    TRUE,
     TRUE
   ),
   (
     2,
     'testuser1',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   ),
   (
     3,
     'testuser2',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   ),
   (
     4,
     'regularuser',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   );
 
 -- Test Workspaces

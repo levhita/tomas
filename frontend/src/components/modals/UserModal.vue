@@ -74,6 +74,19 @@
               </div>
             </div>
 
+            <!-- Active Status Toggle -->
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="active" v-model="form.active" :disabled="isLoading">
+                <label class="form-check-label" for="active">
+                  Active User
+                </label>
+              </div>
+              <div class="form-text">
+                Inactive users cannot log in to the system
+              </div>
+            </div>
+
             <!-- Workspace Access Section (only for editing existing users) -->
             <div class="mb-3" v-if="isEditing">
               <h5 class="border-bottom pb-2 mb-3">
@@ -278,6 +291,7 @@ const form = ref({
   password: '',
   confirmPassword: '',
   superadmin: false,
+  active: true,
   changePassword: false
 })
 
@@ -364,7 +378,8 @@ async function save() {
   try {
     const userData = {
       username: form.value.username.trim(),
-      superadmin: form.value.superadmin
+      superadmin: form.value.superadmin,
+      active: form.value.active
     }
 
     // Only include password if it's provided and we're changing it
@@ -570,6 +585,7 @@ watch(() => props.modelValue, (newVal) => {
         password: '',
         confirmPassword: '',
         superadmin: props.user.superadmin || false,
+        active: props.user.active !== false, // Ensure active is a boolean
         changePassword: false
       }
       // Load workspace data for editing
@@ -581,6 +597,7 @@ watch(() => props.modelValue, (newVal) => {
         password: '',
         confirmPassword: '',
         superadmin: false,
+        active: true,
         changePassword: false
       }
       // Reset workspace data
@@ -620,6 +637,7 @@ watch(() => props.user, () => {
       password: '',
       confirmPassword: '',
       superadmin: props.user.superadmin || false,
+      active: props.user.active !== false, // Ensure active is a boolean
       changePassword: false
     }
     // Load workspace data when user changes
