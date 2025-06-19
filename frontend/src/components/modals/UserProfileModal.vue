@@ -98,7 +98,7 @@
             <i class="bi bi-x-circle me-1"></i>
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" @click="save" :disabled="isLoading || !isFormValid">
+          <button type="submit" class="btn btn-primary" :disabled="isLoading || !isFormValid">
             <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
               aria-hidden="true"></span>
             <i class="bi bi-check-lg me-1" v-else></i>
