@@ -7,6 +7,8 @@ export const useUsersStore = defineStore('users', () => {
   const token = ref(null);
   const users = ref([]); // List of all users (for admin)
   const isLoadingUsers = ref(false); // Loading state for users list
+  const isInitializing = ref(false); // Track initialization state
+  const isInitialized = ref(false); // Track if initialization has been attempted
 
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value);
@@ -100,26 +102,42 @@ export const useUsersStore = defineStore('users', () => {
 
   // Initialize user from stored token
   async function initializeFromToken() {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      token.value = storedToken;
-      try {
-        // Fetch current user details to validate token and get user info
-        await fetchCurrentUser();
-        return true;
-      } catch (error) {
-        // Token is invalid, clear it
-        await logout();
-        return false;
-      }
+    // Prevent multiple simultaneous initialization attempts
+    if (isInitializing.value || isInitialized.value) {
+      return isAuthenticated.value;
     }
-    return false;
+
+    isInitializing.value = true;
+
+    try {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        token.value = storedToken;
+        try {
+          // Fetch current user details to validate token and get user info
+          await fetchCurrentUser();
+          isInitialized.value = true;
+          return true;
+        } catch (error) {
+          // Token is invalid, clear it
+          await logout();
+          isInitialized.value = true;
+          return false;
+        }
+      }
+      isInitialized.value = true;
+      return false;
+    } finally {
+      isInitializing.value = false;
+    }
   }
 
   async function logout() {
     currentUser.value = null;
     token.value = null;
     users.value = [];
+    isInitialized.value = false;
+    isInitializing.value = false;
     localStorage.removeItem('token');
   }
 
@@ -611,6 +629,8 @@ export const useUsersStore = defineStore('users', () => {
     token,
     users,
     isLoadingUsers,
+    isInitializing,
+    isInitialized,
     // Getters
     isAuthenticated,
     isSuperAdmin,
@@ -634,9 +654,6 @@ export const useUsersStore = defineStore('users', () => {
     getUserWorkspaces,
     addUserToWorkspace,
     updateUserWorkspaceRole,
-    removeUserFromWorkspace,
-    // User enable/disable
-    enableUser,
-    disableUser
+    removeUserFromWorkspace
   };
 });
