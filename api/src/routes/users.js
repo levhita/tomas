@@ -485,7 +485,7 @@ router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       SELECT 
         w.id, 
         w.name, 
-        w.description,
+        w.note,
         wu.role,
         w.created_at,
         w.currency_symbol
@@ -578,7 +578,7 @@ router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       SELECT 
         w.id, 
         w.name, 
-        w.description,
+        w.note,
         wu.role,
         w.created_at,
         w.currency_symbol
@@ -635,7 +635,7 @@ router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) =
       SELECT 
         w.id, 
         w.name, 
-        w.description,
+        w.note,
         wu.role,
         w.created_at,
         w.currency_symbol
@@ -703,7 +703,7 @@ router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res
       SELECT 
         w.id, 
         w.name, 
-        w.description,
+        w.note,
         wu.role,
         w.created_at,
         w.currency_symbol

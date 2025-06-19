@@ -2,7 +2,11 @@
  * Workspaces API Router
  * Handles all workspace-related operations including:
  * - Managing workspaces (create, read, update, delete)
- * - Workspace soft deletion and restoration
+ * - Workspace soft deletion and r * Create a new workspace
+ * 
+ * @body {string} name - Required workspace name
+ * @body {string} note - Optional workspace note
+ * @body {string} currency_symbol - Currency symbol (default: '$')ation
  * - User access management for workspaces
  * - Role assignment within workspaces
  * 
@@ -83,7 +87,7 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
     if (isNumericSearch) {
       // Search by exact ID or partial ID
       query = `
-        SELECT id, name, description, currency_symbol, created_at
+        SELECT id, name, note, currency_symbol, created_at
         FROM workspace 
         WHERE deleted_at IS NULL 
         AND (id = ? OR CAST(id AS CHAR) LIKE ?)
@@ -96,7 +100,7 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
     } else {
       // Search by workspace name (partial match, case-insensitive)
       query = `
-        SELECT id, name, description, currency_symbol, created_at
+        SELECT id, name, note, currency_symbol, created_at
         FROM workspace 
         WHERE deleted_at IS NULL 
         AND name LIKE ?
@@ -128,7 +132,7 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
 router.get('/all', requireSuperAdmin, async (req, res) => {
   try {
     const [workspaces] = await db.query(`
-      SELECT id, name, description, currency_symbol, created_at
+      SELECT id, name, note, currency_symbol, created_at
       FROM workspace 
       WHERE deleted_at IS NULL
       ORDER BY name ASC
@@ -175,7 +179,7 @@ router.get('/:id', async (req, res) => {
  * Create a new workspace
  * 
  * @body {string} name - Required workspace name
- * @body {string} description - Optional workspace description
+ * @body {string} note - Optional workspace note
  * @body {string} currency_symbol - Currency symbol, defaults to '$'
  * @body {string} week_start - First day of the week, defaults to 'monday'
  * @permission Any authenticated user can create a workspace
@@ -184,7 +188,7 @@ router.get('/:id', async (req, res) => {
  * Note: Creating user is automatically assigned the admin role in the new workspace
  */
 router.post('/', async (req, res) => {
-  const { name, description = null, currency_symbol = '$', week_start = 'monday' } = req.body;
+  const { name, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -198,8 +202,8 @@ router.post('/', async (req, res) => {
     try {
       // Create the workspace
       const [result] = await connection.query(
-        'INSERT INTO workspace (name, description, currency_symbol, week_start) VALUES (?, ?, ?, ?)',
-        [name, description, currency_symbol, week_start]
+        'INSERT INTO workspace (name, note, currency_symbol, week_start) VALUES (?, ?, ?, ?)',
+        [name, note, currency_symbol, week_start]
       );
 
       // Add current user as admin of the workspace
@@ -230,14 +234,14 @@ router.post('/', async (req, res) => {
  * 
  * @param {number} id - Workspace ID
  * @body {string} name - Required workspace name
- * @body {string} description - Optional workspace description
+ * @body {string} note - Optional workspace note
  * @body {string} currency_symbol - Currency symbol
  * @body {string} week_start - First day of the week
  * @permission Admin access to the workspace (admin only)
  * @returns {Object} Updated workspace details
  */
 router.put('/:id', async (req, res) => {
-  const { name, description, currency_symbol, week_start } = req.body;
+  const { name, note, currency_symbol, week_start } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -260,13 +264,12 @@ router.put('/:id', async (req, res) => {
     const weekStart = week_start !== undefined ? week_start : existingWorkspace.week_start;
 
     const [result] = await db.query(`
-      UPDATE workspace 
-      SET name = ?, 
-          description = ?, 
+      UPDATE workspace        SET name = ?, 
+          note = ?, 
           currency_symbol = ?, 
-          week_start = ? 
-      WHERE id = ?
-    `, [name, description, currencySymbol, weekStart, req.params.id]);
+          week_start = ?
+        WHERE id = ?
+    `, [name, note, currencySymbol, weekStart, req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Workspace not found' });

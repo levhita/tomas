@@ -51,19 +51,19 @@ const TEST_WORKSPACES = {
   WORKSPACE1: {
     id: 1,
     name: 'Test Workspace 1',
-    description: 'Main testing workspace',
+    note: 'Main testing workspace',
     currency_symbol: '$'
   },
   WORKSPACE2: {
     id: 2,
     name: 'Test Workspace 2',
-    description: 'Secondary testing workspace',
+    note: 'Secondary testing workspace',
     currency_symbol: '€'
   },
   SEARCH_WORKSPACE: {
     id: 3,
     name: 'Search Test Workspace',
-    description: 'Workspace for search testing',
+    note: 'Workspace for search testing',
     currency_symbol: '£'
   }
 };
@@ -297,7 +297,7 @@ function validateUserObject(user) {
 function validateWorkspaceObject(workspace) {
   expect(workspace).toHaveProperty('id');
   expect(workspace).toHaveProperty('name');
-  expect(workspace).toHaveProperty('description');
+  expect(workspace).toHaveProperty('note');
   expect(workspace).toHaveProperty('currency_symbol');
   expect(workspace).toHaveProperty('created_at');
 

@@ -155,7 +155,7 @@ describe('Workspace Utilities', () => {
       expect(result).toBeDefined();
       expect(result.id).toBe(1);
       expect(result).toHaveProperty('name');
-      expect(result).toHaveProperty('description');
+      expect(result).toHaveProperty('note');
       expect(result).toHaveProperty('created_at');
       expect(result.deleted_at).toBeNull();
     });
