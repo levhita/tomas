@@ -305,6 +305,199 @@ describe('User Management API', () => {
 
       validateApiResponse(response, 403);
     });
+
+    it('should allow user to update their own username', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+      const newUsername = `self_updated_${Date.now()}`;
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: newUsername
+        });
+
+      validateApiResponse(response, 200);
+      validateUserObject(response.body);
+      expect(response.body.username).toBe(newUsername);
+      expect(response.body.id).toBe(TEST_USERS.TESTUSER1.id);
+
+      // Get a new token with the updated username
+      const newToken = await loginUser({
+        username: newUsername,
+        password: TEST_USERS.TESTUSER1.password
+      });
+      const newAuth = authenticatedRequest(newToken);
+
+      // Restore original username
+      await newAuth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: TEST_USERS.TESTUSER1.username
+        });
+    });
+
+    it('should allow user to change their own password with current password', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+      const newPassword = 'mynewpassword123';
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: newPassword,
+          currentPassword: TEST_USERS.TESTUSER1.password
+        });
+
+      validateApiResponse(response, 200);
+      validateUserObject(response.body);
+
+      // Verify new password works by logging in
+      const loginResponse = await request(app)
+        .post('/api/users/login')
+        .send({
+          username: TEST_USERS.TESTUSER1.username,
+          password: newPassword
+        });
+
+      validateApiResponse(loginResponse, 200);
+
+      // Restore original password
+      const restoreAuth = authenticatedRequest(loginResponse.body.token);
+      await restoreAuth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: TEST_USERS.TESTUSER1.password,
+          currentPassword: newPassword
+        });
+    });
+
+    it('should require current password when user changes their own password', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: 'newpassword123'
+          // Missing currentPassword
+        });
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/current password.*required/i);
+    });
+
+    it('should reject incorrect current password', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: 'newpassword123',
+          currentPassword: 'wrongcurrentpassword'
+        });
+
+      validateApiResponse(response, 401);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/current password.*incorrect/i);
+    });
+
+    it('should allow superadmin to change password without current password', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const newPassword = 'adminsetpassword123';
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: newPassword
+          // No currentPassword needed for superadmin
+        });
+
+      validateApiResponse(response, 200);
+
+      // Verify password was changed
+      const loginResponse = await request(app)
+        .post('/api/users/login')
+        .send({
+          username: TEST_USERS.TESTUSER1.username,
+          password: newPassword
+        });
+
+      validateApiResponse(loginResponse, 200);
+
+      // Restore original password
+      await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: TEST_USERS.TESTUSER1.password
+        });
+    });
+
+    it('should allow user to update both username and password together', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+      const newUsername = `combined_update_${Date.now()}`;
+      const newPassword = 'combinedpassword123';
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: newUsername,
+          password: newPassword,
+          currentPassword: TEST_USERS.TESTUSER1.password
+        });
+
+      validateApiResponse(response, 200);
+      validateUserObject(response.body);
+      expect(response.body.username).toBe(newUsername);
+
+      // Verify both username and password were updated
+      const loginResponse = await request(app)
+        .post('/api/users/login')
+        .send({
+          username: newUsername,
+          password: newPassword
+        });
+
+      validateApiResponse(loginResponse, 200);
+
+      // Restore original username and password
+      const restoreAuth = authenticatedRequest(loginResponse.body.token);
+      await restoreAuth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: TEST_USERS.TESTUSER1.username,
+          password: TEST_USERS.TESTUSER1.password,
+          currentPassword: newPassword
+        });
+    });
+
+    it('should prevent user from updating another user account', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}`)
+        .send({
+          username: 'hacked_user'
+        });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/can only update.*own.*information/i);
+    });
+
+    it('should reject duplicate username when user updates themselves', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          username: TEST_USERS.SUPERADMIN.username // This username already exists
+        });
+
+      validateApiResponse(response, 409);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/username.*exists/i);
+    });
   });
 
   describe('DELETE /api/users/:id', () => {
