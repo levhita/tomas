@@ -163,7 +163,7 @@ async function getWorkspaceUsers(workspaceId) {
  * 
  * @example
  * // Returns an object like:
- * // { id: 1, name: 'Personal Finance', description: '...', created_at: '2023-01-01', ... }
+ * // { id: 1, name: 'Personal Finance', note: '...', created_at: '2023-01-01', ... }
  */
 async function getWorkspaceById(workspaceId) {
   const [workspaces] = await db.execute(

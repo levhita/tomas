@@ -33,8 +33,8 @@
               <p class="card-text text-muted small">
                 Created {{ formatDate(workspace.created_at) }}
               </p>
-              <p class="card-text" v-if="workspace.description">{{ workspace.description }}</p>
-              <p class="card-text" v-else><em>No description</em></p>
+              <p class="card-text" v-if="workspace.note">{{ workspace.note }}</p>
+              <p class="card-text" v-else><em>No note</em></p>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-between">
               <button class="btn btn-sm btn-primary" @click="selectWorkspace(workspace)">

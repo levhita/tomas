@@ -91,7 +91,7 @@ const workspacesStore = useWorkspacesStore();
  * {
  *   id: 1,
  *   name: "Personal Budget",
- *   description: "My personal finances",
+ *   note: "My personal finances",
  *   created_at: "2024-01-01T00:00:00Z"
  * }
  */

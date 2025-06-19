@@ -527,6 +527,84 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
+  /**
+   * Enable a user - Super admin only
+   * @param {number} userId - User ID to enable
+   * @returns {Promise<Object>} Updated user data
+   */
+  async function enableUser(userId) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+
+    try {
+      const response = await fetch(`/api/users/${userId}/enable`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to enable user');
+      }
+
+      const userData = await response.json();
+
+      // Update the user in the local store
+      const userIndex = users.value.findIndex(user => user.id === userId);
+      if (userIndex !== -1) {
+        users.value[userIndex] = { ...users.value[userIndex], ...userData };
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('Enable user error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disable a user - Super admin only
+   * @param {number} userId - User ID to disable
+   * @returns {Promise<Object>} Updated user data
+   */
+  async function disableUser(userId) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+
+    try {
+      const response = await fetch(`/api/users/${userId}/disable`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to disable user');
+      }
+
+      const userData = await response.json();
+
+      // Update the user in the local store
+      const userIndex = users.value.findIndex(user => user.id === userId);
+      if (userIndex !== -1) {
+        users.value[userIndex] = { ...users.value[userIndex], ...userData };
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('Disable user error:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     currentUser,
@@ -547,6 +625,8 @@ export const useUsersStore = defineStore('users', () => {
     createUser,
     updateUser,
     deleteUser,
+    enableUser,
+    disableUser,
     getUserById,
     // Workspace management
     searchWorkspaces,
@@ -554,6 +634,9 @@ export const useUsersStore = defineStore('users', () => {
     getUserWorkspaces,
     addUserToWorkspace,
     updateUserWorkspaceRole,
-    removeUserFromWorkspace
+    removeUserFromWorkspace,
+    // User enable/disable
+    enableUser,
+    disableUser
   };
 });

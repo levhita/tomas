@@ -95,7 +95,7 @@ describe('User Workspace Management API', () => {
         const workspaceResponse = await auth.post('/api/workspaces')
           .send({
             name: `Test Role Workspace ${role}`,
-            description: `Workspace for testing ${role} role`,
+            note: `Workspace for testing ${role} role`,
             currency_symbol: '$'
           });
 

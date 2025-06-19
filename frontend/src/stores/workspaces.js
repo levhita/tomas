@@ -378,7 +378,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
         // Update existing workspace
         savedWorkspace = await updateWorkspace(workspaceData.id, {
           name: workspaceData.name,
-          description: workspaceData.description,
+          note: workspaceData.note,
           currency_symbol: workspaceData.currency_symbol,
           week_start: workspaceData.week_start
         });
@@ -386,7 +386,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
         // Create new workspace
         savedWorkspace = await createWorkspace({
           name: workspaceData.name,
-          description: workspaceData.description,
+          note: workspaceData.note,
           currency_symbol: workspaceData.currency_symbol,
           week_start: workspaceData.week_start
         });

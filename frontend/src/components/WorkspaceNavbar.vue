@@ -145,7 +145,7 @@
  * {
  *   id: number,           // Unique workspace identifier
  *   name: string,         // Display name for the workspace
- *   description?: string, // Optional workspace description
+ *   note?: string, // Optional workspace note
  *   created_at?: string   // Optional creation timestamp
  * }
  * 

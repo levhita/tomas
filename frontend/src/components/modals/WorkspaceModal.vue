@@ -18,12 +18,11 @@
               <div class="form-text">A descriptive name for your workspace</div>
             </div>
 
-            <!-- Workspace Description -->
+            <!-- Workspace Note -->
             <div class="mb-3">
-              <label for="workspaceDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="workspaceDescription" v-model="form.description" rows="3"
-                :disabled="isLoading"
-                placeholder="Optional description of what this workspace is used for..."></textarea>
+              <label for="workspaceNote" class="form-label">Note</label>
+              <textarea class="form-control" id="workspaceNote" v-model="form.note" rows="3" :disabled="isLoading"
+                placeholder="Optional note about what this workspace is used for..."></textarea>
               <div class="form-text">Help others understand the purpose of this workspace</div>
             </div>
 
@@ -95,7 +94,7 @@
  * WorkspaceModal Component
  * 
  * A comprehensive modal component for creating and editing workspaces.
- * Handles all workspace fields including name, description, currency symbol,
+ * Handles all workspace fields including name, note, currency symbol,
  * and week start preferences with form validation and preview functionality.
  * 
  * Features:
@@ -111,13 +110,13 @@
  * 
  * Workspace Fields:
  * - name: Required workspace name (string)
- * - description: Optional workspace description (string)
+ * - note: Optional workspace note (string)
  * - currency_symbol: Currency symbol for amounts (string, default: '$')
  * - week_start: First day of week for calendars (string, default: 'monday')
  * 
  * Events:
  * @event save - Emitted when form is submitted with valid data
- *   Payload: { name: string, description: string, currency_symbol: string, week_start: string, id?: number }
+ *   Payload: { name: string, note: string, currency_symbol: string, week_start: string, id?: number }
  * 
  * Props:
  * @prop {boolean} isLoading - Whether save operation is in progress
@@ -153,7 +152,7 @@ const modalElement = ref(null)
 // Component state
 const form = ref({
   name: '',
-  description: '',
+  note: '',
   currency_symbol: '$',
   week_start: 'monday',
   id: null
@@ -193,7 +192,7 @@ function handleSubmit() {
   // Prepare workspace data with all fields
   const workspaceData = {
     name: form.value.name.trim(),
-    description: form.value.description?.trim() || '',
+    note: form.value.note?.trim() || '',
     currency_symbol: form.value.currency_symbol || '$',
     week_start: form.value.week_start || 'monday'
   }
@@ -222,7 +221,7 @@ watch(() => props.modelValue, (newVal) => {
       // Editing existing workspace
       form.value = {
         name: props.workspace.name || '',
-        description: props.workspace.description || '',
+        note: props.workspace.note || '',
         currency_symbol: props.workspace.currency_symbol || '$',
         week_start: props.workspace.week_start || 'monday',
         id: props.workspace.id
@@ -231,7 +230,7 @@ watch(() => props.modelValue, (newVal) => {
       // Creating new workspace
       form.value = {
         name: '',
-        description: '',
+        note: '',
         currency_symbol: '$',
         week_start: 'monday',
         id: null

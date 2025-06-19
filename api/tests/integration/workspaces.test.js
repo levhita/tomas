@@ -227,7 +227,7 @@ describe('Workspace Management API', () => {
       const response = await auth.post('/api/workspaces')
         .send({
           name: workspaceData.workspaceName,
-          description: 'Test workspace description',
+          note: 'Test workspace description',
           currency_symbol: '€',
           week_start: 'sunday'
         });
@@ -235,7 +235,7 @@ describe('Workspace Management API', () => {
       validateApiResponse(response, 201);
       validateWorkspaceObject(response.body);
       expect(response.body.name).toBe(workspaceData.workspaceName);
-      expect(response.body.description).toBe('Test workspace description');
+      expect(response.body.note).toBe('Test workspace description');
       expect(response.body.currency_symbol).toBe('€');
       expect(response.body.week_start).toBe('sunday');
     });
@@ -261,7 +261,7 @@ describe('Workspace Management API', () => {
 
       const response = await auth.post('/api/workspaces')
         .send({
-          description: 'Missing name'
+          note: 'Missing name'
         });
 
       validateApiResponse(response, 400);
@@ -289,7 +289,7 @@ describe('Workspace Management API', () => {
       const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`)
         .send({
           name: newName,
-          description: 'Updated description',
+          note: 'Updated description',
           currency_symbol: '¥',
           week_start: 'sunday'
         });
@@ -297,7 +297,7 @@ describe('Workspace Management API', () => {
       validateApiResponse(response, 200);
       validateWorkspaceObject(response.body);
       expect(response.body.name).toBe(newName);
-      expect(response.body.description).toBe('Updated description');
+      expect(response.body.note).toBe('Updated description');
       expect(response.body.currency_symbol).toBe('¥');
       expect(response.body.week_start).toBe('sunday');
     });
@@ -421,7 +421,7 @@ describe('Workspace Management API', () => {
       const createResponse = await auth.post('/api/workspaces')
         .send({
           name: 'Deletable Workspace',
-          description: 'Workspace for deletion testing'
+          note: 'Workspace for deletion testing'
         });
 
       deletableWorkspaceId = createResponse.body.id;
@@ -668,7 +668,7 @@ describe('Workspace Management API', () => {
       const createResponse = await testUserAuth.post('/api/workspaces')
         .send({
           name: 'Test Workspace for Superadmin Access',
-          description: 'Testing superadmin access'
+          note: 'Testing superadmin access'
         });
 
       const newWorkspaceId = createResponse.body.id;

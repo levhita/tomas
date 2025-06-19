@@ -31,6 +31,7 @@ CREATE TABLE
     `password_hash` VARCHAR(255) NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `superadmin` BOOLEAN DEFAULT FALSE,
+    `active` BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (`id`),
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
@@ -40,7 +41,7 @@ CREATE TABLE
   `workspace` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
-    `description` TEXT NULL,
+    `note` TEXT NULL,
     `currency_symbol` VARCHAR(10) NOT NULL DEFAULT '$',
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -120,36 +121,46 @@ CREATE TABLE
 -- Test Data --
 -- Test Users (passwords are 'password123' hashed with bcryptjs)
 INSERT INTO
-  `user` (`id`, `username`, `password_hash`, `superadmin`)
+  `user` (
+    `id`,
+    `username`,
+    `password_hash`,
+    `superadmin`,
+    `active`
+  )
 VALUES
   (
     1,
     'superadmin',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
+    TRUE,
     TRUE
   ),
   (
     2,
     'testuser1',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   ),
   (
     3,
     'testuser2',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   ),
   (
     4,
     'regularuser',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
-    FALSE
+    FALSE,
+    TRUE
   );
 
 -- Test Workspaces
 INSERT INTO
-  `workspace` (`id`, `name`, `description`, `currency_symbol`)
+  `workspace` (`id`, `name`, `note`, `currency_symbol`)
 VALUES
   (
     1,
