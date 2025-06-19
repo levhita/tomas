@@ -71,10 +71,4 @@ module.exports = async () => {
   } catch (error) {
     console.warn('Warning closing database pool:', error.message);
   }
-
-  // Ensure all connections are properly closed
-  if (db && typeof db.end === 'function') {
-    await db.end();
-    console.log('✅ Verified all connections are closed');
-  }
 };
