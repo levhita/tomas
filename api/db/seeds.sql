@@ -1,35 +1,32 @@
 -- Create users --
 INSERT INTO
-  `user` (id, username, password_hash, superadmin)
+  `user` (id, username, password_hash, superadmin, active)
 VALUES
   (
     1,
     "admin",
     "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
+    true,
     true
   ),
   (
     2,
     "user",
     "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
-    false
+    false,
+    true
   ),
   (
     3,
     "viewer",
     "$2b$10$JKCPXyZ3LWZ0Rbc8Aa/.4.cKIhGsGvOTw1RmWVEBZLqvzVX8b8zSS", -- Password: 'admin'
-    false
+    false,
+    true
   );
 
 -- Create workspaces --
 INSERT INTO
-  `workspace` (
-    id,
-    name,
-    description,
-    currency_symbol,
-    week_start
-  )
+  `workspace` (id, name, note, currency_symbol, week_start)
 VALUES
   (
     1,
