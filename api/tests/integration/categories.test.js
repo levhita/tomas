@@ -106,7 +106,7 @@ describe('Categories Management API', () => {
 
   describe('POST /api/categories', () => {
     it('should create new category as admin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category',
         workspace_id: 1,
@@ -124,7 +124,7 @@ describe('Categories Management API', () => {
     });
 
     it('should create category with minimal data', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Minimal Category',
         workspace_id: 1
@@ -139,7 +139,7 @@ describe('Categories Management API', () => {
     });
 
     it('should create income category', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Income Category',
         workspace_id: 1,
@@ -153,7 +153,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject missing name', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         workspace_id: 1
       };
@@ -165,7 +165,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject missing workspace_id', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category'
       };
@@ -177,7 +177,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject invalid category type', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category',
         workspace_id: 1,
@@ -222,7 +222,7 @@ describe('Categories Management API', () => {
   describe('PUT /api/categories/:id', () => {
     it('should update category as admin', async () => {
       // First create a category to update
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const createData = {
         name: 'Category to Update',
         workspace_id: 1
@@ -244,7 +244,7 @@ describe('Categories Management API', () => {
     });
 
     it('should return 404 for non-existent category', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const updateData = { name: 'Updated Name' };
 
       const response = await auth.put('/api/categories/99999').send(updateData);
@@ -278,7 +278,7 @@ describe('Categories Management API', () => {
   describe('DELETE /api/categories/:id', () => {
     it('should delete category without transactions as admin', async () => {
       // First create a category to delete
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const createData = {
         name: 'Category to Delete',
         workspace_id: 1
@@ -297,7 +297,7 @@ describe('Categories Management API', () => {
     });
 
     it('should return 404 for non-existent category', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       const response = await auth.delete('/api/categories/99999');
 
       validateApiResponse(response, 404);
@@ -305,7 +305,7 @@ describe('Categories Management API', () => {
     });
 
     it('should prevent deletion of category with transactions', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(testUserToken);
       // Category 1 should have transactions in test data
       const response = await auth.delete('/api/categories/1');
 
@@ -345,7 +345,7 @@ describe('Categories Management API', () => {
   describe('Advanced Category Scenarios', () => {
     describe('Hierarchical Categories', () => {
       it('should create category with parent category', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
 
         // First create a parent category
         const parentData = {
@@ -371,7 +371,7 @@ describe('Categories Management API', () => {
       });
 
       it('should prevent three-level nesting', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
 
         // Create grandparent
         const grandparentData = { name: 'Grandparent', workspace_id: 1, type: 'expense' };
@@ -393,7 +393,7 @@ describe('Categories Management API', () => {
       });
 
       it('should enforce parent-child workspace consistency', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
 
         // Try to create category with parent from different workspace
         const categoryData = {
@@ -409,7 +409,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle non-existent parent category', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Orphaned Category',
           workspace_id: 1,
@@ -424,7 +424,7 @@ describe('Categories Management API', () => {
 
     describe('Category Types', () => {
       it('should create expense category by default', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Default Type Category',
           workspace_id: 1
@@ -436,7 +436,7 @@ describe('Categories Management API', () => {
       });
 
       it('should inherit type from parent category', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(testUserToken);
 
         // Create income parent
         const parentData = { name: 'Income Parent', workspace_id: 1, type: 'income' };
@@ -503,6 +503,60 @@ describe('Categories Management API', () => {
 
         validateApiResponse(response, 403);
         expect(response.body).toHaveProperty('error');
+      });
+
+      it('should deny superadmin access to workspaces they are not a member of', async () => {
+        // Test that superadmin cannot access workspace 5 (where they are not a member)
+        const superadminAuth = authenticatedRequest(superadminToken);
+
+        // Try to get categories from workspace 5
+        const getResponse = await superadminAuth.get('/api/categories?workspace_id=5');
+        validateApiResponse(getResponse, 403);
+        expect(getResponse.body).toHaveProperty('error');
+
+        // Try to create a category in workspace 5
+        const createResponse = await superadminAuth.post('/api/categories').send({
+          name: 'Superadmin Unauthorized Category',
+          workspace_id: 5
+        });
+        validateApiResponse(createResponse, 403);
+        expect(createResponse.body).toHaveProperty('error');
+      });
+
+      it('should deny superadmin update access to categories in workspaces they are not a member of', async () => {
+        // First, get a category from workspace 5 using a valid user (testuser1 who is admin of workspace 5)
+        const validUserAuth = authenticatedRequest(testUserToken);
+        const getResponse = await validUserAuth.get('/api/categories?workspace_id=5');
+        validateApiResponse(getResponse, 200);
+
+        if (getResponse.body.length > 0) {
+          const categoryId = getResponse.body[0].id;
+
+          // Now try to update it as superadmin (should be denied)
+          const superadminAuth = authenticatedRequest(superadminToken);
+          const updateResponse = await superadminAuth.put(`/api/categories/${categoryId}`).send({
+            name: 'Superadmin Unauthorized Update'
+          });
+          validateApiResponse(updateResponse, 403);
+          expect(updateResponse.body).toHaveProperty('error');
+        }
+      });
+
+      it('should deny superadmin delete access to categories in workspaces they are not a member of', async () => {
+        // First, get a category from workspace 5 using a valid user (testuser1 who is admin of workspace 5)
+        const validUserAuth = authenticatedRequest(testUserToken);
+        const getResponse = await validUserAuth.get('/api/categories?workspace_id=5');
+        validateApiResponse(getResponse, 200);
+
+        if (getResponse.body.length > 0) {
+          const categoryId = getResponse.body[0].id;
+
+          // Now try to delete it as superadmin (should be denied)
+          const superadminAuth = authenticatedRequest(superadminToken);
+          const deleteResponse = await superadminAuth.delete(`/api/categories/${categoryId}`);
+          validateApiResponse(deleteResponse, 403);
+          expect(deleteResponse.body).toHaveProperty('error');
+        }
       });
     });
 
@@ -1058,6 +1112,283 @@ describe('Categories Management API', () => {
           });
         expect(createResponse.status).toBe(201);
         expect(createResponse.body.name).toBe('Category for Create Error Test');
+      });
+    });
+
+    describe('Parent Category Logic in Updates', () => {
+      let parentCategoryId, childCategoryId, rootCategoryId;
+
+      beforeEach(async () => {
+        const auth = authenticatedRequest(testUserToken);
+
+        // Create a root category
+        const rootResponse = await auth.post('/api/categories').send({
+          name: 'Root Category for Parent Tests',
+          workspace_id: 1,
+          type: 'expense'
+        });
+        rootCategoryId = rootResponse.body.id;
+
+        // Create a parent category
+        const parentResponse = await auth.post('/api/categories').send({
+          name: 'Parent Category for Tests',
+          workspace_id: 1,
+          type: 'income'
+        });
+        parentCategoryId = parentResponse.body.id;
+
+        // Create a child category
+        const childResponse = await auth.post('/api/categories').send({
+          name: 'Child Category for Tests',
+          workspace_id: 1,
+          parent_category_id: parentCategoryId
+        });
+        childCategoryId = childResponse.body.id;
+      });
+
+      describe('When parent_category_id is NOT provided (undefined)', () => {
+        it('should allow updating name and note without affecting parent relationship', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            name: 'Updated Child Name',
+            note: 'Updated note'
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Updated Child Name');
+          expect(response.body.note).toBe('Updated note');
+          expect(response.body.parent_category_id).toBe(parentCategoryId); // Should remain unchanged
+          expect(response.body.type).toBe('income'); // Should remain inherited from parent
+        });
+
+        it('should enforce type inheritance when updating type of child category', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            name: 'Child with Type Update',
+            type: 'expense' // Try to change type, should be overridden
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Child with Type Update');
+          expect(response.body.type).toBe('income'); // Should inherit from parent, not the requested 'expense'
+          expect(response.body.parent_category_id).toBe(parentCategoryId);
+        });
+
+        it('should allow updating type of root category when no parent', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            name: 'Updated Root Category',
+            type: 'income' // Change from expense to income
+          };
+
+          const response = await auth.put(`/api/categories/${rootCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Updated Root Category');
+          expect(response.body.type).toBe('income'); // Should be allowed to change
+          expect(response.body.parent_category_id).toBeNull();
+        });
+      });
+
+      describe('When parent_category_id is explicitly set to null', () => {
+        it('should move child category to root level and allow type change', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            name: 'Moved to Root',
+            parent_category_id: null,
+            type: 'expense' // Should be allowed when moving to root
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Moved to Root');
+          expect(response.body.parent_category_id).toBeNull();
+          expect(response.body.type).toBe('expense'); // Should allow type change when moving to root
+        });
+
+        it('should move child to root and keep current type if not specified', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            name: 'Moved to Root No Type',
+            parent_category_id: null
+            // No type specified
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Moved to Root No Type');
+          expect(response.body.parent_category_id).toBeNull();
+          expect(response.body.type).toBe('income'); // Should keep current type
+        });
+      });
+
+      describe('When parent_category_id is explicitly set to a category ID', () => {
+        it('should move category to new parent and inherit type', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          // Move root category to be child of parent
+          const updateData = {
+            name: 'Root Moved to Child',
+            parent_category_id: parentCategoryId
+          };
+
+          const response = await auth.put(`/api/categories/${rootCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Root Moved to Child');
+          expect(response.body.parent_category_id).toBe(parentCategoryId);
+          expect(response.body.type).toBe('income'); // Should inherit from new parent
+        });
+
+        it('should reject setting itself as parent (circular reference)', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            parent_category_id: childCategoryId // Self as parent
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 400);
+          expect(response.body.error).toBe('A category cannot be its own parent');
+        });
+
+        it('should reject setting parent when category has children', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          // Try to make parent category (which has children) a child of root
+          const updateData = {
+            parent_category_id: rootCategoryId
+          };
+
+          const response = await auth.put(`/api/categories/${parentCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 400);
+          expect(response.body.error).toBe('Cannot assign a parent to this category because it already has child categories');
+        });
+
+        it('should reject three-level nesting', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          // Create another category to try as grandchild
+          const grandchildResponse = await auth.post('/api/categories').send({
+            name: 'Grandchild Test',
+            workspace_id: 1
+          });
+          const grandchildId = grandchildResponse.body.id;
+
+          // Try to make grandchild a child of child (3 levels deep)
+          const updateData = {
+            parent_category_id: childCategoryId
+          };
+
+          const response = await auth.put(`/api/categories/${grandchildId}`).send(updateData);
+
+          validateApiResponse(response, 400);
+          expect(response.body.error).toBe('Categories can only be nested two levels deep. The selected parent already has a parent.');
+        });
+
+        it('should reject parent from different workspace', async () => {
+          const auth = authenticatedRequest(testUserToken);
+          const adminAuth = authenticatedRequest(superadminToken);
+
+          // Ensure testuser1 has admin access to workspace 2 for this test
+          // (previous tests might have changed the role)
+          await adminAuth.delete('/api/workspaces/2/users/2').catch(() => { }); // Remove if exists
+          await adminAuth.post('/api/workspaces/2/users').send({
+            userId: 2,
+            role: 'admin'
+          });
+
+          // Create category in workspace 2
+          const ws2Response = await auth.post('/api/categories').send({
+            name: 'Category in WS2',
+            workspace_id: 2
+          });
+          const ws2CategoryId = ws2Response.body.id;
+
+          // Try to set it as parent of category in workspace 1
+          const updateData = {
+            parent_category_id: ws2CategoryId
+          };
+
+          const response = await auth.put(`/api/categories/${rootCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 400);
+          expect(response.body.error).toBe('Parent category must belong to the same workspace');
+        });
+
+        it('should reject non-existent parent category', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          const updateData = {
+            parent_category_id: 99999 // Non-existent ID
+          };
+
+          const response = await auth.put(`/api/categories/${rootCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 404);
+          expect(response.body.error).toBe('Parent category not found');
+        });
+      });
+
+      describe('Type inheritance edge cases', () => {
+        it('should update child categories when parent type changes', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          // First get current child type
+          const childBeforeResponse = await auth.get(`/api/categories/${childCategoryId}`);
+          expect(childBeforeResponse.body.type).toBe('income');
+
+          // Update parent type
+          const updateParentData = {
+            type: 'expense'
+          };
+
+          const parentResponse = await auth.put(`/api/categories/${parentCategoryId}`).send(updateParentData);
+          validateApiResponse(parentResponse, 200);
+          expect(parentResponse.body.type).toBe('expense');
+
+          // Child should now have updated type too
+          const childAfterResponse = await auth.get(`/api/categories/${childCategoryId}`);
+          expect(childAfterResponse.body.type).toBe('expense');
+        });
+
+        it('should handle complex parent changes with type inheritance', async () => {
+          const auth = authenticatedRequest(testUserToken);
+
+          // Create second parent with different type
+          const parent2Response = await auth.post('/api/categories').send({
+            name: 'Second Parent',
+            workspace_id: 1,
+            type: 'expense'
+          });
+          const parent2Id = parent2Response.body.id;
+
+          // Move child from income parent to expense parent
+          const updateData = {
+            name: 'Child Moved to Expense Parent',
+            parent_category_id: parent2Id
+          };
+
+          const response = await auth.put(`/api/categories/${childCategoryId}`).send(updateData);
+
+          validateApiResponse(response, 200);
+          expect(response.body.name).toBe('Child Moved to Expense Parent');
+          expect(response.body.parent_category_id).toBe(parent2Id);
+          expect(response.body.type).toBe('expense'); // Should inherit from new parent
+        });
       });
     });
   });

@@ -238,9 +238,12 @@ router.put('/:id', async (req, res) => {
 
     const hasChildren = childCheck[0].child_count > 0;
 
-    // If parent category is being updated, perform additional checks
+    // Handle parent category updates and type inheritance
     if (parent_category_id !== undefined) {
+      // parent_category_id is explicitly provided in the request
       if (parent_category_id !== null) {
+        // Setting a new parent category
+
         // Check if trying to assign itself as parent (circular reference)
         if (parseInt(parent_category_id) === categoryId) {
           return res.status(400).json({ error: 'A category cannot be its own parent' });
@@ -278,22 +281,27 @@ router.put('/:id', async (req, res) => {
 
         // Enforce type inheritance - when setting a parent, type must inherit from parent
         type = parentCategories[0].type;
-      } else if (parent_category_id === null && currentCategory.parent_category_id !== null) {
-        // Category is being moved from child to root level - type can be changed
-        // but if not provided, keep current type
+      } else {
+        // parent_category_id is explicitly set to null - moving to root level
+        // Type can be changed when moving to root level, but if not provided, keep current type
         if (type === undefined) {
           type = currentCategory.type;
         }
       }
-    } else if (currentCategory.parent_category_id !== null && type !== undefined) {
-      // Category remains a child - cannot change type independently, inherit from parent
-      const [parentCategories] = await db.query(`
-        SELECT type FROM category WHERE id = ?
-      `, [currentCategory.parent_category_id]);
+    } else {
+      // parent_category_id is not provided - keeping current parent relationship
+      if (currentCategory.parent_category_id !== null && type !== undefined) {
+        // Category currently has a parent and type is being updated
+        // Child categories must inherit type from parent, cannot change independently
+        const [parentCategories] = await db.query(`
+          SELECT type FROM category WHERE id = ?
+        `, [currentCategory.parent_category_id]);
 
-      if (parentCategories.length > 0) {
-        type = parentCategories[0].type;
+        if (parentCategories.length > 0) {
+          type = parentCategories[0].type;
+        }
       }
+      // If no parent currently, or no type update requested, no additional logic needed
     }
 
     // Start a transaction for the update operation
