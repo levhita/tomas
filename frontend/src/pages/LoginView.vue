@@ -3,7 +3,7 @@
     <div class="card login-card">
       <div class="card-body p-4">
         <!-- Logo and Title -->
-        <div class="text-center mb-4">
+        <div class="text-center">
           <img src="/logo/logotype_512.png" alt="Tomás Logo" class="login-logo">
         </div>
 
