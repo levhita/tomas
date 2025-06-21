@@ -129,7 +129,9 @@ $border-color-dark: $gnome-dark-2;
 // Button color overrides - ensure white text on colored buttons
 $btn-color: $gnome-light-1;
 
-// Import Bootstrap after our customizations
+//Options
+$enable-gradients: true;
+$enable-shadows: true;
 @import "bootstrap/scss/bootstrap";
 
 /* -------------------------------------------------------------------------- */

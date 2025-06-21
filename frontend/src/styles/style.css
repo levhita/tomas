@@ -74,3 +74,33 @@ main {
   align-items: center;
   justify-content: center;
 }
+
+/* -------------------------------------------------------------------------- */
+/* 2.5 Login Page Components                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Login page container */
+.login-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bs-dark, #212529);
+  z-index: 1000;
+}
+
+/* Login card */
+.login-card {
+  width: 24rem;
+  box-shadow: var(--bs-box-shadow-lg, 0 1rem 3rem rgba(0, 0, 0, 0.175));
+}
+
+/* Login logo */
+.login-logo {
+  height: 80px;
+  margin-bottom: 1rem;
+}
