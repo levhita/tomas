@@ -5,7 +5,6 @@
         <!-- Logo and Title -->
         <div class="text-center mb-4">
           <img src="/logo/logotype_512.png" alt="Tomás Logo" class="login-logo">
-          <p class="text-muted small">Purrfect Budgets</p>
         </div>
 
         <!-- Login Form -->
