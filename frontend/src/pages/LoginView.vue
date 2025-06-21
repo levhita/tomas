@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex align-items-center justify-content-center min-vh-100 bg-body-tertiary">
+  <div class="login-page d-flex align-items-center justify-content-center min-vh-100 bg-dark" data-bs-theme="light">
     <div class="card shadow" style="width: 24rem;">
       <div class="card-body p-4">
         <!-- Logo and Title -->
@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
 
@@ -55,7 +55,26 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const isLoading = ref(false)
-const version = ref('0.2.0') // Update this manually when needed
+const version = ref('0.2.1') // Update this manually when needed
+
+// Store original theme to restore it later
+let originalTheme = null
+
+onMounted(() => {
+  // Store the current theme
+  originalTheme = document.documentElement.getAttribute('data-bs-theme')
+  // Force light theme for login page
+  document.documentElement.setAttribute('data-bs-theme', 'light')
+})
+
+onUnmounted(() => {
+  // Restore original theme when leaving login page
+  if (originalTheme) {
+    document.documentElement.setAttribute('data-bs-theme', originalTheme)
+  } else {
+    document.documentElement.removeAttribute('data-bs-theme')
+  }
+})
 
 async function handleLogin() {
   try {
