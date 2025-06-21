@@ -24,7 +24,9 @@ Tables:
 - Buttons: We will add icon-text buttons for main actions on the table toolbar (Create, Search, Filter)
 
 Dialogs
-- We add dialogs for alerting the user of irreversible actions like deletion and for more exhaustive editing of the records.
+- We add dialogs for alerting the user of irreversible actions like deletion 
+- We use dialogs for main actions like create a new record and actions in the same context of the table.
+- The actions that will use dialogs are: Filtering, create a new record, delete a record, confirmations and alerts.
 
 Drilldown
 - To know more about a record, we deep dive into its details in its transaction/id space/page. Here, we give the ability to perform a more exhaustive review of the transactions and allow editing of the longest non-inline-editing-suitable properties of the table or transactions.
