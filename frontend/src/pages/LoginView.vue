@@ -1,11 +1,10 @@
 <template>
-  <div class="d-flex align-items-center justify-content-center min-vh-100 bg-body-tertiary">
-    <div class="card shadow" style="width: 24rem;">
+  <div class="login-container" data-bs-theme="light">
+    <div class="card login-card">
       <div class="card-body p-4">
         <!-- Logo and Title -->
-        <div class="text-center mb-4">
-          <img src="/logo/logotype_512.png" alt="Tomás Logo" class="mb-3" style="height: 80px;">
-          <p class="text-muted small">Purrfect Budgets</p>
+        <div class="text-center">
+          <img src="/logo/logotype_512.png" alt="Tomás Logo" class="login-logo">
         </div>
 
         <!-- Login Form -->
@@ -44,10 +43,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
-import packageInfo from '../../../package.json'
 
 const router = useRouter()
 const usersStore = useUsersStore()
@@ -56,7 +54,26 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const isLoading = ref(false)
-const version = ref(packageInfo.version)
+const version = ref('0.2.1') // Update this manually when needed
+
+// Store original theme to restore it later
+let originalTheme = null
+
+onMounted(() => {
+  // Store the current theme
+  originalTheme = document.documentElement.getAttribute('data-bs-theme')
+  // Force light theme for login page
+  document.documentElement.setAttribute('data-bs-theme', 'light')
+})
+
+onUnmounted(() => {
+  // Restore original theme when leaving login page
+  if (originalTheme) {
+    document.documentElement.setAttribute('data-bs-theme', originalTheme)
+  } else {
+    document.documentElement.removeAttribute('data-bs-theme')
+  }
+})
 
 async function handleLogin() {
   try {

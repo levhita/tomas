@@ -1,0 +1,225 @@
+/* Admin Section Styles */
+/* This file contains all styles specific to the admin section */
+/* All styles are scoped under the .admin class */
+
+/* Admin Layout Styles */
+.admin .admin-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.admin .admin-content {
+  flex: 1;
+}
+
+/* Admin Dashboard Styles */
+.admin .admin-dashboard-stats .card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.admin .admin-dashboard-stats .card:hover {
+  transform: translateY(-2px);
+}
+
+/* Admin Tables Styles */
+.admin .admin-table {
+  font-size: 0.9rem;
+}
+
+.admin .admin-table .table td {
+  vertical-align: middle;
+}
+
+.admin .admin-table .user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.admin .admin-table .workspace-owner-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+/* Admin Cards Styles */
+.admin .admin-card {
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.admin .admin-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Admin Forms Styles */
+.admin .admin-form .form-floating {
+  margin-bottom: 1rem;
+}
+
+.admin .admin-form .form-check {
+  margin-bottom: 0.75rem;
+}
+
+/* Admin Settings Styles */
+.admin .admin-settings .settings-section {
+  margin-bottom: 2rem;
+}
+
+.admin .admin-settings .settings-info {
+  background-color: var(--bs-light);
+  border-radius: 0.375rem;
+  padding: 1rem;
+}
+
+/* Admin Navigation Styles */
+.admin .admin-nav .nav-link {
+  border-radius: 0.375rem;
+  margin: 0 0.25rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.admin .admin-nav .nav-link:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.admin .admin-nav .nav-link.active {
+  background-color: var(--bs-primary);
+  color: white !important;
+}
+
+/* Admin Status Badges */
+.admin .status-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Admin Action Buttons */
+.admin .admin-actions .btn-group .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Admin Search and Filters */
+.admin .admin-filters {
+  background-color: var(--bs-body-tertiary);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Admin Empty States */
+.admin .admin-empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--bs-secondary);
+}
+
+.admin .admin-empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Admin Loading States */
+.admin .admin-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+/* Admin Modal Styles */
+.admin .admin-modal .modal-header {
+  background-color: var(--bs-primary);
+  color: white;
+}
+
+.admin .admin-modal .modal-header .btn-close {
+  filter: invert(1);
+}
+
+.admin .modal-content {
+  border-radius: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+}
+
+.admin .modal-header {
+  background-color: var(--bs-body-secondary);
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: 1rem 1.5rem;
+}
+
+.admin .modal-title {
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.admin .modal-body {
+  padding: 1.5rem;
+}
+
+.admin .modal-footer {
+  background-color: var(--bs-body-tertiary);
+  border-top: 1px solid var(--bs-border-color);
+  padding: 1rem 1.5rem;
+}
+
+.admin .form-floating>.form-control:focus~label {
+  color: var(--bs-primary);
+}
+
+.admin .form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.admin .alert {
+  border-radius: 0.375rem;
+  border: 1px solid;
+}
+
+.admin .alert-danger {
+  border-color: var(--bs-danger);
+  background-color: rgba(var(--bs-danger-rgb), 0.1);
+}
+
+.admin .alert-success {
+  border-color: var(--bs-success);
+  background-color: rgba(var(--bs-success-rgb), 0.1);
+}
+
+/* Admin Responsive Adjustments */
+@media (max-width: 768px) {
+  .admin .admin-table {
+    font-size: 0.8rem;
+  }
+
+  .admin .admin-table .btn-group .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+  }
+
+  .admin .admin-filters {
+    padding: 1rem;
+  }
+}
+
+/* Dark mode adjustments for admin */
+[data-bs-theme="dark"] .admin .admin-settings .settings-info {
+  background-color: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .admin .admin-filters {
+  background-color: var(--bs-body-secondary);
+}

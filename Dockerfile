@@ -1,5 +1,5 @@
 # Build frontend
-FROM node:18-alpine as frontend-builder
+FROM node:lts-alpine as frontend-builder
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Build and run backend
-FROM node:18-alpine
+FROM node:lts-alpine
 WORKDIR /app
 
 # Install backend dependencies

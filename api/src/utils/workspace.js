@@ -25,7 +25,7 @@ const db = require('../db');
  */
 async function getUserRole(workspaceId, userId) {
   try {
-    const [access] = await db.query(`
+    const [access] = await db.execute(`
       SELECT role FROM workspace_user 
       WHERE workspace_id = ? AND user_id = ?
     `, [workspaceId, userId]);
@@ -138,7 +138,7 @@ async function canRead(workspaceId, userId) {
  * // [{ id: 1, username: 'johndoe', role: 'admin', created_at: '2023-01-01' }, ...]
  */
 async function getWorkspaceUsers(workspaceId) {
-  const [users] = await db.query(`
+  const [users] = await db.execute(`
     SELECT u.id, u.username, wu.role, u.created_at
     FROM user u
     INNER JOIN workspace_user wu ON u.id = wu.user_id
@@ -163,11 +163,29 @@ async function getWorkspaceUsers(workspaceId) {
  * 
  * @example
  * // Returns an object like:
- * // { id: 1, name: 'Personal Finance', description: '...', created_at: '2023-01-01', ... }
+ * // { id: 1, name: 'Personal Finance', note: '...', created_at: '2023-01-01', ... }
  */
 async function getWorkspaceById(workspaceId) {
-  const [workspaces] = await db.query(
+  const [workspaces] = await db.execute(
     'SELECT * FROM workspace WHERE id = ? AND deleted_at IS NULL',
+    [workspaceId]
+  );
+
+  return workspaces[0] || null;
+}
+
+/**
+ * Get workspace by ID (includes deleted workspaces)
+ * 
+ * Retrieves a workspace's full details by its ID, including soft-deleted ones.
+ * This is primarily used for restore operations and admin functions.
+ * 
+ * @param {number} workspaceId - The workspace ID to get
+ * @returns {Promise<Object|null>} - Returns workspace object or null if not found
+ */
+async function getWorkspaceByIdIncludingDeleted(workspaceId) {
+  const [workspaces] = await db.execute(
+    'SELECT * FROM workspace WHERE id = ?',
     [workspaceId]
   );
 
@@ -192,5 +210,6 @@ module.exports = {
   canWrite,
   canRead,
   getWorkspaceUsers,
-  getWorkspaceById
+  getWorkspaceById,
+  getWorkspaceByIdIncludingDeleted
 };

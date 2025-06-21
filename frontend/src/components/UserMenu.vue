@@ -14,7 +14,7 @@
       <li>
         <span class="dropdown-item-text">
           <small class="text-muted">
-            {{ usersStore.isSuperAdmin ? 'Super Administrator' : 'User' }}
+            {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
           </small>
         </span>
       </li>
@@ -22,6 +22,14 @@
       <!-- Visual separator -->
       <li>
         <hr class="dropdown-divider">
+      </li>
+
+      <!-- Profile action -->
+      <li>
+        <a href="#" class="dropdown-item" @click.prevent="showProfile">
+          <i class="bi bi-person-gear me-2"></i>
+          Edit Profile
+        </a>
       </li>
 
       <!-- Logout action -->
@@ -32,6 +40,9 @@
         </a>
       </li>
     </ul>
+
+    <!-- User Profile Modal -->
+    <UserProfileModal v-model="showProfileModal" @save="handleProfileSaved" />
   </li>
 </template>
 
@@ -71,12 +82,52 @@
 
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
+import { ref } from 'vue'
+import UserProfileModal from './modals/UserProfileModal.vue'
 
 // Vue Router instance for navigation
 const router = useRouter()
 
 // Users store for accessing user data and logout functionality
 const usersStore = useUsersStore()
+
+// Profile modal state
+const showProfileModal = ref(false)
+
+/**
+ * Shows the user profile modal
+ * 
+ * Opens the profile editing modal where users can update their username and password
+ * 
+ * @function showProfile
+ * @returns {void}
+ * 
+ * @example
+ * // Called when user clicks the "Edit Profile" button
+ * showProfile()
+ */
+function showProfile() {
+  showProfileModal.value = true
+}
+
+/**
+ * Handles successful profile update
+ * 
+ * Called when the user successfully updates their profile information.
+ * Could be used to show notifications or refresh data if needed.
+ * 
+ * @function handleProfileSaved
+ * @returns {void}
+ * 
+ * @example
+ * // Called when profile is successfully updated
+ * handleProfileSaved()
+ */
+function handleProfileSaved() {
+  // Profile is automatically updated in the store by the modal
+  // Could add notifications here if needed
+  console.log('Profile updated successfully')
+}
 
 /**
  * Handles user logout process

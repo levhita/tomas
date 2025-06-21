@@ -3,7 +3,8 @@ import WorkspacesView from '../pages/WorkspacesView.vue'
 import CalendarView from '../pages/CalendarView.vue'
 import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
-import AdminView from '../pages/AdminView.vue'
+import AdminView from '../pages/admin/AdminView.vue'
+import AdminUsersView from '../pages/admin/AdminUsersView.vue'
 
 const routes = [
   {
@@ -39,6 +40,15 @@ const routes = [
       requiresSuperAdmin: true
     }
   },
+  {
+    path: '/admin/users',
+    component: AdminUsersView,
+    name: 'admin-users',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
 ]
 
 const router = createRouter({
@@ -55,10 +65,22 @@ router.beforeEach(async (to, from, next) => {
   const isPublicRoute = to.meta.public
   const requiresSuperAdmin = to.meta.requiresSuperAdmin
 
-  // Wait a moment for auth initialization if coming from a fresh page load
-  if (!usersStore.isAuthenticated && !isPublicRoute) {
-    // Give some time for auth initialization
-    await new Promise(resolve => setTimeout(resolve, 100))
+  // If not authenticated and there's a token in localStorage, try to initialize
+  if (!usersStore.isAuthenticated && !isPublicRoute && localStorage.getItem('token')) {
+    try {
+      // If initialization is already in progress, wait for it
+      if (usersStore.isInitializing) {
+        // Wait for initialization to complete
+        while (usersStore.isInitializing) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+      } else if (!usersStore.isInitialized) {
+        // Start initialization if not done yet
+        await usersStore.initializeFromToken()
+      }
+    } catch (error) {
+      console.log('Failed to initialize from stored token:', error)
+    }
   }
 
   if (!isPublicRoute && !usersStore.isAuthenticated) {

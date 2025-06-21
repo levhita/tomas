@@ -1,10 +1,10 @@
 spec:
-  name: yamo
+  name: tomas
   services:
     - name: app
       github:
         branch: develop
-        repo: levhita/yamo
+        repo: levhita/tomas
         deploy_on_push: true
       dockerfile_path: Dockerfile
       source_dir: /

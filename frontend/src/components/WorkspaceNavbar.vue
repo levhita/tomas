@@ -110,13 +110,14 @@
     Workspace settings modal
     Uses the reusable WorkspaceModal component for editing workspace details
   -->
-  <WorkspaceModal ref="workspaceModal" :isLoading="workspacesStore.isLoading" @save="handleSaveWorkspace" />
+  <WorkspaceModal v-model="showWorkspaceModal" :workspace="workspaceToEdit" :isLoading="workspacesStore.isLoading"
+    @save="handleSaveWorkspace" />
 
   <!-- 
     Categories management modal
     Uses the CategoriesModal component for managing workspace categories
   -->
-  <CategoriesModal ref="categoriesModal" :workspace="workspace" />
+  <CategoriesModal v-model="showCategoriesModal" :workspace="workspace" />
 </template>
 
 <script setup>
@@ -144,7 +145,7 @@
  * {
  *   id: number,           // Unique workspace identifier
  *   name: string,         // Display name for the workspace
- *   description?: string, // Optional workspace description
+ *   note?: string, // Optional workspace note
  *   created_at?: string   // Optional creation timestamp
  * }
  * 
@@ -201,26 +202,28 @@ const props = defineProps({
 // Store reference for workspace operations
 const workspacesStore = useWorkspacesStore()
 
-// Template refs
-const workspaceModal = ref(null)
-const categoriesModal = ref(null)
+// Component state
+const showWorkspaceModal = ref(false)
+const workspaceToEdit = ref(null)
+const showCategoriesModal = ref(false)
 
 function openWorkspaceSettings() {
-  if (props.workspace && workspaceModal.value) {
-    workspaceModal.value.showEdit(props.workspace)
+  if (props.workspace) {
+    workspaceToEdit.value = props.workspace
+    showWorkspaceModal.value = true
   }
 }
 
 function openCategoriesModal() {
-  if (props.workspace && categoriesModal.value) {
-    categoriesModal.value.show()
+  if (props.workspace) {
+    showCategoriesModal.value = true
   }
 }
 
 async function handleSaveWorkspace(workspaceData) {
   try {
     await workspacesStore.saveWorkspace(workspaceData)
-    workspaceModal.value?.hide()
+    showWorkspaceModal.value = false
   } catch (error) {
     console.error('Error updating workspace:', error)
     alert('Error updating workspace: ' + error.message)

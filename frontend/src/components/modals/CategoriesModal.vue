@@ -1,6 +1,7 @@
 <template>
   <!-- Categories Management Modal -->
-  <div class="modal fade" id="categoriesModal" tabindex="-1" ref="modalElement">
+  <div class="modal fade" :class="{ show: modelValue }" :style="{ display: modelValue ? 'block' : 'none' }"
+    tabindex="-1" ref="modalElement">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
@@ -8,7 +9,7 @@
             <i class="bi bi-tags me-2"></i>
             Manage Categories
           </h3>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
         <div class="modal-body">
           <!-- Notification Area -->
@@ -112,8 +113,6 @@
                     class="list-group-item bg-body-tertiary">
                     <CategoryForm :form="form" :is-loading="isLoading"
                       :available-parent-categories="availableParentCategories" :editing-category="editingCategory"
-                      :type-disabled="hasChildren(editingCategory.id)"
-                      :type-disabled-reason="hasChildren(editingCategory.id) ? 'Type cannot be changed because this category has child categories' : ''"
                       mode="edit" @submit="handleSubmit" @cancel="hideForm" />
                   </div>
 
@@ -163,13 +162,16 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" :disabled="isLoading">
+          <button type="button" class="btn btn-secondary" @click="close" :disabled="isLoading">
             Close
           </button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Bootstrap Modal Backdrop -->
+  <div v-if="modelValue" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
@@ -209,14 +211,17 @@
  */
 
 import { ref, computed, watch } from 'vue'
-import { Modal } from 'bootstrap'
 import { useCategoriesStore } from '../../stores/categories'
 import CategoryForm from '../inputs/CategoryForm.vue'
 
 // Props
 const props = defineProps({
+  modelValue: Boolean,
   workspace: Object
 })
+
+// Events
+const emit = defineEmits(['update:modelValue'])
 
 // Store
 const categoriesStore = useCategoriesStore()
@@ -245,9 +250,6 @@ const notification = ref({
   title: '',
   details: ''
 })
-
-// Bootstrap modal instance
-let bsModal = null
 
 // Computed properties
 const filteredCategories = computed(() => {
@@ -297,29 +299,10 @@ function getAllChildIds(parentId) {
 }
 
 /**
- * Initialize Bootstrap modal when component mounts
+ * Close the modal
  */
-function initializeModal() {
-  if (modalElement.value && !bsModal) {
-    bsModal = new Modal(modalElement.value)
-  }
-}
-
-/**
- * Shows the modal for managing categories
- */
-function show() {
-  initializeModal()
-  resetForm()
-  hideNotification()
-  bsModal?.show()
-}
-
-/**
- * Hides the modal
- */
-function hide() {
-  bsModal?.hide()
+function close() {
+  emit('update:modelValue', false)
 }
 
 /**
@@ -497,14 +480,21 @@ async function deleteCategory(category) {
   }
 }
 
+// Watch for modal visibility changes
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    // Show modal - add modal-open class to body and reset form
+    document.body.classList.add('modal-open')
+    resetForm()
+    hideNotification()
+  } else {
+    // Remove modal-open class from body when modal hides
+    document.body.classList.remove('modal-open')
+  }
+})
+
 // Watch for workspace changes to reset form
 watch(() => props.workspace, () => {
   resetForm()
-})
-
-// Expose methods for parent component access
-defineExpose({
-  show,
-  hide
 })
 </script>
