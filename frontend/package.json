@@ -15,7 +15,7 @@
     "@fullcalendar/vue3": "^6.1.15",
     "@popperjs/core": "^2.11.8",
     "@vitejs/plugin-basic-ssl": "^1.1.0",
-    "bootstrap": "^5.3.3",
+    "bootstrap": "^5.3.7",
     "bootstrap-icons": "^1.11.3",
     "moment": "^2.30.1",
     "pinia": "^2.3.0",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
+    "sass": "^1.89.2",
     "vite": "^5.4.8"
   }
 }

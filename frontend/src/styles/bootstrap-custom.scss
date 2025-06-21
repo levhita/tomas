@@ -1,0 +1,259 @@
+/* ========================================================================== */
+/* TOMÁS FINANCIAL MANAGEMENT SYSTEM - BOOTSTRAP CUSTOMIZATION              */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* GNOME HIG Color Palette Variables                                         */
+/* -------------------------------------------------------------------------- */
+
+// Blue colors (Primary theme color)
+$gnome-blue-1: #99c1f1; // Lightest blue
+$gnome-blue-2: #62a0ea; // Light blue
+$gnome-blue-3: #3584e4; // Base blue
+$gnome-blue-4: #1c71d8; // Dark blue
+$gnome-blue-5: #1a5fb4; // Darkest blue
+
+// Purple colors (Secondary accent)
+$gnome-purple-1: #dc8add; // Lightest purple
+$gnome-purple-2: #c061cb; // Light purple
+$gnome-purple-3: #9141ac; // Base purple
+$gnome-purple-4: #813d9c; // Dark purple
+$gnome-purple-5: #613583; // Darkest purple
+
+// Green colors (Success states)
+$gnome-green-1: #8ff0a4; // Lightest green
+$gnome-green-2: #57e389; // Light green
+$gnome-green-3: #33d17a; // Base green
+$gnome-green-4: #2ec27e; // Dark green
+$gnome-green-5: #26a269; // Darkest green
+
+// Yellow colors (Warning states)
+$gnome-yellow-1: #f9f06b; // Lightest yellow
+$gnome-yellow-2: #f8e45c; // Light yellow
+$gnome-yellow-3: #f6d32d; // Base yellow
+$gnome-yellow-4: #f5c211; // Dark yellow
+$gnome-yellow-5: #e5a50a; // Darkest yellow
+
+// Red colors (Danger/Error states)
+$gnome-red-1: #f66151; // Lightest red
+$gnome-red-2: #ed333b; // Light red
+$gnome-red-3: #e01b24; // Base red
+$gnome-red-4: #c01c28; // Dark red
+$gnome-red-5: #a51d2d; // Darkest red
+
+// Cyan colors (Info states - custom addition to HIG palette)
+$gnome-cyan-1: #99f6f6; // Lightest cyan
+$gnome-cyan-2: #5dd5d5; // Light cyan
+$gnome-cyan-3: #1aa6a6; // Base cyan
+$gnome-cyan-4: #168a8a; // Dark cyan
+$gnome-cyan-5: #126e6e; // Darkest cyan
+
+// Neutral colors - Light theme
+$gnome-light-1: #ffffff; // Pure white
+$gnome-light-2: #f6f5f4; // Off-white background
+$gnome-light-3: #deddda; // Light gray
+$gnome-light-4: #c0bfbc; // Medium light gray
+$gnome-light-5: #9a9996; // Medium gray
+
+// Neutral colors - Dark theme
+$gnome-dark-1: #77767b; // Medium light gray
+$gnome-dark-2: #5e5c64; // Medium gray
+$gnome-dark-3: #3d3846; // Dark gray
+$gnome-dark-4: #241f31; // Very dark gray
+$gnome-dark-5: #000000; // Pure black
+
+/* -------------------------------------------------------------------------- */
+/* Bootstrap Variable Overrides - Light Theme                                */
+/* -------------------------------------------------------------------------- */
+
+// Theme colors
+$primary: $gnome-blue-3;
+$secondary: $gnome-light-3;
+$success: $gnome-green-3;
+$info: $gnome-cyan-3;
+$warning: $gnome-yellow-3;
+$danger: $gnome-red-3;
+$light: $gnome-light-2;
+$dark: $gnome-dark-3;
+
+// Background colors
+$body-bg: $gnome-light-1;
+$body-color: $gnome-dark-4;
+$body-secondary-bg: $gnome-light-2;
+$body-tertiary-bg: $gnome-light-3;
+
+// Border colors
+$border-color: $gnome-light-4;
+$border-color-translucent: rgba($gnome-light-4, 0.175);
+
+// Link colors
+$link-color: $gnome-blue-3;
+$link-hover-color: $gnome-blue-4;
+
+// Component specific overrides
+$input-focus-border-color: $gnome-blue-3;
+$input-focus-box-shadow: 0 0 0 0.25rem rgba($gnome-blue-3, 0.25);
+
+// Card component
+$card-border-color: $gnome-light-4;
+$card-cap-bg: $gnome-light-2;
+
+// Navbar
+$navbar-light-color: $gnome-dark-2;
+$navbar-light-hover-color: $gnome-blue-3;
+$navbar-light-active-color: $gnome-blue-4;
+
+/* -------------------------------------------------------------------------- */
+/* Bootstrap Variable Overrides - Dark Theme                                 */
+/* -------------------------------------------------------------------------- */
+
+// Dark theme color palette
+$primary-dark: $gnome-blue-3;
+$secondary-dark: $gnome-dark-3;
+$success-dark: $gnome-green-3;
+$info-dark: $gnome-cyan-3;
+$warning-dark: $gnome-yellow-3;
+$danger-dark: $gnome-red-3;
+$light-dark: $gnome-dark-2;
+$dark-dark: $gnome-dark-5;
+
+// Dark theme backgrounds
+$body-bg-dark: $gnome-dark-4;
+$body-color-dark: $gnome-light-2;
+$body-secondary-bg-dark: $gnome-dark-3;
+$body-tertiary-bg-dark: $gnome-dark-2;
+
+// Dark theme borders
+$border-color-dark: $gnome-dark-2;
+
+// Button color overrides - ensure white text on colored buttons
+$btn-color: $gnome-light-1;
+
+// Import Bootstrap after our customizations
+@import "bootstrap/scss/bootstrap";
+
+/* -------------------------------------------------------------------------- */
+/* Custom Dark Theme CSS Variables                                           */
+/* -------------------------------------------------------------------------- */
+
+// Generate dark theme CSS custom properties
+[data-bs-theme="dark"] {
+  // Color variables
+  --bs-primary: #{$primary-dark};
+  --bs-primary-rgb: #{to-rgb($primary-dark)};
+
+  --bs-secondary: #{$secondary-dark};
+  --bs-secondary-rgb: #{to-rgb($secondary-dark)};
+
+  --bs-success: #{$success-dark};
+  --bs-success-rgb: #{to-rgb($success-dark)};
+
+  --bs-info: #{$info-dark};
+  --bs-info-rgb: #{to-rgb($info-dark)};
+
+  --bs-warning: #{$warning-dark};
+  --bs-warning-rgb: #{to-rgb($warning-dark)};
+
+  --bs-danger: #{$danger-dark};
+  --bs-danger-rgb: #{to-rgb($danger-dark)};
+
+  --bs-light: #{$light-dark};
+  --bs-light-rgb: #{to-rgb($light-dark)};
+
+  --bs-dark: #{$dark-dark};
+  --bs-dark-rgb: #{to-rgb($dark-dark)};
+
+  // Body colors
+  --bs-body-bg: #{$body-bg-dark};
+  --bs-body-color: #{$body-color-dark};
+  --bs-secondary-bg: #{$body-secondary-bg-dark};
+  --bs-tertiary-bg: #{$body-tertiary-bg-dark};
+
+  // Border colors
+  --bs-border-color: #{$border-color-dark};
+  --bs-border-color-translucent: #{rgba($border-color-dark, 0.175)};
+
+  // Component specific dark theme colors
+  --bs-link-color: #{$gnome-blue-2};
+  --bs-link-hover-color: #{$gnome-blue-1};
+}
+
+/* -------------------------------------------------------------------------- */
+/* Button Color Fixes                                                        */
+/* -------------------------------------------------------------------------- */
+
+// Ensure white text on colored buttons
+.btn-primary {
+  color: #{$gnome-light-1} !important;
+}
+
+.btn-success {
+  color: #{$gnome-light-1} !important;
+}
+
+.btn-danger {
+  color: #{$gnome-light-1} !important;
+}
+
+.btn-info {
+  color: #{$gnome-light-1} !important;
+}
+
+.btn-warning {
+  color: #{$gnome-dark-4} !important; // Dark text on yellow background for better contrast
+}
+
+// Dark theme button text colors
+[data-bs-theme="dark"] {
+  .btn-primary {
+    color: #{$gnome-light-1} !important;
+  }
+
+  .btn-success {
+    color: #{$gnome-light-1} !important;
+  }
+
+  .btn-danger {
+    color: #{$gnome-light-1} !important;
+  }
+
+  .btn-info {
+    color: #{$gnome-light-1} !important;
+  }
+
+  .btn-warning {
+    color: #{$gnome-dark-4} !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Additional Custom Semantic Variables                                      */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  // Extended color palette for custom use
+  --color-primary-light: #{$gnome-blue-2};
+  --color-primary-dark: #{$gnome-blue-4};
+  --color-primary-darkest: #{$gnome-blue-5};
+  --color-primary-disabled: #{$gnome-blue-1};
+
+  --color-success-light: #{$gnome-green-2};
+  --color-success-dark: #{$gnome-green-4};
+  --color-success-darkest: #{$gnome-green-5};
+  --color-success-disabled: #{$gnome-green-1};
+
+  --color-warning-light: #{$gnome-yellow-2};
+  --color-warning-dark: #{$gnome-yellow-4};
+  --color-warning-darkest: #{$gnome-yellow-5};
+  --color-warning-disabled: #{$gnome-yellow-1};
+
+  --color-danger-light: #{$gnome-red-2};
+  --color-danger-dark: #{$gnome-red-4};
+  --color-danger-darkest: #{$gnome-red-5};
+  --color-danger-disabled: #{$gnome-red-1};
+
+  --color-info-light: #{$gnome-cyan-2};
+  --color-info-dark: #{$gnome-cyan-4};
+  --color-info-darkest: #{$gnome-cyan-5};
+  --color-info-disabled: #{$gnome-cyan-1};
+}
