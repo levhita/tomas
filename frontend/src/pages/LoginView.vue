@@ -1,10 +1,10 @@
 <template>
-  <div class="login-page d-flex align-items-center justify-content-center min-vh-100 bg-dark" data-bs-theme="light">
-    <div class="card shadow" style="width: 24rem;">
+  <div class="login-container" data-bs-theme="light">
+    <div class="card login-card">
       <div class="card-body p-4">
         <!-- Logo and Title -->
         <div class="text-center mb-4">
-          <img src="/logo/logotype_512.png" alt="Tomás Logo" class="mb-3" style="height: 80px;">
+          <img src="/logo/logotype_512.png" alt="Tomás Logo" class="login-logo">
           <p class="text-muted small">Purrfect Budgets</p>
         </div>
 

@@ -1,0 +1,101 @@
+/* ========================================================================== */
+/* TOMÁS FINANCIAL MANAGEMENT SYSTEM - MAIN STYLESHEET                       */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* 1. BASE STYLES & LAYOUT                                                   */
+/* ========================================================================== */
+
+/* Application layout */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ========================================================================== */
+/* 2. COMPONENT-SPECIFIC STYLES                                              */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* 2.1 Navigation Components                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Navbar logo styling */
+.navbar-logo {
+  height: 50px;
+  width: auto;
+  margin: -1rem 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.2 Calendar Components                                                   */
+/* -------------------------------------------------------------------------- */
+
+/* Hide FullCalendar header toolbar (we use custom controls) */
+.fc .fc-header-toolbar {
+  display: none;
+}
+
+/* Calendar view sidebar */
+.calendar-sidebar {
+  height: calc(100vh - 170px);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.3 Form Components                                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Category select child category indentation */
+.child-category {
+  padding-left: 1.5em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.4 Utility Components                                                    */
+/* -------------------------------------------------------------------------- */
+
+/* Transaction totals display */
+.totals {
+  margin-left: 1rem;
+}
+
+/* Workspace loading state */
+.workspace-loading {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.5 Login Page Components                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Login page container */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bs-dark, #212529);
+}
+
+/* Login card */
+.login-card {
+  width: 24rem;
+  box-shadow: var(--bs-box-shadow-lg, 0 1rem 3rem rgba(0, 0, 0, 0.175));
+}
+
+/* Login logo */
+.login-logo {
+  height: 80px;
+  margin-bottom: 1rem;
+}
