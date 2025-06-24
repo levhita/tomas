@@ -451,6 +451,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     // State
     workspaces,
     currentWorkspace,
+    currentWorkspaceUsers,
     isLoading,
     error,
 
