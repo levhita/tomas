@@ -36,9 +36,9 @@
 </template>
 
 <script setup>
-import { useUsersStore } from '../stores/users'
-import UserMenu from './UserMenu.vue'
-import DarkModeToggle from './DarkModeToggle.vue'
+import { useUsersStore } from '../../stores/users'
+import UserMenu from '../UserMenu.vue'
+import DarkModeToggle from '../DarkModeToggle.vue'
 
 const usersStore = useUsersStore()
 </script>

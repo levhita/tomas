@@ -189,11 +189,11 @@
  */
 
 import { ref } from 'vue'
-import UserMenu from './UserMenu.vue'
-import DarkModeToggle from './DarkModeToggle.vue'
-import WorkspaceModal from './modals/WorkspaceModal.vue'
-import CategoriesModal from './modals/CategoriesModal.vue'
-import { useWorkspacesStore } from '../stores/workspaces'
+import UserMenu from '../UserMenu.vue'
+import DarkModeToggle from '../DarkModeToggle.vue'
+import WorkspaceModal from '../modals/WorkspaceModal.vue'
+import CategoriesModal from '../modals/CategoriesModal.vue'
+import { useWorkspacesStore } from '../../stores/workspaces'
 
 const props = defineProps({
   workspace: Object

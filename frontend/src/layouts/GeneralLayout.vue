@@ -9,7 +9,7 @@
 
 <script setup>
 import { onMounted } from 'vue';
-import GeneralNavbar from '../components/GeneralNavbar.vue';
+import GeneralNavbar from '../components/navbars/GeneralNavbar.vue';
 
 // Set the page title when this layout is mounted
 onMounted(() => {

@@ -70,7 +70,7 @@
  */
 
 import { computed, watch } from 'vue';
-import WorkspaceNavbar from '../components/WorkspaceNavbar.vue';
+import WorkspaceNavbar from '../components/navbars/WorkspaceNavbar.vue';
 import { useWorkspacesStore } from '../stores/workspaces';
 
 // Access the workspaces store for reactive workspace data

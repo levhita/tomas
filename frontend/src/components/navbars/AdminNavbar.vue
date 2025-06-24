@@ -136,9 +136,9 @@
  * </template>
  */
 
-import UserMenu from './UserMenu.vue'
-import DarkModeToggle from './DarkModeToggle.vue'
-import { useUsersStore } from '../stores/users'
+import UserMenu from '../UserMenu.vue'
+import DarkModeToggle from '../DarkModeToggle.vue'
+import { useUsersStore } from '../../stores/users'
 
 // Store reference for user authentication and admin status
 const usersStore = useUsersStore()
