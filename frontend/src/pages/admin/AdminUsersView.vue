@@ -187,8 +187,12 @@ import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import UserModal from '../../components/modals/UserModal.vue'
 import { useUsersStore } from '../../stores/users'
+import { useConfirm } from '../../composables/useConfirm'
+import { useToast } from '../../composables/useToast'
 
 const usersStore = useUsersStore()
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 // Component state
 const searchQuery = ref('')
@@ -269,67 +273,89 @@ function handleUserSaved() {
 
 async function toggleUserStatus(user) {
   if (user.id === usersStore.currentUser?.id) {
-    alert('You cannot disable your own account!')
+    showToast({
+      title: 'Action Not Allowed',
+      message: 'You cannot disable your own account!',
+      variant: 'warning'
+    })
     return
   }
 
   const action = user.active ? 'disable' : 'enable'
   const actionPast = user.active ? 'disabled' : 'enabled'
 
-  const isConfirmed = confirm(
-    `Are you sure you want to ${action} user "${user.username}"?`
-  )
-
-  if (!isConfirmed) {
-    return
-  }
-
   try {
+    await confirm({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+      message: `Are you sure you want to ${action} user "${user.username}"?`,
+      confirmText: action.charAt(0).toUpperCase() + action.slice(1),
+      cancelText: 'Cancel',
+      confirmButtonVariant: user.active ? 'warning' : 'success'
+    })
+
     if (user.active) {
       await usersStore.disableUser(user.id)
     } else {
       await usersStore.enableUser(user.id)
     }
-    alert(`User ${actionPast} successfully!`)
+
+    showToast({
+      title: 'Success',
+      message: `User ${actionPast} successfully!`,
+      variant: 'success'
+    })
   } catch (error) {
-    alert(`Error ${action}ing user: ` + error.message)
+    if (error.message === 'User canceled') return
+
+    showToast({
+      title: 'Error',
+      message: `Error ${action}ing user: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 
 async function deleteUser(user) {
   if (user.id === usersStore.currentUser?.id) {
-    alert('You cannot delete your own account!')
-    return
-  }
-
-  const isConfirmed = confirm(
-    `Are you sure you want to delete user "${user.username}"?\n\n` +
-    `This action cannot be undone and will permanently remove:\n` +
-    `• The user account\n` +
-    `• All associated data\n` +
-    `• Access to all workspaces\n\n` +
-    `Type the username "${user.username}" to confirm deletion.`
-  )
-
-  if (!isConfirmed) {
-    return
-  }
-
-  // Additional confirmation by asking for username
-  const confirmUsername = prompt(
-    `To confirm deletion, please type the username "${user.username}" exactly:`
-  )
-
-  if (confirmUsername !== user.username) {
-    alert('Username confirmation failed. Deletion cancelled.')
+    showToast({
+      title: 'Action Not Allowed',
+      message: 'You cannot delete your own account!',
+      variant: 'warning'
+    })
     return
   }
 
   try {
+    await confirm({
+      title: 'Delete User',
+      message: `Are you sure you want to delete user "${user.username}"?<br><br>` +
+        `This action cannot be undone and will permanently remove:<br>` +
+        `• The user account<br>` +
+        `• All associated data<br>` +
+        `• Access to all workspaces`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'danger'
+    })
+
     await usersStore.deleteUser(user.id)
-    alert('User deleted successfully!')
+
+    showToast({
+      title: 'Success',
+      message: 'User deleted successfully!',
+      variant: 'success'
+    })
   } catch (error) {
-    alert('Error deleting user: ' + error.message)
+    if (error.message === 'User canceled') {
+      // User canceled the confirmation dialog, do nothing
+      return
+    }
+
+    showToast({
+      title: 'Error',
+      message: `Error deleting user: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 
@@ -339,7 +365,12 @@ async function loadUsers() {
     await usersStore.fetchAllUsers()
   } catch (error) {
     console.error('Error loading users:', error)
-    alert('Error loading users: ' + error.message)
+    showToast({
+      title: 'Error',
+      message: `Error loading users: ${error.message}`,
+      variant: 'danger',
+      duration: 7000 // Longer duration for error messages
+    })
   }
 }
 

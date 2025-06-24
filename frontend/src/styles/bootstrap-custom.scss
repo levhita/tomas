@@ -77,14 +77,14 @@ $light: $gnome-light-2;
 $dark: $gnome-dark-3;
 
 // Background colors
-$body-bg: $gnome-light-1;
-$body-color: $gnome-dark-4;
-$body-secondary-bg: $gnome-light-2;
-$body-tertiary-bg: $gnome-light-3;
+// $body-bg: $gnome-light-1;
+// $body-color: $gnome-dark-4;
+// $body-secondary-bg: $gnome-light-2;
+// $body-tertiary-bg: $gnome-light-3;
 
 // Border colors
-$border-color: $gnome-light-4;
-$border-color-translucent: rgba($gnome-light-4, 0.175);
+// $border-color: $gnome-light-4;
+// $border-color-translucent: rgba($gnome-light-4, 0.175);
 
 // Link colors
 $link-color: $gnome-blue-3;
@@ -95,8 +95,8 @@ $input-focus-border-color: $gnome-blue-3;
 $input-focus-box-shadow: 0 0 0 0.25rem rgba($gnome-blue-3, 0.25);
 
 // Card component
-$card-border-color: $gnome-light-4;
-$card-cap-bg: $gnome-light-2;
+// $card-border-color: $gnome-light-4;
+// $card-cap-bg: $gnome-light-2;
 
 // Navbar
 $navbar-light-color: $gnome-dark-2;
@@ -118,13 +118,13 @@ $light-dark: $gnome-dark-2;
 $dark-dark: $gnome-dark-5;
 
 // Dark theme backgrounds
-$body-bg-dark: $gnome-dark-4;
-$body-color-dark: $gnome-light-2;
-$body-secondary-bg-dark: $gnome-dark-3;
-$body-tertiary-bg-dark: $gnome-dark-2;
+// $body-bg-dark: $gnome-dark-4;
+// $body-color-dark: $gnome-light-2;
+// $body-secondary-bg-dark: $gnome-dark-3;
+// $body-tertiary-bg-dark: $gnome-dark-2;
 
 // Dark theme borders
-$border-color-dark: $gnome-dark-2;
+// $border-color-dark: $gnome-dark-2;
 
 // Button color overrides - ensure white text on colored buttons
 $btn-color: $gnome-light-1;
@@ -166,14 +166,14 @@ $enable-shadows: true;
   --bs-dark-rgb: #{to-rgb($dark-dark)};
 
   // Body colors
-  --bs-body-bg: #{$body-bg-dark};
-  --bs-body-color: #{$body-color-dark};
-  --bs-secondary-bg: #{$body-secondary-bg-dark};
-  --bs-tertiary-bg: #{$body-tertiary-bg-dark};
+  // --bs-body-bg: #{$body-bg-dark};
+  // --bs-body-color: #{$body-color-dark};
+  // --bs-secondary-bg: #{$body-secondary-bg-dark};
+  // --bs-tertiary-bg: #{$body-tertiary-bg-dark};
 
   // Border colors
-  --bs-border-color: #{$border-color-dark};
-  --bs-border-color-translucent: #{rgba($border-color-dark, 0.175)};
+  // --bs-border-color: #{$border-color-dark};
+  // --bs-border-color-translucent: #{rgba($border-color-dark, 0.175)};
 
   // Component specific dark theme colors
   --bs-link-color: #{$gnome-blue-2};

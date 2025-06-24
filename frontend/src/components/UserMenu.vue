@@ -12,10 +12,10 @@
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
       <!-- User role display (read-only) -->
       <li>
-        <span class="dropdown-item-text">
-          <small class="text-muted">
-            {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
-          </small>
+        <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
+          <i :class="['bi', getRoleIcon]"></i>
+          {{ workspaceRole }}
+
         </span>
       </li>
 
@@ -44,6 +44,9 @@
     <!-- User Profile Modal -->
     <UserProfileModal v-model="showProfileModal" @save="handleProfileSaved" />
   </li>
+  <li class="nav-item d-flex align-items-center ms-2">
+    <i :class="['bi', getRoleIcon, getRoleBadgeClass]"></i>
+  </li>
 </template>
 
 <script setup>
@@ -55,13 +58,17 @@
  * 
  * Features:
  * - Shows current username with a person icon
- * - Displays user role (Super Administrator or User)
+ * - Displays user role (Super Administrator or User) or workspace role (Admin, Collaborator, Viewer)
  * - Provides logout functionality
  * - Bootstrap dropdown styling with right-alignment
  * - Accessible dropdown with proper ARIA attributes
  * 
+ * Props:
+ * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer) or system (superadmin, user)
+ * 
  * Usage:
- * <UserMenu />
+ * <UserMenu workspaceRole="user" />
+ * <UserMenu workspaceRole="admin" />
  * 
  * Dependencies:
  * - Vue Router (for navigation after logout)
@@ -85,6 +92,15 @@ import { useUsersStore } from '../stores/users'
 import { ref } from 'vue'
 import UserProfileModal from './modals/UserProfileModal.vue'
 
+// Props
+const props = defineProps({
+  workspaceRole: {
+    type: String,
+    default: 'user',
+    validator: (value) => ['superadmin', 'admin', 'collaborator', 'viewer', 'user'].includes(value)
+  }
+})
+
 // Vue Router instance for navigation
 const router = useRouter()
 
@@ -93,6 +109,51 @@ const usersStore = useUsersStore()
 
 // Profile modal state
 const showProfileModal = ref(false)
+
+// Computed properties for workspace role formatting
+import { computed } from 'vue'
+
+// Format the workspace role with proper capitalization
+const formatWorkspaceRole = computed(() => {
+  if (!props.workspaceRole) return '';
+  return props.workspaceRole.charAt(0).toUpperCase() + props.workspaceRole.slice(1);
+})
+
+// Get the appropriate Bootstrap badge class based on the role
+const getRoleBadgeClass = computed(() => {
+  switch (props.workspaceRole) {
+    // Workspace roles
+    case 'admin':
+      return 'text-danger';
+    case 'collaborator':
+      return 'text-primary';
+    case 'viewer':
+      return 'text-info';
+    // General user roles
+    case 'superadmin':
+      return 'text-danger';
+    case 'user':
+      return 'text-primary';
+  }
+})
+
+// Get the appropriate Bootstrap icon representing the access level
+const getRoleIcon = computed(() => {
+  switch (props.workspaceRole) {
+    // Workspace roles
+    case 'admin':
+      return 'bi-shield-fill-check'; // Gear icon for admin (configuration powers)
+    case 'collaborator':
+      return 'bi-pencil-fill'; // Pencil icon for collaborator (editing capabilities)
+    case 'viewer':
+      return 'bi-eye-fill'; // Eye icon for viewer (read-only access)
+    // General user roles
+    case 'superadmin':
+      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
+    case 'user':
+      return 'bi-person-fill'; // Person icon for regular user
+  }
+})
 
 /**
  * Shows the user profile modal
@@ -155,19 +216,3 @@ async function handleLogout() {
   }
 }
 </script>
-
-<style scoped>
-/**
- * Component-specific styles
- * 
- * Ensures proper spacing and alignment for dropdown items
- */
-
-/**
- * Styling for non-clickable dropdown text items
- * Provides consistent padding to match other dropdown items
- */
-.dropdown-item-text {
-  padding: 0.25rem 1rem;
-}
-</style>

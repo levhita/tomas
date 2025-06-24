@@ -17,8 +17,9 @@ Prefer to use bootstrap styles and classes, when in need add the custom styles t
 
 All input field should use the `form-floating` class for floating labels.
 
-For the admin section keep the admin styles in the `admin.css` file, and use the `admin` class to scope them.
+For the admin section keep the admin styles in the `styles/admin.css` file, and use the `admin` class to scope them.
 
+unify all general styles in the `styles/style.css` file.
 ## components
 
 We use Vue 3 for components. Please ensure that any new components or pages adhere to the Vue 3 guidelines.
@@ -40,3 +41,16 @@ For credit accounts, the logic is reversed because:
 
 Debit accounts: Expenses decrease the balance (negative), Income increases the balance (positive)
 Credit accounts: Expenses increase the debt/balance (positive), Income/payments decrease the debt/balance (negative)
+
+permissions
+We use a permissions system to control access to certain features and pages. Please ensure that any new components or pages are compatible with the permissions system.
+
+user roles:
+- superadmin: has access to admin dashboard features and can manage users and permissions.
+
+Inside workspaces superadmins dont have special permissions, they are treated as regular users with the roles they have assigned in the workspace.
+
+the roles inside workspaces are:
+- admin: full access to workspaces, can give other users access to workspaces, can manage edit where he is admin, and can view and edit accounts, categories and transactions.
+- collaborator: can view and edit workspaces where he is a collaborator, can view accounts but cannot manage them. can view and edit categories. can view and edit transactions.
+- viewer: can view workspaces where he is a viewer, can view accounts, categories and transactions but cannot edit them.

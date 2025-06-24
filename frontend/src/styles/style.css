@@ -57,6 +57,37 @@ main {
   padding-left: 1.5em;
 }
 
+/* Account selector styles */
+.account-selector {
+  min-width: 250px;
+}
+
+.account-selector .form-control {
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-selector .dropdown-menu {
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 250px;
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Form floating label */
+.form-floating {
+  position: relative;
+}
+
 /* -------------------------------------------------------------------------- */
 /* 2.4 Utility Components                                                    */
 /* -------------------------------------------------------------------------- */
@@ -103,4 +134,144 @@ main {
 .login-logo {
   height: 80px;
   margin-bottom: 1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.6 Transaction Totals Components                                         */
+/* -------------------------------------------------------------------------- */
+
+/* Exercised transaction toggle button */
+.exercised-toggle,
+.description-button,
+.amount-button {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.exercised-toggle:hover,
+.description-button:hover,
+.amount-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Form control styles */
+.form-check-input {
+  cursor: pointer;
+}
+
+.form-check-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.7 Workspace Cards                                                       */
+/* -------------------------------------------------------------------------- */
+
+.workspace-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.workspace-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-card .card-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.125);
+  padding: 0.75rem 1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.8 Calendar Styles                                                       */
+/* -------------------------------------------------------------------------- */
+
+.fc-event {
+  cursor: move;
+}
+
+.fc-event.fc-event-dragging {
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.9 User Menu & Dropdowns                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Non-clickable dropdown text items */
+.dropdown-item-text {
+  padding: 0.25rem 1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.10 Custom Confirmation Dialog                                           */
+/* -------------------------------------------------------------------------- */
+
+.custom-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  /* Higher than Bootstrap's modal z-index */
+}
+
+.custom-dialog {
+  background-color: var(--bs-body-bg, #fff);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--bs-body-color);
+}
+
+.custom-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.custom-dialog-header h5 {
+  margin-bottom: 0;
+  font-weight: 500;
+}
+
+.custom-dialog-close {
+  background: transparent;
+  border: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--bs-secondary-color, #6c757d);
+  cursor: pointer;
+}
+
+.custom-dialog-body {
+  padding: 1rem;
+}
+
+.custom-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+/* Dark mode support for custom dialog */
+@media (prefers-color-scheme: dark) {
+  .custom-dialog {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-primary-color);
+  }
 }

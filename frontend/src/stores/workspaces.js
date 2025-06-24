@@ -4,6 +4,7 @@ import fetchWithAuth from '../utils/fetch';
 import { useAccountsStore } from './accounts';
 import { useCategoriesStore } from './categories';
 import { useTransactionsStore } from './transactions';
+import { useUsersStore } from './users';
 
 export const useWorkspacesStore = defineStore('workspaces', () => {
   // State
@@ -11,6 +12,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   const currentWorkspace = ref(null);
   const isLoading = ref(false);
   const error = ref(null);
+  const currentWorkspaceUsers = ref([]);
 
   // Getters
   const workspacesByName = computed(() => {
@@ -21,6 +23,40 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
   const getWorkspaceById = computed(() => {
     return (id) => workspaces.value.find(w => w.id === parseInt(id));
+  });
+
+  // Permission-related getters
+  const hasAdminPermission = computed(() => {
+    if (!currentWorkspace.value) return false;
+
+    const usersStore = useUsersStore();
+    const currentUser = usersStore.currentUser;
+
+    // Check if user has admin role in this workspace
+    const userEntry = currentWorkspaceUsers.value.find(
+      entry => entry.id === currentUser?.id
+    );
+
+    return userEntry?.role === 'admin';
+  });
+
+  // General write permission - for users who can edit (admin or collaborator)
+  // This determines if user can add/edit categories and transactions
+  const hasWritePermission = computed(() => {
+    if (!currentWorkspace.value) return false;
+
+    const usersStore = useUsersStore();
+    const currentUser = usersStore.currentUser;
+
+    // Admin in this workspace has write permissions
+    if (hasAdminPermission.value) return true;
+
+    // Check if user has collaborator role in this workspace
+    const userEntry = currentWorkspaceUsers.value.find(
+      entry => entry.id === currentUser?.id
+    );
+
+    return userEntry?.role === 'admin' || userEntry?.role === 'collaborator';
   });
 
   // Actions
@@ -205,7 +241,14 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
         throw new Error(errorData.error || 'Failed to fetch workspace users');
       }
 
-      return await response.json();
+      const users = await response.json();
+
+      // If this is for the current workspace, update the users list
+      if (currentWorkspace.value && currentWorkspace.value.id === parseInt(id)) {
+        currentWorkspaceUsers.value = users;
+      }
+
+      return users;
     } catch (err) {
       console.error('Error fetching workspace users:', err);
       error.value = err.message;
@@ -301,6 +344,9 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
       // Get stores
       const accountsStore = useAccountsStore();
       const categoriesStore = useCategoriesStore();
+
+      // Load workspace users for permission checks
+      currentWorkspaceUsers.value = await getWorkspaceUsers(workspace.id);
 
       // Load data in parallel
       await Promise.all([
@@ -405,12 +451,15 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     // State
     workspaces,
     currentWorkspace,
+    currentWorkspaceUsers,
     isLoading,
     error,
 
     // Getters
     workspacesByName,
     getWorkspaceById,
+    hasAdminPermission,
+    hasWritePermission,
 
     // Actions
     fetchWorkspaces,

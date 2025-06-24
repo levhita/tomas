@@ -1,7 +1,9 @@
 <template>
   <div class="toolbar bg-body-tertiary border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
-      <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)" class="w-25" />
+      <!-- Account Selector Component -->
+      <AccountSelect :modelValue="accountId" :workspaceId="workspaceId"
+        @update:modelValue="$emit('update:accountId', $event)" />
 
       <div class="btn-group" role="group">
         <input type="radio" class="btn-check" name="range" id="monthly" value="monthly" v-model="rangeType">
@@ -24,20 +26,31 @@
       </div>
     </div>
   </div>
+
+  <!-- No need for AccountModal here as it's included in the AccountSelect component -->
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import moment from 'moment'
 import AccountSelect from './AccountSelect.vue'
+import { useAccountsStore } from '../../stores/accounts'
+import { useWorkspacesStore } from '../../stores/workspaces'
 
 const props = defineProps({
   accountId: Number,
   selectedDate: String,
+  workspaceId: Number,
+  workspaceName: String,
 })
 
 const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])
 const rangeType = ref('monthly')
+
+// Account store reference
+const accountsStore = useAccountsStore()
+// Workspace store for permissions
+const workspacesStore = useWorkspacesStore()
 
 const selectedPeriod = computed(() => {
   if (rangeType.value === 'weekly') {

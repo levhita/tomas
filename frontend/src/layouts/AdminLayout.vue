@@ -77,7 +77,7 @@
 
 import { computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import AdminNavbar from '../components/AdminNavbar.vue'
+import AdminNavbar from '../components/navbars/AdminNavbar.vue'
 import { useUsersStore } from '../stores/users'
 
 const router = useRouter()

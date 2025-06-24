@@ -2,10 +2,7 @@
   <div class="card border-0 bg-transparent">
     <div class="card-header bg-transparent border-0 px-0 py-2">
       <h6 class="card-title mb-0 d-flex justify-content-between align-items-center">
-        <span>
-          <i :class="iconClass" class="me-2"></i>
-          {{ title }}
-        </span>
+        <span>{{ title }}</span>
         <button type="button" class="btn btn-sm btn-outline-secondary" @click="$emit('cancel')" aria-label="Close form">
           <i class="bi bi-x"></i>
         </button>
@@ -114,14 +111,6 @@ const title = computed(() => {
     return 'Edit Category'
   } else {
     return 'Add New Category'
-  }
-})
-
-const iconClass = computed(() => {
-  if (props.mode === 'edit') {
-    return 'bi bi-pencil'
-  } else {
-    return 'bi bi-plus-circle'
   }
 })
 

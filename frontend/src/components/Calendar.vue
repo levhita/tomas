@@ -117,6 +117,9 @@ function formatAmount(amount, isExpense) {
 }
 
 function handleDateClick(arg) {
+  // Only allow creating transactions if user has write permission
+  if (!workspacesStore.hasWritePermission) return;
+
   const transaction = {
     ...emptyTransaction,
     date: arg.dateStr,
@@ -128,11 +131,20 @@ function handleDateClick(arg) {
 async function handleEventClick(info) {
   const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
   if (transaction) {
-    emit('show-transaction', { transaction, editing: true })
+    emit('show-transaction', {
+      transaction,
+      editing: workspacesStore.hasWritePermission // Only allow editing if user has permission
+    })
   }
 }
 
 async function handleEventDrop(info) {
+  // Prevent dragging if user doesn't have write permission
+  if (!workspacesStore.hasWritePermission) {
+    info.revert();
+    return;
+  }
+
   try {
     const transaction = await transactionsStore.fetchTransactionById(parseInt(info.event.id))
     if (transaction) {
@@ -147,13 +159,3 @@ async function handleEventDrop(info) {
   }
 }
 </script>
-
-<style scoped>
-.fc-event {
-  cursor: move;
-}
-
-.fc-event.fc-event-dragging {
-  opacity: 0.7;
-}
-</style>

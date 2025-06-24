@@ -273,6 +273,7 @@
 
 import { ref, computed, watch, nextTick } from 'vue'
 import { useUsersStore } from '../../stores/users'
+import { useConfirm } from '../../composables/useConfirm'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -317,6 +318,7 @@ const isLoading = ref(false)
 
 // Users store
 const usersStore = useUsersStore()
+const { confirm } = useConfirm()
 
 // Computed properties
 const isEditing = computed(() => !!props.user)
@@ -523,12 +525,16 @@ async function updateWorkspaceRole(workspaceId, newRole) {
 async function removeFromWorkspace(workspaceId) {
   if (!props.user) return
 
-  if (!confirm('Are you sure you want to remove this user from the workspace?')) {
-    return
-  }
-
-  isUpdatingWorkspace.value = workspaceId
   try {
+    await confirm({
+      title: 'Remove User',
+      message: 'Are you sure you want to remove this user from the workspace?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'danger'
+    })
+
+    isUpdatingWorkspace.value = workspaceId
     await usersStore.removeUserFromWorkspace(props.user.id, workspaceId)
 
     // Remove from local state

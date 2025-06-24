@@ -11,7 +11,8 @@
     <!-- Main content when workspace is loaded -->
     <template v-else>
       <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
+        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name"
+        :workspace-id="workspacesStore.currentWorkspace.id" />
 
       <div class="row w-100 ps-2">
         <div class="col-4 overflow-scroll calendar-sidebar">
@@ -73,6 +74,12 @@ const isEditing = ref(false)
 const modalFocusTarget = ref('description')
 
 function showTransactionModal({ transaction, editing, focusOn = 'description' }) {
+  // If trying to edit but no permission, either show readonly or prevent
+  if (editing && !workspacesStore.hasWritePermission) {
+    // We can either show as readonly or return without showing
+    editing = false; // Convert to readonly view
+  }
+
   currentTransaction.value = transaction
   isEditing.value = editing
   modalFocusTarget.value = focusOn
@@ -138,6 +145,13 @@ async function validateAndSetWorkspace() {
       query: { error: result.error }
     });
     return false;
+  }
+
+  // Load accounts for the workspace
+  try {
+    await accountsStore.fetchAccounts(workspaceId);
+  } catch (error) {
+    console.error('Error loading accounts:', error);
   }
 
   // Success - workspace and all dependent data are loaded

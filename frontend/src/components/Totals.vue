@@ -241,28 +241,3 @@ watch(
   { immediate: true }
 )
 </script>
-
-<style scoped>
-.exercised-toggle,
-.description-button,
-.amount-button {
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.exercised-toggle:hover,
-.description-button:hover,
-.amount-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.form-check-input {
-  cursor: pointer;
-}
-
-.form-check-label {
-  cursor: pointer;
-  user-select: none;
-}
-</style>
