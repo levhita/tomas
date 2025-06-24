@@ -6,7 +6,6 @@
       aria-expanded="false">
       <i class="bi bi-person-circle me-1"></i>
       {{ usersStore.currentUser?.username || 'User' }}
-      <i :class="['bi', getRoleIcon, 'ms-1', getRoleBadgeClass]"></i>
     </a>
 
     <!-- Dropdown menu content -->
@@ -44,6 +43,9 @@
 
     <!-- User Profile Modal -->
     <UserProfileModal v-model="showProfileModal" @save="handleProfileSaved" />
+  </li>
+  <li class="nav-item d-flex align-items-center ms-2">
+    <i :class="['bi', getRoleIcon, getRoleBadgeClass]"></i>
   </li>
 </template>
 
@@ -120,30 +122,34 @@ const formatWorkspaceRole = computed(() => {
 // Get the appropriate Bootstrap badge class based on the role
 const getRoleBadgeClass = computed(() => {
   switch (props.workspaceRole) {
+    // Workspace roles
+    case 'admin':
+      return 'text-danger';
+    case 'collaborator':
+      return 'text-primary';
+    case 'viewer':
+      return 'text-info';
+    // General user roles
     case 'superadmin':
       return 'text-danger';
-    case 'admin':
-      return 'text-primary';
-    case 'collaborator':
-      return 'text-success';
-    case 'viewer':
-      return 'text-secondary';
     case 'user':
-      return 'text-info';
+      return 'text-primary';
   }
 })
 
 // Get the appropriate Bootstrap icon representing the access level
 const getRoleIcon = computed(() => {
   switch (props.workspaceRole) {
-    case 'superadmin':
-      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
+    // Workspace roles
     case 'admin':
-      return 'bi-gear-fill'; // Gear icon for admin (configuration powers)
+      return 'bi-shield-fill-check'; // Gear icon for admin (configuration powers)
     case 'collaborator':
       return 'bi-pencil-fill'; // Pencil icon for collaborator (editing capabilities)
     case 'viewer':
       return 'bi-eye-fill'; // Eye icon for viewer (read-only access)
+    // General user roles
+    case 'superadmin':
+      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
     case 'user':
       return 'bi-person-fill'; // Person icon for regular user
   }
