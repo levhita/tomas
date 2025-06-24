@@ -74,9 +74,6 @@ main {
   width: 100%;
   max-height: 300px;
   overflow-y: auto;
-}
-
-.account-selector .dropdown-menu {
   min-width: 250px;
 }
 
