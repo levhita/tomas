@@ -3,8 +3,12 @@
     <div class="d-flex justify-content-between align-items-center">
       <div class="dropdown account-selector">
         <div class="input-group">
-          <AccountSelect :modelValue="accountId" @update:modelValue="$emit('update:accountId', $event)"
-            class="form-select" />
+          <button class="form-control text-start d-flex align-items-center" type="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <span v-if="currentAccount" class="text-truncate">{{ currentAccount.name }}</span>
+            <span v-else class="text-muted">Select Account</span>
+            <i class="bi bi-caret-down-fill ms-auto"></i>
+          </button>
           <button class="btn btn-outline-primary" type="button" title="Manage Accounts" data-bs-toggle="dropdown"
             aria-expanded="false">
             <i class="bi bi-gear"></i>
@@ -65,7 +69,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import moment from 'moment'
-import AccountSelect from './AccountSelect.vue'
 import AccountModal from '../modals/AccountModal.vue'
 import { useAccountsStore } from '../../stores/accounts'
 
@@ -83,6 +86,12 @@ const rangeType = ref('monthly')
 const accountsStore = useAccountsStore()
 const showAccountModal = ref(false)
 const accountToEdit = ref(null)
+
+// Computed property to get the current account name
+const currentAccount = computed(() => {
+  if (!props.accountId) return null;
+  return accountsStore.accounts.find(account => account.id === props.accountId);
+})
 
 const selectedPeriod = computed(() => {
   if (rangeType.value === 'weekly') {
