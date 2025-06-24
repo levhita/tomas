@@ -6,7 +6,9 @@
       <div class="modal-content">
         <!-- Modal Header -->
         <div class="modal-header">
-          <h3 class="modal-title">{{ isEditing ? 'Edit' : 'Create New' }} Transaction</h3>
+          <h3 class="modal-title">
+            {{ !hasWritePermission ? 'View' : (isEditing ? 'Edit' : 'Create New') }} Transaction
+          </h3>
           <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
 
@@ -15,46 +17,51 @@
           <form @submit.prevent="save">
             <div class="form-floating mb-3">
               <input id="transactionInput" ref="descriptionInput" v-model="transaction.description" class="form-control"
-                placeholder="Groceries, Rent, etc." required @keyup.esc="close" />
+                placeholder="Groceries, Rent, etc." required @keyup.esc="close" :disabled="!hasWritePermission" />
               <label for="transactionInput">Description</label>
             </div>
 
             <div class="row mb-3">
               <div class="col-7">
                 <div class="form-floating">
-                  <CurrencyInput id="amountInput" ref="amountInput" v-model="amount" required @keyup.esc="close" />
+                  <CurrencyInput id="amountInput" ref="amountInput" v-model="amount" required @keyup.esc="close"
+                    :disabled="!hasWritePermission" />
                   <label for="amountInput">Amount</label>
                 </div>
               </div>
               <div class="col-5">
                 <div class="form-floating">
-                  <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required />
+                  <input id="dateInput" type="date" class="form-control" v-model="transaction.date" required
+                    :disabled="!hasWritePermission" />
                   <label for="dateInput" class="form-label">Date</label>
                 </div>
               </div>
             </div>
 
             <div class="btn-group w-100 h-100 mb-3" role="group">
-              <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType">
+              <input type="radio" class="btn-check" name="type" id="expense" value="expense" v-model="transactionType"
+                :disabled="!hasWritePermission">
               <label class="btn btn-outline-primary" for="expense">
                 {{ isDebitAccount ? 'Expense' : 'Payment' }}
               </label>
 
-              <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType">
+              <input type="radio" class="btn-check" name="type" id="income" value="income" v-model="transactionType"
+                :disabled="!hasWritePermission">
               <label class="btn btn-outline-primary" for="income">
                 {{ isDebitAccount ? 'Income' : 'Charge' }}
               </label>
             </div>
 
             <div class="form-check mb-3">
-              <input type="checkbox" class="form-check-input" v-model="transaction.exercised" />
+              <input type="checkbox" class="form-check-input" v-model="transaction.exercised"
+                :disabled="!hasWritePermission" />
               <label class="form-check-label">Already exercised</label>
             </div>
 
             <div class="row mb-3">
               <div class="col-6">
                 <div class="form-floating">
-                  <AccountSelect v-model="transaction.account_id" />
+                  <AccountSelect v-model="transaction.account_id" :showEdit="hasWritePermission" />
                   <label>Account</label>
                 </div>
               </div>
@@ -68,7 +75,7 @@
 
             <div class="form-floating mb-3">
               <textarea id="noteTextarea" class="form-control" v-model="transaction.note"
-                placeholder="Additional details..."></textarea>
+                placeholder="Additional details..." :disabled="!hasWritePermission"></textarea>
               <label for="noteTextarea">Note</label>
             </div>
           </form>
@@ -77,10 +84,11 @@
         <!-- Modal Footer -->
         <div class="modal-footer d-flex justify-content-between">
           <div>
-            <button v-if="isEditing" type="button" class="btn btn-danger me-2" @click="confirmDelete">
+            <button v-if="isEditing && hasWritePermission" type="button" class="btn btn-danger me-2"
+              @click="confirmDelete">
               Delete
             </button>
-            <div v-if="isEditing" class="btn-group">
+            <div v-if="isEditing && hasWritePermission" class="btn-group">
               <button type="button" class="btn btn-secondary" @click="duplicate">
                 <i class="bi bi-files"></i> Duplicate
               </button>
@@ -90,8 +98,8 @@
             </div>
           </div>
           <div class="d-flex gap-2">
-            <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
-            <button type="submit" class="btn btn-primary" @click="save">Save</button>
+            <button type="button" class="btn btn-secondary" @click="close">Close</button>
+            <button v-if="hasWritePermission" type="submit" class="btn btn-primary" @click="save">Save</button>
           </div>
         </div>
       </div>
@@ -140,6 +148,7 @@ import AccountSelect from '../inputs/AccountSelect.vue'
 import CategorySelect from '../inputs/CategorySelect.vue'
 import CurrencyInput from '../inputs/CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
+import { useWorkspacesStore } from '../../stores/workspaces'
 import moment from 'moment'
 
 const props = defineProps({
@@ -161,6 +170,11 @@ const transactionType = ref('expense')
 const modalElement = ref(null)
 
 const accountsStore = useAccountsStore()
+const workspacesStore = useWorkspacesStore()
+
+// Permission check
+const hasWritePermission = computed(() => workspacesStore.hasWritePermission)
+
 const isDebitAccount = computed(() => {
   const account = accountsStore.getAccountById(transaction.value.account_id)
   return account?.type === 'debit'
@@ -219,6 +233,8 @@ watch(() => props.transaction, (newVal) => {
 })
 
 function save() {
+  if (!hasWritePermission.value) return;
+
   // Convert the transaction type to signed amount
   // For both debit and credit accounts: expense = negative, income = positive
   const signedAmount = transactionType.value === 'expense' ? -Math.abs(amount.value) : Math.abs(amount.value)
@@ -230,6 +246,8 @@ function save() {
 }
 
 function confirmDelete() {
+  if (!hasWritePermission.value) return;
+
   if (confirm('Are you sure you want to delete this transaction?')) {
     emit('delete', props.transaction.id)
     close()
@@ -237,6 +255,8 @@ function confirmDelete() {
 }
 
 function duplicate() {
+  if (!hasWritePermission.value) return;
+
   emit('duplicate', {
     ...transaction.value,
     id: undefined
@@ -245,6 +265,8 @@ function duplicate() {
 }
 
 function duplicateNextMonth() {
+  if (!hasWritePermission.value) return;
+
   const nextMonth = moment(transaction.value.date).add(1, 'month').format('YYYY-MM-DD')
   emit('duplicate', {
     ...transaction.value,

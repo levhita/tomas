@@ -5,10 +5,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="bi bi-tags me-2"></i>
-            Manage Categories
-          </h3>
+          <h3 class="modal-title">Manage Categories</h3>
           <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
         <div class="modal-body">
@@ -33,7 +30,8 @@
                   <i class="bi bi-list-ul me-2"></i>
                   Categories ({{ filteredCategories.length }})
                 </h6>
-                <button class="btn btn-primary btn-sm" @click="showAddRootCategory" :disabled="isLoading">
+                <button v-if="hasWritePermission" class="btn btn-primary btn-sm" @click="showAddRootCategory"
+                  :disabled="isLoading">
                   <i class="bi bi-plus-circle me-1"></i>
                   Add Category
                 </button>
@@ -92,7 +90,7 @@
                         <span v-if="category.description" class="text-muted ms-2">- {{ category.description }}</span>
                       </div>
                     </div>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group btn-group-sm" role="group" v-if="hasWritePermission">
                       <button type="button" class="btn btn-outline-success" @click="showAddChildCategory(category)"
                         :disabled="isLoading" title="Add child category">
                         <i class="bi bi-plus"></i>
@@ -135,7 +133,7 @@
                           {{ childCategory.description }}</span>
                       </div>
                     </div>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group btn-group-sm" role="group" v-if="hasWritePermission">
                       <button type="button" class="btn btn-outline-primary" @click="editCategory(childCategory)"
                         :disabled="isLoading" title="Edit category">
                         <i class="bi bi-pencil"></i>
@@ -212,6 +210,7 @@
 
 import { ref, computed, watch } from 'vue'
 import { useCategoriesStore } from '../../stores/categories'
+import { useWorkspacesStore } from '../../stores/workspaces'
 import CategoryForm from '../inputs/CategoryForm.vue'
 
 // Props
@@ -225,6 +224,7 @@ const emit = defineEmits(['update:modelValue'])
 
 // Store
 const categoriesStore = useCategoriesStore()
+const workspacesStore = useWorkspacesStore()
 
 // Template refs
 const modalElement = ref(null)
@@ -252,6 +252,8 @@ const notification = ref({
 })
 
 // Computed properties
+const hasWritePermission = computed(() => workspacesStore.hasWritePermission)
+
 const filteredCategories = computed(() => {
   if (categoryFilter.value === 'all') {
     return categoriesStore.categories
@@ -309,6 +311,7 @@ function close() {
  * Shows the form for adding a root category
  */
 function showAddRootCategory() {
+  if (!hasWritePermission.value) return;
   resetForm()
   showForm.value = true
   parentForNewChild.value = null
@@ -318,6 +321,7 @@ function showAddRootCategory() {
  * Shows the form for adding a child category
  */
 function showAddChildCategory(parentCategory) {
+  if (!hasWritePermission.value) return;
   resetForm()
   form.value.parent_category_id = parentCategory.id
   form.value.type = parentCategory.type // Inherit type from parent
@@ -379,7 +383,8 @@ function resetForm() {
  * Handles form submission for creating or updating a category
  */
 async function handleSubmit() {
-  if (!form.value.name.trim() || !props.workspace) return
+  if (!hasWritePermission.value) return;
+  if (!form.value.name.trim() || !props.workspace) return;
 
   isLoading.value = true
   try {
@@ -418,6 +423,7 @@ async function handleSubmit() {
  * Sets up form for editing an existing category
  */
 function editCategory(category) {
+  if (!hasWritePermission.value) return;
   editingCategory.value = category
   form.value = {
     name: category.name,
@@ -440,6 +446,8 @@ function cancelEdit() {
  * Deletes a category with confirmation
  */
 async function deleteCategory(category) {
+  if (!hasWritePermission.value) return;
+
   const children = getChildCategories(category.id)
   let confirmMessage = `Are you sure you want to delete the category "${category.name}"?`
 

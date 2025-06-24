@@ -28,7 +28,7 @@
 
         <ul class="navbar-nav">
           <DarkModeToggle />
-          <UserMenu />
+          <UserMenu :isWorkspaceNavbar="false" />
         </ul>
       </div>
     </div>

@@ -59,8 +59,8 @@
             </RouterLink>
           </li>
 
-          <!-- User menu -->
-          <UserMenu />
+          <!-- User menu with workspace role -->
+          <UserMenu :isWorkspaceNavbar="true" :workspaceRole="userRole" />
         </ul>
       </div>
     </div>
@@ -85,12 +85,13 @@
  * @prop {Object} workspace - Current workspace object with id, name, etc.
  */
 
-import { ref } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import UserMenu from '../UserMenu.vue'
 import DarkModeToggle from '../DarkModeToggle.vue'
 import WorkspaceModal from '../modals/WorkspaceModal.vue'
 import CategoriesModal from '../modals/CategoriesModal.vue'
 import { useWorkspacesStore } from '../../stores/workspaces'
+import { useUsersStore } from '../../stores/users'
 
 const props = defineProps({
   workspace: Object
@@ -98,11 +99,85 @@ const props = defineProps({
 
 // Store reference for workspace operations
 const workspacesStore = useWorkspacesStore()
+const usersStore = useUsersStore()
+
+// Computed property to get the user's role in the current workspace
+const userRole = computed(() => {
+  if (!props.workspace) {
+    console.log('No workspace available');
+    return null;
+  }
+
+  const currentUser = usersStore.currentUser;
+  if (!currentUser) {
+    console.log('No current user');
+    return null;
+  }
+
+  // Check if currentWorkspaceUsers is available
+  const users = workspacesStore.currentWorkspaceUsers;
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    console.log('currentWorkspaceUsers not available or empty:', users);
+    return null;
+  }
+
+  console.log('Current workspace users:', users);
+  console.log('Current user ID:', currentUser.id);
+
+  // Find the user's role in the current workspace
+  const userEntry = users.find(
+    entry => entry.id === currentUser.id
+  );
+
+  console.log('User entry found:', userEntry);
+
+  return userEntry?.role || null;
+})
+
+// Get a friendly display name and badge color for the role
+const roleDisplay = computed(() => {
+  switch (userRole.value) {
+    case 'admin':
+      return { name: 'Admin', class: 'bg-danger' };
+    case 'collaborator':
+      return { name: 'Collaborator', class: 'bg-success' };
+    case 'viewer':
+      return { name: 'Viewer', class: 'bg-info' };
+    default:
+      return { name: 'Unknown', class: 'bg-secondary' };
+  }
+})
 
 // Component state
 const showWorkspaceModal = ref(false)
 const workspaceToEdit = ref(null)
 const showCategoriesModal = ref(false)
+
+// Method to ensure workspace users are loaded
+async function ensureWorkspaceUsersLoaded() {
+  console.log('Ensuring workspace users are loaded');
+
+  if (!props.workspace) {
+    console.log('No workspace to load users for');
+    return;
+  }
+
+  try {
+    // Always load workspace users to ensure we have the latest data
+    console.log('Loading workspace users for workspace ID:', props.workspace.id);
+    const users = await workspacesStore.getWorkspaceUsers(props.workspace.id);
+    console.log('Loaded users:', users);
+
+    // Directly set the ref value for proper reactivity
+    workspacesStore.currentWorkspaceUsers = users;
+
+    // Force a component update by triggering a no-op state change
+    const dummy = ref(0);
+    dummy.value++;
+  } catch (error) {
+    console.error('Error loading workspace users:', error);
+  }
+}
 
 function openWorkspaceSettings() {
   if (props.workspace) {
@@ -126,4 +201,20 @@ async function handleSaveWorkspace(workspaceData) {
     alert('Error updating workspace: ' + error.message)
   }
 }
+
+// Load workspace users when component is mounted
+onMounted(() => {
+  console.log('Component mounted, ensuring workspace users are loaded');
+  if (props.workspace) {
+    ensureWorkspaceUsersLoaded();
+  }
+})
+
+// Watch for changes in the workspace prop
+watch(() => props.workspace, async (newWorkspace) => {
+  console.log('Workspace changed:', newWorkspace);
+  if (newWorkspace) {
+    await ensureWorkspaceUsersLoaded();
+  }
+}, { immediate: true })
 </script>

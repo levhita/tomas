@@ -14,7 +14,12 @@
       <li>
         <span class="dropdown-item-text">
           <small class="text-muted">
-            {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
+            <template v-if="isWorkspaceNavbar && workspaceRole">
+              <span class="badge" :class="getRoleBadgeClass">{{ formatWorkspaceRole }}</span>
+            </template>
+            <template v-else>
+              {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
+            </template>
           </small>
         </span>
       </li>
@@ -55,13 +60,18 @@
  * 
  * Features:
  * - Shows current username with a person icon
- * - Displays user role (Super Administrator or User)
+ * - Displays user role (Super Administrator or User) or workspace role (Admin, Collaborator, Viewer)
  * - Provides logout functionality
  * - Bootstrap dropdown styling with right-alignment
  * - Accessible dropdown with proper ARIA attributes
  * 
+ * Props:
+ * @prop {Boolean} isWorkspaceNavbar - Whether this menu is being displayed in the workspace navbar
+ * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer)
+ * 
  * Usage:
  * <UserMenu />
+ * <UserMenu :isWorkspaceNavbar="true" workspaceRole="admin" />
  * 
  * Dependencies:
  * - Vue Router (for navigation after logout)
@@ -85,6 +95,19 @@ import { useUsersStore } from '../stores/users'
 import { ref } from 'vue'
 import UserProfileModal from './modals/UserProfileModal.vue'
 
+// Props
+const props = defineProps({
+  isWorkspaceNavbar: {
+    type: Boolean,
+    default: false
+  },
+  workspaceRole: {
+    type: String,
+    default: '',
+    validator: (value) => ['admin', 'collaborator', 'viewer', ''].includes(value)
+  }
+})
+
 // Vue Router instance for navigation
 const router = useRouter()
 
@@ -93,6 +116,29 @@ const usersStore = useUsersStore()
 
 // Profile modal state
 const showProfileModal = ref(false)
+
+// Computed properties for workspace role formatting
+import { computed } from 'vue'
+
+// Format the workspace role with proper capitalization
+const formatWorkspaceRole = computed(() => {
+  if (!props.workspaceRole) return '';
+  return props.workspaceRole.charAt(0).toUpperCase() + props.workspaceRole.slice(1);
+})
+
+// Get the appropriate Bootstrap badge class based on the role
+const getRoleBadgeClass = computed(() => {
+  switch (props.workspaceRole) {
+    case 'admin':
+      return 'bg-primary';
+    case 'collaborator':
+      return 'bg-success';
+    case 'viewer':
+      return 'bg-secondary';
+    default:
+      return 'bg-light text-dark';
+  }
+})
 
 /**
  * Shows the user profile modal

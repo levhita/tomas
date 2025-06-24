@@ -69,7 +69,7 @@
             User menu component
             Reusable component for user account actions
           -->
-          <UserMenu />
+          <UserMenu :isWorkspaceNavbar="false" />
         </ul>
       </div>
     </div>

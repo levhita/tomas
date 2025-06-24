@@ -74,7 +74,7 @@ const showAccountModal = ref(false)
 const accountToEdit = ref(null)
 
 // Check if user has permission to manage accounts directly from the store
-const canManageAccounts = computed(() => workspacesStore.canManageAccounts)
+const canManageAccounts = computed(() => workspacesStore.hasAdminPermission)
 
 // Computed property to get the current account
 const currentAccount = computed(() => {
