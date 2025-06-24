@@ -148,8 +148,11 @@ import AccountSelect from '../inputs/AccountSelect.vue'
 import CategorySelect from '../inputs/CategorySelect.vue'
 import CurrencyInput from '../inputs/CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
+import { useConfirm } from '../../composables/useConfirm'
 import { useWorkspacesStore } from '../../stores/workspaces'
 import moment from 'moment'
+
+const { confirm } = useConfirm()
 
 const props = defineProps({
   modelValue: Boolean,
@@ -248,10 +251,20 @@ function save() {
 function confirmDelete() {
   if (!hasWritePermission.value) return;
 
-  if (confirm('Are you sure you want to delete this transaction?')) {
-    emit('delete', props.transaction.id)
-    close()
-  }
+  confirm({
+    title: 'Delete Transaction',
+    message: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    confirmButtonVariant: 'danger'
+  })
+    .then(() => {
+      emit('delete', props.transaction.id)
+      close()
+    })
+    .catch(() => {
+      // User canceled, do nothing
+    });
 }
 
 function duplicate() {
