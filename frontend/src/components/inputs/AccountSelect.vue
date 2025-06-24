@@ -43,6 +43,7 @@ import { ref, computed } from 'vue'
 import AccountModal from '../modals/AccountModal.vue'
 import { useAccountsStore } from '../../stores/accounts'
 import { useWorkspacesStore } from '../../stores/workspaces'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
   /**
@@ -70,6 +71,7 @@ const emit = defineEmits(['update:modelValue'])
 // Account store and account management state
 const accountsStore = useAccountsStore()
 const workspacesStore = useWorkspacesStore()
+const { showToast } = useToast()
 const showAccountModal = ref(false)
 const accountToEdit = ref(null)
 
@@ -133,7 +135,11 @@ async function handleSaveAccount(accountData) {
     }
   } catch (error) {
     console.error('Error saving account:', error)
-    alert('Error saving account: ' + error.message)
+    showToast({
+      title: 'Error',
+      message: `Error saving account: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 </script>

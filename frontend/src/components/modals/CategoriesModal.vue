@@ -211,6 +211,7 @@
 import { ref, computed, watch } from 'vue'
 import { useCategoriesStore } from '../../stores/categories'
 import { useWorkspacesStore } from '../../stores/workspaces'
+import { useConfirm } from '../../composables/useConfirm'
 import CategoryForm from '../inputs/CategoryForm.vue'
 
 // Props
@@ -225,6 +226,7 @@ const emit = defineEmits(['update:modelValue'])
 // Store
 const categoriesStore = useCategoriesStore()
 const workspacesStore = useWorkspacesStore()
+const { confirm } = useConfirm()
 
 // Template refs
 const modalElement = ref(null)
@@ -455,10 +457,16 @@ async function deleteCategory(category) {
     confirmMessage += `\n\nThis category has ${children.length} child categor${children.length === 1 ? 'y' : 'ies'} that will also be deleted.`
   }
 
-  if (!confirm(confirmMessage)) return
-
-  isLoading.value = true
   try {
+    await confirm({
+      title: 'Delete Category',
+      message: confirmMessage,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'danger'
+    })
+
+    isLoading.value = true
     await categoriesStore.deleteCategory(category.id)
 
     // If we were editing this category, reset the form

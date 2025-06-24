@@ -92,6 +92,7 @@ import WorkspaceModal from '../modals/WorkspaceModal.vue'
 import CategoriesModal from '../modals/CategoriesModal.vue'
 import { useWorkspacesStore } from '../../stores/workspaces'
 import { useUsersStore } from '../../stores/users'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
   workspace: Object
@@ -100,6 +101,7 @@ const props = defineProps({
 // Store reference for workspace operations
 const workspacesStore = useWorkspacesStore()
 const usersStore = useUsersStore()
+const { showToast } = useToast()
 
 // Computed property to get the user's role in the current workspace
 const userRole = computed(() => {
@@ -196,9 +198,20 @@ async function handleSaveWorkspace(workspaceData) {
   try {
     await workspacesStore.saveWorkspace(workspaceData)
     showWorkspaceModal.value = false
+
+    showToast({
+      title: 'Success',
+      message: 'Workspace updated successfully!',
+      variant: 'success'
+    })
   } catch (error) {
     console.error('Error updating workspace:', error)
-    alert('Error updating workspace: ' + error.message)
+
+    showToast({
+      title: 'Error',
+      message: `Error updating workspace: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 

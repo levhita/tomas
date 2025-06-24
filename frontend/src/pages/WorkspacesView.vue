@@ -89,12 +89,14 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
+import { useToast } from '../composables/useToast';
 import { Modal } from 'bootstrap';
 import GeneralLayout from '../layouts/GeneralLayout.vue';
 import WorkspaceModal from '../components/modals/WorkspaceModal.vue';
 
 const router = useRouter();
 const workspacesStore = useWorkspacesStore();
+const { showToast } = useToast();
 
 // Component state
 const showWorkspaceModal = ref(false)
@@ -136,8 +138,18 @@ async function handleSaveWorkspace(workspaceData) {
   try {
     await workspacesStore.saveWorkspace(workspaceData)
     showWorkspaceModal.value = false
+
+    showToast({
+      title: 'Success',
+      message: `Workspace ${workspaceData.id ? 'updated' : 'created'} successfully!`,
+      variant: 'success'
+    })
   } catch (error) {
-    alert('Error saving workspace: ' + error.message)
+    showToast({
+      title: 'Error',
+      message: `Error saving workspace: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 
@@ -152,8 +164,18 @@ async function deleteWorkspace() {
   try {
     await workspacesStore.deleteWorkspace(workspaceToDelete.value.id);
     bsDeleteModal.hide();
+
+    showToast({
+      title: 'Success',
+      message: 'Workspace deleted successfully!',
+      variant: 'success'
+    })
   } catch (error) {
-    alert('Error deleting workspace: ' + error.message);
+    showToast({
+      title: 'Error',
+      message: `Error deleting workspace: ${error.message}`,
+      variant: 'danger'
+    })
   }
 }
 
