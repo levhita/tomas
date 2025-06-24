@@ -60,7 +60,7 @@
           </li>
 
           <!-- User menu with workspace role -->
-          <UserMenu :isWorkspaceNavbar="true" :workspaceRole="userRole" />
+          <UserMenu :workspaceRole="userRole" />
         </ul>
       </div>
     </div>

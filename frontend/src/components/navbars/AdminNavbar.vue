@@ -69,7 +69,7 @@
             User menu component
             Reusable component for user account actions
           -->
-          <UserMenu :isWorkspaceNavbar="false" />
+          <UserMenu :workspaceRole="usersStore.isSuperAdmin ? 'superadmin' : 'user'" />
         </ul>
       </div>
     </div>

@@ -6,21 +6,17 @@
       aria-expanded="false">
       <i class="bi bi-person-circle me-1"></i>
       {{ usersStore.currentUser?.username || 'User' }}
+      <i :class="['bi', getRoleIcon, 'ms-1', getRoleBadgeClass]"></i>
     </a>
 
     <!-- Dropdown menu content -->
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
       <!-- User role display (read-only) -->
       <li>
-        <span class="dropdown-item-text">
-          <small class="text-muted">
-            <template v-if="isWorkspaceNavbar && workspaceRole">
-              <span class="badge" :class="getRoleBadgeClass">{{ formatWorkspaceRole }}</span>
-            </template>
-            <template v-else>
-              {{ usersStore.isSuperAdmin ? 'Super Admin' : 'User' }}
-            </template>
-          </small>
+        <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
+          <i :class="['bi', getRoleIcon]"></i>
+          {{ workspaceRole }}
+
         </span>
       </li>
 
@@ -66,12 +62,11 @@
  * - Accessible dropdown with proper ARIA attributes
  * 
  * Props:
- * @prop {Boolean} isWorkspaceNavbar - Whether this menu is being displayed in the workspace navbar
- * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer)
+ * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer) or system (superadmin, user)
  * 
  * Usage:
- * <UserMenu />
- * <UserMenu :isWorkspaceNavbar="true" workspaceRole="admin" />
+ * <UserMenu workspaceRole="user" />
+ * <UserMenu workspaceRole="admin" />
  * 
  * Dependencies:
  * - Vue Router (for navigation after logout)
@@ -97,14 +92,10 @@ import UserProfileModal from './modals/UserProfileModal.vue'
 
 // Props
 const props = defineProps({
-  isWorkspaceNavbar: {
-    type: Boolean,
-    default: false
-  },
   workspaceRole: {
     type: String,
-    default: '',
-    validator: (value) => ['admin', 'collaborator', 'viewer', ''].includes(value)
+    default: 'user',
+    validator: (value) => ['superadmin', 'admin', 'collaborator', 'viewer', 'user'].includes(value)
   }
 })
 
@@ -129,14 +120,32 @@ const formatWorkspaceRole = computed(() => {
 // Get the appropriate Bootstrap badge class based on the role
 const getRoleBadgeClass = computed(() => {
   switch (props.workspaceRole) {
+    case 'superadmin':
+      return 'text-danger';
     case 'admin':
-      return 'bg-primary';
+      return 'text-primary';
     case 'collaborator':
-      return 'bg-success';
+      return 'text-success';
     case 'viewer':
-      return 'bg-secondary';
-    default:
-      return 'bg-light text-dark';
+      return 'text-secondary';
+    case 'user':
+      return 'text-info';
+  }
+})
+
+// Get the appropriate Bootstrap icon representing the access level
+const getRoleIcon = computed(() => {
+  switch (props.workspaceRole) {
+    case 'superadmin':
+      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
+    case 'admin':
+      return 'bi-gear-fill'; // Gear icon for admin (configuration powers)
+    case 'collaborator':
+      return 'bi-pencil-fill'; // Pencil icon for collaborator (editing capabilities)
+    case 'viewer':
+      return 'bi-eye-fill'; // Eye icon for viewer (read-only access)
+    case 'user':
+      return 'bi-person-fill'; // Person icon for regular user
   }
 })
 

@@ -28,7 +28,7 @@
 
         <ul class="navbar-nav">
           <DarkModeToggle />
-          <UserMenu :isWorkspaceNavbar="false" />
+          <UserMenu :workspaceRole="usersStore.isSuperAdmin ? 'superadmin' : 'user'" />
         </ul>
       </div>
     </div>
