@@ -61,8 +61,14 @@
             <div class="row mb-3">
               <div class="col-6">
                 <div class="form-floating">
-                  <AccountSelect v-model="transaction.account_id" :showEdit="hasWritePermission" />
-                  <label>Account</label>
+                  <select id="accountSelect" class="form-select" v-model="transaction.account_id"
+                    :disabled="!hasWritePermission" required>
+                    <option v-if="!transaction.account_id" value="" disabled selected>Select an account</option>
+                    <option v-for="account in accountsStore.accountsByName" :key="account.id" :value="account.id">
+                      {{ account.name }}
+                    </option>
+                  </select>
+                  <label for="accountSelect">Account</label>
                 </div>
               </div>
               <div class="col-6">
@@ -144,7 +150,6 @@
  */
 
 import { ref, watch, nextTick, computed } from 'vue'
-import AccountSelect from '../inputs/AccountSelect.vue'
 import CategorySelect from '../inputs/CategorySelect.vue'
 import CurrencyInput from '../inputs/CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
