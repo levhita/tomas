@@ -9,10 +9,6 @@
             <span v-else class="text-muted">Select Account</span>
             <i class="bi bi-caret-down-fill ms-auto"></i>
           </button>
-          <button class="btn btn-outline-primary" type="button" title="Manage Accounts" data-bs-toggle="dropdown"
-            aria-expanded="false">
-            <i class="bi bi-gear"></i>
-          </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li v-for="account in accountsStore.accountsByName" :key="account.id">
               <button class="dropdown-item d-flex justify-content-between align-items-center"
