@@ -5,7 +5,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ isEditing ? 'Edit' : 'New' }} Workspace</h5>
+          <h3 class="modal-title">{{ isEditing ? 'Edit' : 'New' }} Workspace</h3>
           <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
         <div class="modal-body">

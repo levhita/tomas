@@ -147,13 +147,3 @@ async function handleEventDrop(info) {
   }
 }
 </script>
-
-<style scoped>
-.fc-event {
-  cursor: move;
-}
-
-.fc-event.fc-event-dragging {
-  opacity: 0.7;
-}
-</style>

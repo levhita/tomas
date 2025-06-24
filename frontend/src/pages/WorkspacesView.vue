@@ -167,20 +167,3 @@ function selectWorkspace(workspace) {
   });
 }
 </script>
-
-<style scoped>
-.workspace-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid rgba(0, 0, 0, 0.125);
-}
-
-.workspace-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.card-footer {
-  border-top: 1px solid rgba(0, 0, 0, 0.125);
-  padding: 0.75rem 1rem;
-}
-</style>

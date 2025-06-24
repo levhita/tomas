@@ -11,7 +11,8 @@
     <!-- Main content when workspace is loaded -->
     <template v-else>
       <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name" />
+        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name"
+        :workspace-id="workspacesStore.currentWorkspace.id" />
 
       <div class="row w-100 ps-2">
         <div class="col-4 overflow-scroll calendar-sidebar">
@@ -138,6 +139,13 @@ async function validateAndSetWorkspace() {
       query: { error: result.error }
     });
     return false;
+  }
+
+  // Load accounts for the workspace
+  try {
+    await accountsStore.fetchAccounts(workspaceId);
+  } catch (error) {
+    console.error('Error loading accounts:', error);
   }
 
   // Success - workspace and all dependent data are loaded

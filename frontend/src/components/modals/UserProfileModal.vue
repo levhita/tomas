@@ -6,10 +6,7 @@
       <div class="modal-content">
         <!-- Modal Header -->
         <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="bi bi-person-gear me-2"></i>
-            Edit Profile
-          </h3>
+          <h3 class="modal-title">User Profile</h3>
           <button type="button" class="btn-close" aria-label="Close" @click="close"></button>
         </div>
 
@@ -329,28 +326,3 @@ watch(() => form.value.changePassword, () => {
   validateForm()
 })
 </script>
-
-<style scoped>
-/**
- * Component-specific styles
- * 
- * Ensures proper modal styling and form layout
- */
-
-.modal-header .modal-title {
-  color: var(--bs-primary);
-  font-weight: 600;
-}
-
-.form-floating {
-  position: relative;
-}
-
-.alert {
-  border-radius: 0.5rem;
-}
-
-.btn {
-  border-radius: 0.375rem;
-}
-</style>

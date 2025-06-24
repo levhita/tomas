@@ -155,19 +155,3 @@ async function handleLogout() {
   }
 }
 </script>
-
-<style scoped>
-/**
- * Component-specific styles
- * 
- * Ensures proper spacing and alignment for dropdown items
- */
-
-/**
- * Styling for non-clickable dropdown text items
- * Provides consistent padding to match other dropdown items
- */
-.dropdown-item-text {
-  padding: 0.25rem 1rem;
-}
-</style>

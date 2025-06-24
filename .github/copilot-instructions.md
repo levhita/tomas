@@ -17,8 +17,9 @@ Prefer to use bootstrap styles and classes, when in need add the custom styles t
 
 All input field should use the `form-floating` class for floating labels.
 
-For the admin section keep the admin styles in the `admin.css` file, and use the `admin` class to scope them.
+For the admin section keep the admin styles in the `styles/admin.css` file, and use the `admin` class to scope them.
 
+unify all general styles in the `styles/style.css` file.
 ## components
 
 We use Vue 3 for components. Please ensure that any new components or pages adhere to the Vue 3 guidelines.

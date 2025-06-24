@@ -57,6 +57,26 @@ main {
   padding-left: 1.5em;
 }
 
+/* Account selector styles */
+.account-selector {
+  min-width: 250px;
+}
+
+.dropdown-menu {
+  min-width: 250px;
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Form floating label */
+.form-floating {
+  position: relative;
+}
+
 /* -------------------------------------------------------------------------- */
 /* 2.4 Utility Components                                                    */
 /* -------------------------------------------------------------------------- */
@@ -103,4 +123,73 @@ main {
 .login-logo {
   height: 80px;
   margin-bottom: 1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.6 Transaction Totals Components                                         */
+/* -------------------------------------------------------------------------- */
+
+/* Exercised transaction toggle button */
+.exercised-toggle,
+.description-button,
+.amount-button {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.exercised-toggle:hover,
+.description-button:hover,
+.amount-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Form control styles */
+.form-check-input {
+  cursor: pointer;
+}
+
+.form-check-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.7 Workspace Cards                                                       */
+/* -------------------------------------------------------------------------- */
+
+.workspace-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.workspace-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-card .card-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.125);
+  padding: 0.75rem 1rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.8 Calendar Styles                                                       */
+/* -------------------------------------------------------------------------- */
+
+.fc-event {
+  cursor: move;
+}
+
+.fc-event.fc-event-dragging {
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.9 User Menu & Dropdowns                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Non-clickable dropdown text items */
+.dropdown-item-text {
+  padding: 0.25rem 1rem;
 }

@@ -188,7 +188,7 @@
  * </template>
  */
 
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import UserMenu from '../UserMenu.vue'
 import DarkModeToggle from '../DarkModeToggle.vue'
 import WorkspaceModal from '../modals/WorkspaceModal.vue'
@@ -198,6 +198,12 @@ import { useWorkspacesStore } from '../../stores/workspaces'
 const props = defineProps({
   workspace: Object
 })
+
+// Load accounts when workspace changes
+watch(() => props.workspace?.id, async (newWorkspaceId) => {
+  // We no longer need to load accounts here as that will be handled
+  // by the calendar view and date account selector
+}, { immediate: true })
 
 // Store reference for workspace operations
 const workspacesStore = useWorkspacesStore()
