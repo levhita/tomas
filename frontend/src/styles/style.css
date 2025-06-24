@@ -234,7 +234,7 @@ main {
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  color: var(--bs-body-color, #212529);
+  color: var(--bs-body-color);
 }
 
 .custom-dialog-header {
@@ -274,7 +274,7 @@ main {
 /* Dark mode support for custom dialog */
 @media (prefers-color-scheme: dark) {
   .custom-dialog {
-    background-color: var(--bs-tertiary-bg, #343a40);
-    color: var(--bs-tertiary-color, #f8f9fa);
+    background-color: var(--bs-body-bg);
+    color: var(--bs-primary-color);
   }
 }
