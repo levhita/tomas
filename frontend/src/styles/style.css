@@ -76,7 +76,7 @@ main {
   overflow-y: auto;
 }
 
-.dropdown-menu {
+.account-selector .dropdown-menu {
   min-width: 250px;
 }
 
