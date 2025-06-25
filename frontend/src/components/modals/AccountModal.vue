@@ -209,6 +209,11 @@ function handleSubmit() {
     accountData.id = form.value.id
   }
 
+  // Make sure we have a workspace_id (should never happen with the other checks in place)
+  if (accountData.workspace_id === undefined || accountData.workspace_id === null) {
+    accountData.workspace_id = props.workspaceId;
+  }
+
   emit('save', accountData)
 }
 
@@ -222,13 +227,20 @@ function close() {
 // Watch for account changes to update form data immediately
 watch(() => props.account, (newAccount) => {
   if (newAccount) {
+    const accountType = newAccount.type === 'credit' ? 'credit' : 'debit';
+
+    // Preserve the account's original workspace_id if it exists
+    const workspace_id = newAccount.workspace_id !== undefined && newAccount.workspace_id !== null
+      ? newAccount.workspace_id  // Use the account's workspace_id
+      : props.workspaceId;      // Fall back to prop only if account doesn't have one
+
     // Update form when account changes
     form.value = {
       name: newAccount.name || '',
       note: newAccount.note || '',
-      type: normalizedAccountType.value,
+      type: accountType,
       id: newAccount.id,
-      workspace_id: newAccount.workspace_id || props.workspaceId
+      workspace_id: workspace_id
     }
   } else {
     // Reset form for new account
@@ -240,7 +252,7 @@ watch(() => props.account, (newAccount) => {
       workspace_id: props.workspaceId
     }
   }
-}, { immediate: true, deep: true })
+}, { immediate: true })
 
 // Watch for modal visibility changes
 watch(() => props.modelValue, (newVal) => {
@@ -248,8 +260,8 @@ watch(() => props.modelValue, (newVal) => {
     // Show modal - add modal-open class to body 
     document.body.classList.add('modal-open')
 
-    // Make sure workspace_id is set even if props.account doesn't have it
-    if (!form.value.workspace_id && props.workspaceId) {
+    // Only set workspace_id if it's missing entirely
+    if (form.value.workspace_id === undefined || form.value.workspace_id === null) {
       form.value.workspace_id = props.workspaceId;
     }
   } else {
@@ -262,12 +274,17 @@ watch(() => props.modelValue, (newVal) => {
 onMounted(() => {
   // Check if we have an account to edit
   if (props.account) {
+    // Preserve the account's original workspace_id if it exists
+    const workspace_id = props.account.workspace_id !== undefined && props.account.workspace_id !== null
+      ? props.account.workspace_id  // Use the account's workspace_id
+      : props.workspaceId;         // Fall back to prop only if account doesn't have one
+
     form.value = {
       name: props.account.name || '',
       note: props.account.note || '',
       type: normalizedAccountType.value,
       id: props.account.id,
-      workspace_id: props.account.workspace_id || props.workspaceId
+      workspace_id: workspace_id
     }
   } else {
     // Creating new account, ensure workspace_id is set

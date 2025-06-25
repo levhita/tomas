@@ -39,7 +39,7 @@ const debitAccountDemo = {
   name: 'Checking Account',
   note: 'My primary bank account for daily expenses',
   type: 'debit',
-  workspace_id: 123
+  workspace_id: 101 // Will be overridden in story args
 };
 
 const creditAccountDemo = {
@@ -47,7 +47,7 @@ const creditAccountDemo = {
   name: 'Credit Card',
   note: 'Visa credit card with 2% cashback',
   type: 'credit',
-  workspace_id: 123
+  workspace_id: 101 // Will be overridden in story args
 };
 
 const Template = (args) => ({
@@ -59,33 +59,72 @@ const Template = (args) => ({
     // Create a reactive reference for the account data from args
     const account = ref(args.account ? { ...args.account } : null);
 
-    // Watch for control panel changes
+
+    // Force a complete reference change whenever an account property changes
+    function updateAccountReference(newData) {
+      account.value = newData ? { ...newData } : null;
+    }
+
+    // Watch for control panel changes - always create a new reference
     watch(() => args.account, (newVal) => {
       if (newVal) {
-        account.value = { ...newVal };
+        // Preserve the account's original workspace_id if it exists
+        updateAccountReference({
+          ...newVal,
+          // Don't override the workspace_id if it already exists in the account
+          workspace_id: newVal.workspace_id !== undefined ? newVal.workspace_id : args.workspaceId
+        });
       } else {
-        account.value = null;
+        updateAccountReference(null);
       }
     }, { deep: true });
-
-    // Debug logging
-    console.log('Story setup - account data:', account.value);
-
-    onMounted(() => {
-      console.log('Component mounted, account data:', account.value);
-    });
 
     return {
       args,
       account,
       modelValue,
+      updateAccountReference,
       onSave: (data) => {
-        console.log('Account saved:', data);
         args.save(data);
       },
       onUpdateModelValue: (value) => {
         modelValue.value = value;
         args['update:modelValue'](value);
+      },
+      // Helper methods for UI testing
+      toggleAccountType: () => {
+        if (!account.value) return;
+        const newType = account.value.type === 'credit' ? 'debit' : 'credit';
+        // Create a completely new reference with the type changed
+        updateAccountReference({
+          ...account.value,
+          type: newType
+          // Preserve the original workspace_id from the account
+        });
+      },
+      changeName: () => {
+        if (!account.value) return;
+        // Create a completely new reference with the name changed
+        updateAccountReference({
+          ...account.value,
+          name: `${account.value.name} (edited at ${new Date().toLocaleTimeString()})`
+          // Preserve the original workspace_id from the account
+        });
+      },
+      resetAccount: () => {
+        updateAccountReference(null);
+      },
+      changeWorkspaceId: () => {
+        if (!account.value) return;
+        // Create a completely new reference with a different workspace_id
+        const newWorkspaceId = account.value.workspace_id === args.workspaceId
+          ? args.workspaceId + 1
+          : args.workspaceId;
+
+        updateAccountReference({
+          ...account.value,
+          workspace_id: newWorkspaceId
+        });
       }
     };
   },
@@ -94,7 +133,7 @@ const Template = (args) => ({
       <AccountModal 
         v-model="modelValue"
         :account="account"
-        :workspaceId="123"
+        :workspaceId="args.workspaceId"
         :isLoading="args.isLoading"
         @save="onSave"
       />
@@ -122,9 +161,9 @@ CreateNewAccount.parameters = {
 export const EditDebitAccount = Template.bind({});
 EditDebitAccount.args = {
   modelValue: true,
-  workspaceId: 123,
+  workspaceId: 101,
   isLoading: false,
-  account: { ...debitAccountDemo }  // Create a new object for better reactivity
+  account: debitAccountDemo,
 };
 EditDebitAccount.parameters = {
   docs: {
@@ -138,9 +177,9 @@ EditDebitAccount.parameters = {
 export const EditCreditAccount = Template.bind({});
 EditCreditAccount.args = {
   modelValue: true,
-  workspaceId: 123,
+  workspaceId: 101,
   isLoading: false,
-  account: { ...creditAccountDemo }  // Create a new object for better reactivity
+  account: creditAccountDemo
 };
 EditCreditAccount.parameters = {
   docs: {
