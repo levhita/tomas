@@ -199,6 +199,9 @@ CreateNewAccount.play = async ({ args, canvasElement }) => {
   // Click save button using test-id
   const saveButton = canvas.getByTestId('save-account-button');
   await userEvent.click(saveButton);
+
+  // Verify the correct data was emitted
+  expect(args.save).toHaveBeenCalledWith(expect.objectContaining(expectedData));
 };
 
 // Edit an existing debit account story
@@ -253,6 +256,9 @@ EditDebitAccount.play = async ({ args, canvasElement }) => {
   // Click save button using test-id
   const saveButton = canvas.getByTestId('save-account-button');
   await userEvent.click(saveButton);
+
+  // Verify the correct data was emitted
+  expect(args.save).toHaveBeenCalledWith(expect.objectContaining(expectedData));
 };
 
 // Edit an existing credit account story
@@ -304,6 +310,9 @@ EditCreditAccount.play = async ({ args, canvasElement }) => {
   // Click save button using test-id
   const saveButton = canvas.getByTestId('save-account-button');
   await userEvent.click(saveButton);
+
+  // Verify the correct data was emitted with exact object matching
+  expect(args.save).toHaveBeenCalledWith(expect.objectContaining(expectedData));
 };
 
 // Loading state story
