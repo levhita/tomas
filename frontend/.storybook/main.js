@@ -10,6 +10,7 @@ const config = {
     "@storybook/addon-docs",
     "@storybook/addon-onboarding",
     "@storybook/addon-a11y",
+    "@storybook/addon-interactions"
   ],
   "framework": {
     "name": "@storybook/vue3-vite",
