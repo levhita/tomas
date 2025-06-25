@@ -60,7 +60,7 @@ We use vitetest to run storybook stories as unit testing.
 
 Stories in storybook have  play functions that are used to test the components. These play functions are run during `npm run test`.
 
-When dont use test files, instead we use the `*.stories.js` files to define the stories and the play functions.
+When don't use test files, instead we use the `*.stories.js` files to define the stories and the play functions.
 
 For running any frontend test, code changes or install packages you need to cd into frontend folder.
 
