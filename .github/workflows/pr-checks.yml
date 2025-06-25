@@ -1,0 +1,93 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  check-required-tests:
+    name: Verify Required Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: test
+          MYSQL_USER: yamodev
+          MYSQL_PASSWORD: yamodev
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for frontend changes
+        id: check-frontend
+        run: |
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -q "^frontend/"; then
+            echo "Frontend changes detected"
+            echo "has_frontend_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No frontend changes"
+            echo "has_frontend_changes=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Check for API changes
+        id: check-api
+        run: |
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -q "^api/"; then
+            echo "API changes detected"
+            echo "has_api_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No API changes"
+            echo "has_api_changes=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Run Frontend tests if needed
+        if: steps.check-frontend.outputs.has_frontend_changes == 'true'
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test
+          
+      - name: Run API tests if needed
+        if: steps.check-api.outputs.has_api_changes == 'true'
+        working-directory: ./api
+        env:
+          YAMO_MYSQL_HOST: 127.0.0.1
+          YAMO_MYSQL_USER: yamodev
+          YAMO_MYSQL_PASSWORD: yamodev
+          YAMO_MYSQL_PORT: 3306
+          YAMO_MYSQL_DATABASE: test
+          YAMO_JWT_SECRET: test-jwt-secret-for-ci
+          NODE_ENV: test
+        run: |
+          # Wait for MySQL to be ready
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u yamodev -pyamodev --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+          
+          # Verify test database access
+          mysql -h 127.0.0.1 -u yamodev -pyamodev -e "SHOW DATABASES;" | grep test
+          
+          # Run tests
+          npm ci
+          npm run test
+        
+      - name: All tests passed
+        run: echo "All required tests have passed! PR is ready for review."

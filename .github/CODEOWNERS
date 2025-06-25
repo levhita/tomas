@@ -1,0 +1,7 @@
+# Test configuration files require approval from maintainers
+/frontend/vite.config.js @levhita
+/frontend/src/components/**/*.stories.{js,ts} @levhita
+/.github/workflows/ @levhita
+
+# API test files
+/api/tests/ @levhita
