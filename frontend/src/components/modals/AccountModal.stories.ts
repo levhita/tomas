@@ -54,7 +54,7 @@ const Template = (args) => ({
   components: { AccountModal },
   setup() {
     // Use reactive ref for modelValue
-    const modelValue = ref(args.modelValue || true);
+    const modelValue = ref(args.modelValue);
 
     // Create a reactive reference for the account data from args
     const account = ref(args.account ? { ...args.account } : null);
