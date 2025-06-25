@@ -6,6 +6,7 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 export default {
   title: 'Components/modals / AccountModal',
   component: AccountModal,
+  tags: ['stable', 'testable'],
   argTypes: {
     modelValue: {
       control: 'boolean',
