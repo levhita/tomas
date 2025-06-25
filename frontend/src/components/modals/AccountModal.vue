@@ -105,13 +105,38 @@
  * @component
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 // Props
 const props = defineProps({
+  /**
+   * Controls the visibility of the modal dialog.
+   * This prop is used with v-model for two-way binding:
+   * - When true: the modal is displayed
+   * - When false: the modal is hidden
+   * 
+   * The component emits 'update:modelValue' events to support v-model binding.
+   * This follows Vue 3's v-model convention for custom components.
+   */
   modelValue: Boolean,
+
+  /**
+   * Account object for editing an existing account.
+   * When provided, the form is pre-populated with this account's data.
+   * When null/undefined, the form is prepared for creating a new account.
+   */
   account: Object,
+
+  /**
+   * ID of the workspace where the account will be created or exists.
+   * Required for both new and existing accounts.
+   */
   workspaceId: Number,
+
+  /**
+   * Indicates whether a save operation is in progress.
+   * When true, form inputs are disabled and a spinner is shown on the save button.
+   */
   isLoading: {
     type: Boolean,
     default: false
@@ -119,18 +144,42 @@ const props = defineProps({
 })
 
 // Events
-const emit = defineEmits(['update:modelValue', 'save'])
+const emit = defineEmits([
+  /**
+   * Emitted when the modal visibility should change.
+   * This is part of the v-model implementation and follows Vue 3's conventions.
+   * @param {boolean} value - The new visibility state (true = shown, false = hidden)
+   */
+  'update:modelValue',
+
+  /**
+   * Emitted when the form is submitted with valid data.
+   * @param {Object} accountData - The account data to be saved
+   * @param {string} accountData.name - The account name
+   * @param {string} accountData.note - The account description/note
+   * @param {string} accountData.type - The account type ('debit' or 'credit')
+   * @param {number} accountData.workspace_id - The ID of the workspace
+   * @param {number} [accountData.id] - The account ID (only for existing accounts)
+   */
+  'save'
+])
 
 // Template refs
 const modalElement = ref(null)
+
+// Computed property for normalized account type
+const normalizedAccountType = computed(() => {
+  // Always return either 'credit' or 'debit' 
+  return props.account && props.account.type === 'credit' ? 'credit' : 'debit';
+})
 
 // Component state
 const form = ref({
   name: '',
   note: '',
-  type: 'debit',
+  type: 'debit', // Default to debit for new accounts
   id: null,
-  workspace_id: null
+  workspace_id: props.workspaceId || null
 })
 
 const isEditing = computed(() => {
@@ -170,34 +219,65 @@ function close() {
   emit('update:modelValue', false)
 }
 
+// Watch for account changes to update form data immediately
+watch(() => props.account, (newAccount) => {
+  if (newAccount) {
+    // Update form when account changes
+    form.value = {
+      name: newAccount.name || '',
+      note: newAccount.note || '',
+      type: normalizedAccountType.value,
+      id: newAccount.id,
+      workspace_id: newAccount.workspace_id || props.workspaceId
+    }
+  } else {
+    // Reset form for new account
+    form.value = {
+      name: '',
+      note: '',
+      type: 'debit', // Default type for new accounts
+      id: null,
+      workspace_id: props.workspaceId
+    }
+  }
+}, { immediate: true, deep: true })
+
 // Watch for modal visibility changes
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    // Show modal - add modal-open class to body and populate form
+    // Show modal - add modal-open class to body 
     document.body.classList.add('modal-open')
 
-    if (props.account) {
-      // Editing existing account
-      form.value = {
-        name: props.account.name || '',
-        note: props.account.note || '',
-        type: props.account.type || 'debit',
-        id: props.account.id,
-        workspace_id: props.account.workspace_id
-      }
-    } else {
-      // Creating new account
-      form.value = {
-        name: '',
-        note: '',
-        type: 'debit',
-        id: null,
-        workspace_id: props.workspaceId
-      }
+    // Make sure workspace_id is set even if props.account doesn't have it
+    if (!form.value.workspace_id && props.workspaceId) {
+      form.value.workspace_id = props.workspaceId;
     }
   } else {
     // Remove modal-open class from body when modal hides
     document.body.classList.remove('modal-open')
+  }
+})
+
+// Initialize form data when component is mounted
+onMounted(() => {
+  // Check if we have an account to edit
+  if (props.account) {
+    form.value = {
+      name: props.account.name || '',
+      note: props.account.note || '',
+      type: normalizedAccountType.value,
+      id: props.account.id,
+      workspace_id: props.account.workspace_id || props.workspaceId
+    }
+  } else {
+    // Creating new account, ensure workspace_id is set
+    form.value = {
+      name: '',
+      note: '',
+      type: 'debit', // Default type for new accounts
+      id: null,
+      workspace_id: props.workspaceId
+    }
   }
 })
 </script>
