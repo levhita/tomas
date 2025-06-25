@@ -9,10 +9,8 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test-interactions": "vitest run --config vitest.interactions.config.js",
-    "test-interactions:watch": "vitest --config vitest.interactions.config.js"
+    "test": "vitest run --project=storybook",
+    "test:watch": "vitest --project=storybook --watch"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.15",
