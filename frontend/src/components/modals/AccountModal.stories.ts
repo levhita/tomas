@@ -1,7 +1,7 @@
 // filepath: modals/AccountModal.stories.ts
 import AccountModal from './AccountModal.vue';
 import { ref, watch } from 'vue';
-import { expect, jest, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 
 export default {
   title: 'Components/modals / AccountModal',
