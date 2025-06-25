@@ -4,7 +4,7 @@
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
-  <div v-else class="report-content">
+  <div v-else class="report-content p-2">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3>{{ props.account?.name }} ({{ props.account?.type }})</h3>
       <div class="form-check form-switch">

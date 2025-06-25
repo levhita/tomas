@@ -5,6 +5,8 @@ import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
 import AdminUsersView from '../pages/admin/AdminUsersView.vue'
+import TransactionsView from '../pages/transactions/TransactionsView.vue'
+
 
 const routes = [
   {
@@ -49,6 +51,16 @@ const routes = [
       requiresSuperAdmin: true
     }
   },
+  {
+    path: '/transactions',
+    component: TransactionsView,
+    name: 'transactions',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: false,
+      public: false
+    }
+  }
 ]
 
 const router = createRouter({
