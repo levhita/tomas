@@ -165,19 +165,3 @@ LoadingState.parameters = {
     }
   }
 };
-
-// Hidden modal story
-export const HiddenModal = Template.bind({});
-HiddenModal.args = {
-  modelValue: false,
-  workspaceId: 123,
-  isLoading: false,
-  account: null
-};
-HiddenModal.parameters = {
-  docs: {
-    description: {
-      story: 'Modal in hidden state (modelValue=false) which keeps the modal hidden. The modal will not be visible in the UI, demonstrating how modelValue controls visibility.'
-    }
-  }
-};
