@@ -19,6 +19,12 @@ Personal and Home finance projection and expense tracking application.
 - Backend:
   - Express.js
   - MySQL database
+  - JWT for authentication
+
+## Testing
+
+We use automated testing to ensure code quality. See [TESTING.md](TESTING.md) for details on running tests and our CI/CD pipeline.
+  - MySQL database
   - Node.js
 
 ## Installation

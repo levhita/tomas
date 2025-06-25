@@ -1,0 +1,21 @@
+name: Test Status
+
+on:
+  workflow_run:
+    workflows: ["API Tests", "Frontend Storybook Tests"]
+    types: [completed]
+
+jobs:
+  combine-status:
+    name: Combine Test Status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create combined status
+        run: |
+          echo "API Tests: ${{ github.event.workflow_run.conclusion == 'success' && '✅' || '❌' }}"
+          echo "Frontend Tests: ${{ github.event.workflow_run.conclusion == 'success' && '✅' || '❌' }}"
+          
+          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "::error::Some tests failed, see details in the workflows"
+            exit 1
+          fi

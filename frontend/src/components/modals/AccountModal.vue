@@ -45,10 +45,10 @@
           <button type="button" class="btn btn-secondary" @click="close" :disabled="isLoading">
             Cancel
           </button>
-          <button type="button" class="btn btn-primary" @click="handleSubmit"
-            :disabled="isLoading || !form.name.trim()">
-            <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
-              aria-hidden="true"></span>
+          <button type="button" class="btn btn-primary" @click="handleSubmit" :disabled="isLoading || !form.name.trim()"
+            data-testid="save-account-button">
+            <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"
+              data-testid="loading-spinner"></span>
             {{ isLoading ? 'Saving...' : 'Save Account' }}
           </button>
         </div>
