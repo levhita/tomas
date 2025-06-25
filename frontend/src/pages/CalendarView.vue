@@ -15,11 +15,11 @@
         :workspace-id="workspacesStore.currentWorkspace.id" />
 
       <div class="row w-100 ps-2">
-        <div class="col-4 overflow-scroll calendar-sidebar">
+        <div class="col-4 overflow-scroll calendar-sidebar p-2">
           <Totals :account="selectedAccount" :start-date="startDate" :end-date="endDate"
             @edit-transaction="showTransactionModal" />
         </div>
-        <div class="col-8 pb-1">
+        <div class="col-8 pb-1 p-2">
           <Calendar :account="selectedAccount" :selected-date="selectedDate" :range-type="rangeType"
             @show-transaction="showTransactionModal" @update-transaction="updateTransaction"
             @delete-transaction="deleteTransaction" />

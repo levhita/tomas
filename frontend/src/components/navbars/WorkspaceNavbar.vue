@@ -3,13 +3,15 @@
   <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
       <!-- Brand logo with link to workspaces -->
-      <RouterLink class="me-2" to="/workspaces">
-        <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
-      </RouterLink>
-
-      <span v-if="workspace" class="fw-bold fs-4">
-        {{ workspace.name }}
-      </span>
+       <div class="d-flex justify-content-center align-items-center">
+         <RouterLink class="me-2" to="/workspaces">
+           <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
+         </RouterLink>
+   
+         <span v-if="workspace" class="fw-bold fs-4">
+           {{ workspace.name }}
+         </span>
+       </div>
 
       <!-- Mobile toggle button -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -20,22 +22,29 @@
       <!-- Navigation content -->
       <div class="collapse navbar-collapse" id="navbarNav">
         <!-- Left-aligned nav items -->
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
+        <ul class="navbar-nav me-auto d-flex justify-content-end ">
+          <li class="nav-item  mr-2">
             <!-- Calendar link -->
-            <RouterLink v-if="workspace" class="nav-link" active-class="active"
+            <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
               :to="{ path: '/calendar', query: { workspaceId: workspace.id } }">
               <i class="bi bi-calendar-week me-1"></i>
               Calendar
             </RouterLink>
           </li>
 
-          <li class="nav-item">
+          <li class="nav-item ">
             <!-- Categories button -->
-            <button v-if="workspace" class="btn btn-link nav-link" @click="openCategoriesModal">
+            <button v-if="workspace" class="btn btn-link nav-link link-body-emphasis" @click="openCategoriesModal">
               <i class="bi bi-tags me-1"></i>
               Categories
             </button>
+          </li>
+          <li class="nav-item ">
+           <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
+              :to="{ path: '/transactions', query: { workspaceId: workspace.id } }">
+              <i class="bi bi-list-columns-reverse"></i>
+              Transactions
+            </RouterLink>
           </li>
         </ul>
 
