@@ -1,6 +1,6 @@
 // filepath: modals/AccountModal.stories.ts
 import AccountModal from './AccountModal.vue';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 
 export default {
   title: 'Components/modals / AccountModal',
@@ -58,6 +58,15 @@ const Template = (args) => ({
 
     // Create a reactive reference for the account data from args
     const account = ref(args.account ? { ...args.account } : null);
+
+    // Watch for control panel changes
+    watch(() => args.account, (newVal) => {
+      if (newVal) {
+        account.value = { ...newVal };
+      } else {
+        account.value = null;
+      }
+    }, { deep: true });
 
     // Debug logging
     console.log('Story setup - account data:', account.value);
