@@ -10,11 +10,17 @@ const config = {
     "@storybook/addon-docs",
     "@storybook/addon-onboarding",
     "@storybook/addon-a11y",
-    "@storybook/addon-interactions"
+    "@storybook/addon-interactions",
+    "@storybook/addon-essentials",
+    "@storybook/addon-vitest"
   ],
   "framework": {
     "name": "@storybook/vue3-vite",
     "options": {}
-  }
+  },
+  "features": {
+    "interactionsDebugger": true
+  },
+  "staticDirs": ["../public"]
 };
 export default config;

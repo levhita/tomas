@@ -8,7 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test-interactions": "vitest run --config vitest.interactions.config.js",
+    "test-interactions:watch": "vitest --config vitest.interactions.config.js"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.15",
@@ -16,6 +20,7 @@
     "@fullcalendar/interaction": "^6.1.15",
     "@fullcalendar/vue3": "^6.1.15",
     "@popperjs/core": "^2.11.8",
+    "@storybook/vue3": "^9.0.13",
     "@vitejs/plugin-basic-ssl": "^1.1.0",
     "bootstrap": "^5.3.7",
     "bootstrap-icons": "^1.11.3",
@@ -36,6 +41,7 @@
     "@vitejs/plugin-vue": "^5.1.4",
     "@vitest/browser": "^3.2.4",
     "@vitest/coverage-v8": "^3.2.4",
+    "jsdom": "^26.1.0",
     "playwright": "^1.53.1",
     "sass": "^1.89.2",
     "storybook": "^9.0.13",
