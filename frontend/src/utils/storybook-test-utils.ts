@@ -1,5 +1,5 @@
 // src/utils/storybook-test-utils.ts
-import { render, fireEvent, screen } from '@testing-library/vue';
+import { render } from '@testing-library/vue';
 import { vi, describe, it } from 'vitest';
 
 /**
