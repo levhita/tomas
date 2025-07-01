@@ -53,79 +53,72 @@
                 <th
                   class="text-light-emphasis text-start sortable"
                   role="button"
-                  @click="sortBy('description')"
                 >
                   Description
-                  <i :class="sortIcon('description')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-end sortable"
                   role="button"
-                  @click="sortBy('amount')"
                 >
                   Amount
-                  <i :class="sortIcon('amount')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-start sortable"
                   role="button"
-                  @click="sortBy('account')"
                 >
                   Account
-                  <i :class="sortIcon('account')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-start sortable"
                   role="button"
-                  @click="sortBy('category')"
                 >
                   Category
-                  <i :class="sortIcon('category')" class="ms-1"></i>
+                  <i class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-start sortable"
                   role="button"
-                  @click="sortBy('type')"
                 >
                   Type
-                  <i :class="sortIcon('type')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-end sortable"
                   role="button"
-                  @click="sortBy('date')"
                 >
                   Date
-                  <i :class="sortIcon('date')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th
                   class="text-light-emphasis text-start sortable"
                   role="button"
-                  @click="sortBy('note')"
                 >
                   Note
-                  <i :class="sortIcon('note')" class="ms-1"></i>
+                  <i  class="ms-1"></i>
                 </th>
                 <th class="text-light-emphasis text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
               
-              <tr v-for="(tx, i) in sortedTransactions" :key="i">
+              <tr v-for="(transaction, i) in sortedTransactions" :key="i">
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-start">{{ tx.description }}</td>
-                <td class="text-end text-info fw-semibold">{{ tx.amount }}</td>
-                <td class="text-light-emphasis text-start">{{ tx.account_id}}</td>
+                <td class="text-light-emphasis text-start">{{ transaction.description }}</td>
+                <td class="text-end text-info fw-semibold">{{ transaction.amount }}</td>
+                <td class="text-light-emphasis text-start">{{ transaction.account_id}}</td>
                 <td class="text-start">
-                  <span class="badge text-white">{{ tx.category_name}}</span>
+                  <span class="badge text-white">{{ transaction.category_name}}</span>
                 </td>
                 <td class="text-start">
-                  <span class="badge bg-info  text-white">{{ tx.type }}</span>
+                  <span class="badge bg-info  text-white">{{ transaction.type }}</span>
                 </td>
-                <td class="text-light-emphasis text-end">{{ tx.date }}</td>
-                <td class="text-light-emphasis text-start">{{ tx.note }}</td>
+                <td class="text-light-emphasis text-end">{{ transaction.date }}</td>
+                <td class="text-light-emphasis text-start">{{ transaction.note }}</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -163,98 +156,38 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue'
-import { useTransactionsStore } from '../../stores/transactions'
-import { useAccountsStore } from '../../stores/accounts'
-import { useCategoriesStore } from '../../stores/categories'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import {  onMounted } from 'vue'
 
-// Store instances
-const router = useRouter()
-const route = useRoute()
-const transactionsStore = useTransactionsStore()
-const accountsStore = useAccountsStore()
-const categoriesStore = useCategoriesStore()
-const workspacesStore = useWorkspacesStore()
+  import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
+  import { useRouter, useRoute } from 'vue-router'
 
-// Workspace context
-const isWorkspaceLoaded = computed(() => !!workspacesStore.currentWorkspace)
-const accountId = ref(null)
-const selectedAccount = computed(() => accountsStore.getAccountById(accountId.value))
+  import { useWorkspacesStore } from '../../stores/workspaces'
 
-// Transactions data (only set after fetch resolves)
-const transactions = ref([])
-const categories = computed(() => categoriesStore.categories)
 
-// Sorting
-const sortKey = ref('date')
-const sortAsc = ref(false)
 
-function sortBy(key) {
-  if (sortKey.value === key) {
-    sortAsc.value = !sortAsc.value
-  } else {
-    sortKey.value = key
-    sortAsc.value = key === 'date' ? false : true
-  }
-}
+  const router = useRouter()
+  const route = useRoute()
 
-function sortIcon(key) {
-  if (sortKey.value !== key) return 'bi bi-chevron-expand'
-  return sortAsc.value ? 'bi bi-chevron-up' : 'bi bi-chevron-down'
-}
+  const sortedTransactions = [];
+  const workspacesStore = useWorkspacesStore()
 
-const sortedTransactions = computed(() => {
-  if (!sortKey.value) return transactions.value
-  return [...transactions.value].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    if (sortKey.value === 'amount') {
-      aVal = parseFloat(aVal.replace(/[^0-9.-]+/g, ''))
-      bVal = parseFloat(bVal.replace(/[^0-9.-]+/g, ''))
+
+  async function validateAndSetWorkspace() {
+    const workspaceId = route.params.workspaceId || route.query.workspaceId;
+    if (!workspaceId) {
+      console.error('No workspace ID provided in route params or query');
+      return;
     }
-    if (sortKey.value === 'date') {
-      aVal = new Date(aVal)
-      bVal = new Date(bVal)
-    }
-    if (aVal < bVal) return sortAsc.value ? -1 : 1
-    if (aVal > bVal) return sortAsc.value ? 1 : -1
-    return 0
-  })
-})
+    const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
 
 
+  }
 
-// Workspace loading and data fetching
-async function validateAndSetWorkspace() {
-  const workspaceId = route.query.workspaceId
-  if (!workspaceId) {
-    router.replace({ name: 'workspaces', query: { error: 'missing-workspace' } })
-    return false
-  }
-  const result = await workspacesStore.validateAndLoadWorkspace(workspaceId)
-  if (!result.success) {
-    router.replace({ name: 'workspaces', query: { error: result.error } })
-    return false
-  }
-  try {
-    await accountsStore.fetchAccounts(workspaceId)
-    await categoriesStore.fetchCategories(workspaceId)
-    const txResult = await transactionsStore.fetchTransactionsByWorkspace(workspaceId)
-    transactions.value = txResult.transactions || []
-    console.log('Transactions:', txResult.transactions)
-  } catch (error) {
-    console.error('Error loading workspace data:', error)
-  }
-  return true
-}
+  onMounted(async () => {
+    const isWorkspaceValid = await validateAndSetWorkspace();
+    
+    
+  });
 
-onMounted(async () => {
-  const isWorkspaceValid = await validateAndSetWorkspace()
-  if (isWorkspaceValid && accountsStore.accountsByName.length > 0) {
-    accountId.value = accountsStore.accountsByName[0].id
-  }
-})
+
 </script>
