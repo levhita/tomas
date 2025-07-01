@@ -59,6 +59,24 @@ export const useTransactionsStore = defineStore('transactions', () => {
       throw error;
     }
   }
+  
+async function fetchTransactionsByWorkspace(workspaceId) {
+  try {
+    if (!workspaceId) throw new Error('workspaceId is required');
+    const url = `/api/transactions/${workspaceId}/all`;
+    const response = await fetchWithAuth(url);
+    if (!response.ok) {
+      const json = await response.json();
+      throw new Error(json.error);
+    }
+    const data = await response.json();
+    transactions.value = data;
+    return { transactions: data };
+  } catch (error) {
+    console.error('Error fetching transactions by workspace:', error);
+    throw error;
+  }
+}
 
   async function addTransaction(transaction) {
     try {
@@ -123,6 +141,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     // Actions
     fetchTransactions,
     fetchTransactionById,
+    fetchTransactionsByWorkspace,
     addTransaction,
     updateTransaction,
     deleteTransaction,
