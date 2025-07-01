@@ -18,6 +18,8 @@ const { canRead, canWrite } = require('../utils/workspace');
 /**
  * GET /transactions
  * List transactions with optional filtering
+ * NOTE this implementation requires an accountId to filter transactions. would not
+ * return all transactions for a workspace.
  * 
  * @query {number} accountId - Optional filter by account ID
  * @query {string} startDate - Optional start date (ISO format)
@@ -83,6 +85,48 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+/**
+ * GET /transactions/:workspaceID/all
+ * List all transactions for a workspace no matter what account is 
+ * associated with them. This is useful for the dashboard view of transactions.
+ * 
+ * @param {number} workspaceID - Workspace ID
+ * @permission Read access to the workspace
+ * @returns {Array} List of transactions for the workspace
+ */
+router.get('/:workspaceId/all', async (req, res) => {
+  const workspaceId = req.params.workspaceId;
+
+  try {
+    // Check if user has read access to the workspace
+    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Query all transactions for all accounts in this workspace
+    const [transactions] = await db.query(`
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM transaction AS t
+      LEFT JOIN category c ON t.category_id = c.id 
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE a.workspace_id = ?
+      ORDER BY t.date ASC
+    `, [workspaceId]);
+
+    // Convert exercised from 0/1 to boolean
+    transactions.forEach(t => t.exercised = !!t.exercised);
+
+    res.status(200).json(transactions);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch transactions for workspace' });
   }
 });
 
