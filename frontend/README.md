@@ -1,7 +1,5 @@
 # Tomas: Frontend DOCS 
 
-# Tomas: Frontend DOCS 
-
 ## Getting Started: Development Setup
 
 Follow these steps to get the frontend application running in development mode:
