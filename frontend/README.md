@@ -71,5 +71,54 @@ import fetchWithAuth from '@/utils/fetch';
 
 const response = await fetchWithAuth('/api/some-endpoint');
 const data = await response.json();
+```
+
+### Utilities Functions
+
+The `src/utils/utilities.js` file provides shared utility functions for use throughout the frontend application. These utilities help ensure consistent formatting and behavior across all components.
+
+#### formatCurrency
+
+Using the `formatCurrency` utility throughout your components ensures that all currency values are displayed in a consistent and locale-aware manner. This helps maintain a professional and user-friendly interface, regardless of where or how currency values are shown.
+
+**Consistency and Logic Benefits:**
+
+- **Uniform Display:** By centralizing currency formatting, you avoid discrepancies in how amounts appear across different pages or components (e.g., account balances, transaction lists, reports).
+- **Locale Awareness:** The utility respects user or workspace locale preferences, ensuring numbers and symbols are formatted correctly for each audience (e.g., "1,000.00 €" vs "1.000,00 €").
+- **Reduced Duplication:** Instead of repeating formatting logic in multiple places, you call a single function, making the codebase easier to maintain and update.
+- **Error Prevention:** Centralized formatting reduces the risk of mistakes, such as missing currency symbols or incorrect decimal separators.
+- **Theming and Accessibility:** Consistent formatting supports theming (like dark mode) and accessibility, as users can rely on familiar patterns throughout the app.
+
+**Example Use Cases:**
+
+- Displaying account balances in dashboards and summaries.
+- Showing transaction amounts in lists, tables, and detail views.
+- Formatting totals in reports and exports.
+- Ensuring admin and user views both present currency values identically.
+
+By always using `formatCurrency`, you help guarantee a predictable and polished experience for all users.
+
+Utility Firm: 
+ #### `formatCurrency(amount, currencySymbol = '$', locale = undefined)`
+
+Formats a number as a currency string using the specified currency symbol and locale.
+
+- **Parameters:**
+  - `amount` (`number`): The numeric amount to format.
+  - `currencySymbol` (`string`, optional): The symbol to use for the currency (e.g., `$`, `€`, `¥`). Defaults to `$`.
+  - `locale` (`string`, optional): The locale to use for formatting (e.g., `'en-US'`, `'fr-FR'`). Defaults to the user's locale if not provided.
+
+- **Returns:**  
+  A string representing the formatted currency value, using the provided symbol and locale.
+
+- **Example:**
+  ```js
+  import { formatCurrency } from '@/utils/utilities';
+
+  const formatted = formatCurrency(1234.56, '€', 'de-DE');
+  // formatted: "1.234,56 €"
+  ```
+
+
 
 
