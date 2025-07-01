@@ -50,37 +50,33 @@
                 <th scope="col">
                   <input class="form-check-input" type="checkbox" aria-label="Select all" />
                 </th>
-                <th class="text-light-emphasis text-end">Date</th>
-                <th class="text-light-emphasis text-center">Account</th>
-                <th class="text-light-emphasis text-center">Type</th>
-                <th class="text-light-emphasis text-center">Category</th>
-                <th class="text-light-emphasis">Description</th>
-                <th class="text-light-emphasis">Note</th>
+                <th class="text-light-emphasis text-start">Description</th>
                 <th class="text-light-emphasis text-end">Amount</th>
-                <th class="text-light-emphasis text-center">Status</th>
+                <th class="text-light-emphasis text-start">Account</th>
+                <th class="text-light-emphasis text-start">Category</th>
+                <th class="text-light-emphasis text-start">Type</th>
+                <th class="text-light-emphasis text-end">Date</th>
+                <th class="text-light-emphasis text-start">Note</th>
                 <th class="text-light-emphasis text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <!-- Five example rows based on TransactionModal.vue fields -->
+              <!-- Example rows -->
               <tr>
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-end">2025-07-01</td>
-                <td class="text-light-emphasis text-center">Debit Card</td>
-                <td class="text-center">
-                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
-                </td>
-                <td class="text-center">
+                <td class="text-light-emphasis text-start">Supermarket</td>
+                <td class="text-end text-info fw-semibold">- $54.20</td>
+                <td class="text-light-emphasis text-start">Debit Card</td>
+                <td class="text-start">
                   <span class="badge bg-info bg-opacity-75 text-light-emphasis">Groceries</span>
                 </td>
-                <td class="text-light-emphasis">Supermarket</td>
-                <td class="text-light-emphasis">Weekly food shopping</td>
-                <td class="text-end text-info fw-semibold">- $54.20</td>
-                <td class="text-center">
-                  <span class="badge bg-body-tertiary text-info">Exercised</span>
+                <td class="text-start">
+                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
                 </td>
+                <td class="text-light-emphasis text-end">2025-07-01</td>
+                <td class="text-light-emphasis text-start">Weekly food shopping</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -94,20 +90,17 @@
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-end">2025-07-02</td>
-                <td class="text-light-emphasis text-center">Debit Card</td>
-                <td class="text-center">
-                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
-                </td>
-                <td class="text-center">
+                <td class="text-light-emphasis text-start">Electric Company</td>
+                <td class="text-end text-info fw-semibold">- $120.00</td>
+                <td class="text-light-emphasis text-start">Debit Card</td>
+                <td class="text-start">
                   <span class="badge bg-info bg-opacity-75 text-light-emphasis">Utilities</span>
                 </td>
-                <td class="text-light-emphasis">Electric Company</td>
-                <td class="text-light-emphasis">Monthly bill</td>
-                <td class="text-end text-info fw-semibold">- $120.00</td>
-                <td class="text-center">
-                  <span class="badge bg-body-tertiary text-info">Pending</span>
+                <td class="text-start">
+                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
                 </td>
+                <td class="text-light-emphasis text-end">2025-07-02</td>
+                <td class="text-light-emphasis text-start">Monthly bill</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -121,20 +114,17 @@
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-end">2025-07-03</td>
-                <td class="text-light-emphasis text-center">Mexico Account</td>
-                <td class="text-center">
-                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Income</span>
-                </td>
-                <td class="text-center">
+                <td class="text-light-emphasis text-start">Employer Inc.</td>
+                <td class="text-end text-info fw-semibold">+ $2,500.00</td>
+                <td class="text-light-emphasis text-start">Mexico Account</td>
+                <td class="text-start">
                   <span class="badge bg-info bg-opacity-75 text-light-emphasis">Wages</span>
                 </td>
-                <td class="text-light-emphasis">Employer Inc.</td>
-                <td class="text-light-emphasis">Monthly salary</td>
-                <td class="text-end text-info fw-semibold">+ $2,500.00</td>
-                <td class="text-center">
-                  <span class="badge bg-body-tertiary text-info">Exercised</span>
+                <td class="text-start">
+                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Income</span>
                 </td>
+                <td class="text-light-emphasis text-end">2025-07-03</td>
+                <td class="text-light-emphasis text-start">Monthly salary</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -148,20 +138,17 @@
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-end">2025-07-04</td>
-                <td class="text-light-emphasis text-center">Debit Card</td>
-                <td class="text-center">
-                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
-                </td>
-                <td class="text-center">
+                <td class="text-light-emphasis text-start">Pizza Place</td>
+                <td class="text-end text-info fw-semibold">- $32.00</td>
+                <td class="text-light-emphasis text-start">Debit Card</td>
+                <td class="text-start">
                   <span class="badge bg-info bg-opacity-75 text-light-emphasis">Restaurants</span>
                 </td>
-                <td class="text-light-emphasis">Pizza Place</td>
-                <td class="text-light-emphasis">Dinner with friends</td>
-                <td class="text-end text-info fw-semibold">- $32.00</td>
-                <td class="text-center">
-                  <span class="badge bg-body-tertiary text-info">Exercised</span>
+                <td class="text-start">
+                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
                 </td>
+                <td class="text-light-emphasis text-end">2025-07-04</td>
+                <td class="text-light-emphasis text-start">Dinner with friends</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -175,20 +162,17 @@
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
-                <td class="text-light-emphasis text-end">2025-07-05</td>
-                <td class="text-light-emphasis text-center">Mexico Account</td>
-                <td class="text-center">
-                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
-                </td>
-                <td class="text-center">
+                <td class="text-light-emphasis text-start">Auto Finance</td>
+                <td class="text-end text-info fw-semibold">- $400.00</td>
+                <td class="text-light-emphasis text-start">Mexico Account</td>
+                <td class="text-start">
                   <span class="badge bg-info bg-opacity-75 text-light-emphasis">Car Payment</span>
                 </td>
-                <td class="text-light-emphasis">Auto Finance</td>
-                <td class="text-light-emphasis">Monthly payment</td>
-                <td class="text-end text-info fw-semibold">- $400.00</td>
-                <td class="text-center">
-                  <span class="badge bg-body-tertiary text-info">Pending</span>
+                <td class="text-start">
+                  <span class="badge bg-info bg-opacity-75 text-light-emphasis">Expense</span>
                 </td>
+                <td class="text-light-emphasis text-end">2025-07-05</td>
+                <td class="text-light-emphasis text-start">Monthly payment</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
@@ -226,6 +210,5 @@
 </template>
 
 <script setup>
-// No logic yet, structure only
 import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue'
 </script>
