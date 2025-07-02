@@ -65,7 +65,7 @@
                   <i  class="ms-1"></i>
                 </th>
                 <th
-                  class="text-light-emphasis text-start sortable"
+                  class="text-light-emphasis text-center sortable"
                   role="button"
                 >
                   Account
@@ -93,7 +93,7 @@
                   <i  class="ms-1"></i>
                 </th>
                 <th
-                  class="text-light-emphasis text-start sortable"
+                  class="text-light-emphasis text-center sortable"
                   role="button"
                 >
                   Note
@@ -110,7 +110,7 @@
                 </td>
                 <td class="text-light-emphasis text-start">{{ transaction.description }}</td>
                 <td class="text-end fw-semibold" :class="colorByType(formatTransactionType(transaction), 'text')">{{ formatCurrency(transaction.amount, workspaceCurrencySymbol) }}</td>
-                <td class="text-light-emphasis text-start">{{ formatAccounts(transaction.account_id)}}</td>
+                <td class="text-light-emphasis text-center">{{ formatAccounts(transaction.account_id)}}</td>
                 <td class="text-start">
                   <span class="badge bg-info text-white">{{ transaction.category_name}}</span>
                 </td>
@@ -118,7 +118,7 @@
                   <span class="badge  text-light" :class="colorByType(formatTransactionType(transaction))">{{ formatTransactionType(transaction) }}</span>
                 </td>
                 <td class="text-light-emphasis text-end">{{ transaction.date }}</td>
-                <td class="text-light-emphasis text-start">{{ transaction.note }}</td>
+                <td class="text-light-emphasis text-center">{{ transaction.note }}</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                     <i class="bi bi-pencil"></i>
