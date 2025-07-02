@@ -15,13 +15,13 @@ const {
 
 describe('Health Check API', () => {
   let superadminToken;
-  let testUserToken;
+  let adminToken;
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    testUserToken = tokens.testuser1;
+    adminToken = tokens.admin;
   });
 
   describe('GET /api/health', () => {
@@ -109,11 +109,11 @@ describe('Health Check API', () => {
     it('should deny access for non-superadmin users', async () => {
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${testUserToken}`);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/admin privileges required/i);
+      expect(response.body.error).toMatch(/Admin privileges required/i);
     });
 
     it('should have consistent admin response format across calls', async () => {

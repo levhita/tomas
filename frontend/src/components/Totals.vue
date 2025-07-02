@@ -112,7 +112,7 @@
 import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
-import { useWorkspacesStore } from '../stores/workspaces'
+import { useBooksStore } from '../stores/books'
 import { formatCurrency } from '../utils/utilities'
 import moment from 'moment'
 
@@ -123,7 +123,7 @@ const props = defineProps({
 })
 
 const accountsStore = useAccountsStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 const previousBalance = ref({})
 
 // Add computed for previous month's end date
@@ -204,9 +204,9 @@ function sum(transactions) {
   return transactions.reduce((total, t) => total + t.amount, 0)
 }
 
-// Update formatAmount to handle missing workspace
+// Update formatAmount to handle missing book
 function formatAmount(amount) {
-  const symbol = workspacesStore.currentWorkspace?.currency_symbol || '$';
+  const symbol = booksStore.currentBook?.currency_symbol || '$';
   return formatCurrency(amount, symbol);
 }
 

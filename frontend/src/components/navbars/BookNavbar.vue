@@ -1,15 +1,15 @@
 <template>
-  <!-- Workspace-specific navbar -->
+  <!-- Book-specific navbar -->
   <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
-      <!-- Brand logo with link to workspaces -->
+      <!-- Brand logo with link to books -->
        <div class="d-flex justify-content-center align-items-center">
-         <RouterLink class="me-2" to="/workspaces">
+         <RouterLink class="me-2" to="/books">
            <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
          </RouterLink>
    
-         <span v-if="workspace" class="fw-bold fs-4">
-           {{ workspace.name }}
+         <span v-if="book" class="fw-bold fs-4">
+           {{ book.name }}
          </span>
        </div>
 
@@ -25,8 +25,8 @@
         <ul class="navbar-nav me-auto d-flex justify-content-end ">
           <li class="nav-item  mr-2">
             <!-- Calendar link -->
-            <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
-              :to="{ path: '/calendar', query: { workspaceId: workspace.id } }">
+            <RouterLink v-if="book" class="nav-link link-body-emphasis" active-class="active"
+              :to="{ path: '/calendar', query: { bookId: book.id } }">
               <i class="bi bi-calendar-week me-1"></i>
               Calendar
             </RouterLink>
@@ -34,14 +34,14 @@
 
           <li class="nav-item ">
             <!-- Categories button -->
-            <button v-if="workspace" class="btn btn-link nav-link link-body-emphasis" @click="openCategoriesModal">
+            <button v-if="book" class="btn btn-link nav-link link-body-emphasis" @click="openCategoriesModal">
               <i class="bi bi-tags me-1"></i>
               Categories
             </button>
           </li>
           <li class="nav-item ">
-           <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
-              :to="{ path: '/transactions', query: { workspaceId: workspace.id } }">
+           <RouterLink v-if="book" class="nav-link link-body-emphasis" active-class="active"
+              :to="{ path: '/transactions', query: { bookId: book.id } }">
               <i class="bi bi-list-columns-reverse"></i>
               Transactions
             </RouterLink>
@@ -50,9 +50,9 @@
 
         <!-- Right-aligned nav items -->
         <ul class="navbar-nav">
-          <!-- Workspace settings button -->
-          <li v-if="workspace" class="nav-item me-2">
-            <button class="btn btn-link nav-link" title="Workspace settings" @click="openWorkspaceSettings">
+          <!-- Book settings button -->
+          <li v-if="book" class="nav-item me-2">
+            <button class="btn btn-link nav-link" title="Book settings" @click="openBookSettings">
               <i class="bi bi-gear"></i>
             </button>
           </li>
@@ -60,62 +60,62 @@
           <!-- Dark mode toggle -->
           <DarkModeToggle />
 
-          <!-- Back to workspaces link -->
-          <li v-if="workspace" class="nav-item me-2">
-            <RouterLink class="nav-link" to="/workspaces" title="Back to workspaces">
+          <!-- Back to books link -->
+          <li v-if="book" class="nav-item me-2">
+            <RouterLink class="nav-link" to="/books" title="Back to books">
               <i class="bi bi-grid-3x3-gap me-1"></i>
-              Workspaces
+              Books
             </RouterLink>
           </li>
 
-          <!-- User menu with workspace role -->
-          <UserMenu :workspaceRole="userRole" />
+          <!-- User menu with book role -->
+          <UserMenu :bookRole="userRole" />
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Workspace settings modal -->
-  <WorkspaceModal v-model="showWorkspaceModal" :workspace="workspaceToEdit" :isLoading="workspacesStore.isLoading"
-    @save="handleSaveWorkspace" />
+  <!-- Book settings modal -->
+  <BookModal v-model="showBookModal" :book="bookToEdit" :isLoading="booksStore.isLoading"
+    @save="handleSaveBook" />
 
   <!-- Categories management modal -->
-  <CategoriesModal v-model="showCategoriesModal" :workspace="workspace" />
+  <CategoriesModal v-model="showCategoriesModal" :book="book" />
 </template>
 
 <script setup>
 /**
- * WorkspaceNavbar Component
+ * BookNavbar Component
  * 
- * Navigation bar for workspace-scoped pages that provides workspace context,
+ * Navigation bar for book-scoped pages that provides book context,
  * navigation, and user controls with responsive design.
  * 
  * Props:
- * @prop {Object} workspace - Current workspace object with id, name, etc.
+ * @prop {Object} book - Current book object with id, name, etc.
  */
 
 import { ref, computed, watch, onMounted } from 'vue'
 import UserMenu from '../UserMenu.vue'
 import DarkModeToggle from '../DarkModeToggle.vue'
-import WorkspaceModal from '../modals/WorkspaceModal.vue'
+import BookModal from '../modals/BookModal.vue'
 import CategoriesModal from '../modals/CategoriesModal.vue'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 import { useUsersStore } from '../../stores/users'
 import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
-  workspace: Object
+  book: Object
 })
 
-// Store reference for workspace operations
-const workspacesStore = useWorkspacesStore()
+// Store reference for book operations
+const booksStore = useBooksStore()
 const usersStore = useUsersStore()
 const { showToast } = useToast()
 
-// Computed property to get the user's role in the current workspace
+// Computed property to get the user's role in the current book
 const userRole = computed(() => {
-  if (!props.workspace) {
-    console.log('No workspace available');
+  if (!props.book) {
+    console.log('No book available');
     return null;
   }
 
@@ -125,17 +125,17 @@ const userRole = computed(() => {
     return null;
   }
 
-  // Check if currentWorkspaceUsers is available
-  const users = workspacesStore.currentWorkspaceUsers;
+  // Check if currentBookUsers is available
+  const users = booksStore.currentBookUsers;
   if (!users || !Array.isArray(users) || users.length === 0) {
-    console.log('currentWorkspaceUsers not available or empty:', users);
+    console.log('currentBookUsers not available or empty:', users);
     return null;
   }
 
-  console.log('Current workspace users:', users);
+  console.log('Current book users:', users);
   console.log('Current user ID:', currentUser.id);
 
-  // Find the user's role in the current workspace
+  // Find the user's role in the current book
   const userEntry = users.find(
     entry => entry.id === currentUser.id
   );
@@ -160,83 +160,83 @@ const roleDisplay = computed(() => {
 })
 
 // Component state
-const showWorkspaceModal = ref(false)
-const workspaceToEdit = ref(null)
+const showBookModal = ref(false)
+const bookToEdit = ref(null)
 const showCategoriesModal = ref(false)
 
-// Method to ensure workspace users are loaded
-async function ensureWorkspaceUsersLoaded() {
-  console.log('Ensuring workspace users are loaded');
+// Method to ensure book users are loaded
+async function ensureBookUsersLoaded() {
+  console.log('Ensuring book users are loaded');
 
-  if (!props.workspace) {
-    console.log('No workspace to load users for');
+  if (!props.book) {
+    console.log('No book to load users for');
     return;
   }
 
   try {
-    // Always load workspace users to ensure we have the latest data
-    console.log('Loading workspace users for workspace ID:', props.workspace.id);
-    const users = await workspacesStore.getWorkspaceUsers(props.workspace.id);
+    // Always load book users to ensure we have the latest data
+    console.log('Loading book users for book ID:', props.book.id);
+    const users = await booksStore.getBookUsers(props.book.id);
     console.log('Loaded users:', users);
 
     // Directly set the ref value for proper reactivity
-    workspacesStore.currentWorkspaceUsers = users;
+    booksStore.currentBookUsers = users;
 
     // Force a component update by triggering a no-op state change
     const dummy = ref(0);
     dummy.value++;
   } catch (error) {
-    console.error('Error loading workspace users:', error);
+    console.error('Error loading book users:', error);
   }
 }
 
-function openWorkspaceSettings() {
-  if (props.workspace) {
-    workspaceToEdit.value = props.workspace
-    showWorkspaceModal.value = true
+function openBookSettings() {
+  if (props.book) {
+    bookToEdit.value = props.book
+    showBookModal.value = true
   }
 }
 
 function openCategoriesModal() {
-  if (props.workspace) {
+  if (props.book) {
     showCategoriesModal.value = true
   }
 }
 
-async function handleSaveWorkspace(workspaceData) {
+async function handleSaveBook(bookData) {
   try {
-    await workspacesStore.saveWorkspace(workspaceData)
-    showWorkspaceModal.value = false
+    await booksStore.saveBook(bookData)
+    showBookModal.value = false
 
     showToast({
       title: 'Success',
-      message: 'Workspace updated successfully!',
+      message: 'Book updated successfully!',
       variant: 'success'
     })
   } catch (error) {
-    console.error('Error updating workspace:', error)
+    console.error('Error updating book:', error)
 
     showToast({
       title: 'Error',
-      message: `Error updating workspace: ${error.message}`,
+      message: `Error updating book: ${error.message}`,
       variant: 'danger'
     })
   }
 }
 
-// Load workspace users when component is mounted
+// Load book users when component is mounted
 onMounted(() => {
-  console.log('Component mounted, ensuring workspace users are loaded');
-  if (props.workspace) {
-    ensureWorkspaceUsersLoaded();
+  console.log('Component mounted, ensuring book users are loaded');
+  if (props.book) {
+    ensureBookUsersLoaded();
   }
 })
 
-// Watch for changes in the workspace prop
-watch(() => props.workspace, async (newWorkspace) => {
-  console.log('Workspace changed:', newWorkspace);
-  if (newWorkspace) {
-    await ensureWorkspaceUsersLoaded();
+// Watch for changes in the book prop
+watch(() => props.book, async (newBook) => {
+  console.log('Book changed:', newBook);
+  if (newBook) {
+    await ensureBookUsersLoaded();
   }
 }, { immediate: true })
 </script>

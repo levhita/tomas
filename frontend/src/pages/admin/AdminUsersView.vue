@@ -5,10 +5,21 @@
         <div class="col-12">
           <!-- Page Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <button class="btn btn-primary" @click="showCreateUserModal">
+            <div>
+              <h1 class="mb-0">User Management</h1>
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item">
+                    <RouterLink to="/admin">Admin</RouterLink>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Users</li>
+                </ol>
+              </nav>
+            </div>
+            <RouterLink to="/admin/users/create" class="btn btn-primary">
               <i class="bi bi-person-plus me-1"></i>
               Add User
-            </button>
+            </RouterLink>
           </div>
 
           <!-- Search and Filters -->
@@ -74,7 +85,7 @@
                     <tr>
                       <th>User</th>
                       <th>Role</th>
-                      <th>Workspaces</th>
+                      <th>Books</th>
                       <th>Status</th>
                       <th>Created</th>
                       <th>Actions</th>
@@ -102,21 +113,21 @@
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ user.workspace_count || 0 }}
-                            workspace{{ (user.workspace_count || 0) !== 1 ? 's' : '' }}</span>
-                          <small class="text-muted" v-if="user.workspace_count > 0">
-                            <span v-if="user.admin_workspaces > 0" class="me-2">
-                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_workspaces }} admin
+                          <span class="fw-semibold">{{ user.book_count || 0 }}
+                            book{{ (user.book_count || 0) !== 1 ? 's' : '' }}</span>
+                          <small class="text-muted" v-if="user.book_count > 0">
+                            <span v-if="user.admin_books > 0" class="me-2">
+                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_books }} admin
                             </span>
-                            <span v-if="user.collaborator_workspaces > 0" class="me-2">
-                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_workspaces }} edit
+                            <span v-if="user.collaborator_books > 0" class="me-2">
+                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_books }} edit
                             </span>
-                            <span v-if="user.viewer_workspaces > 0">
-                              <i class="bi bi-eye text-info"></i> {{ user.viewer_workspaces }} view
+                            <span v-if="user.viewer_books > 0">
+                              <i class="bi bi-eye text-info"></i> {{ user.viewer_books }} view
                             </span>
                           </small>
                           <small class="text-muted" v-else>
-                            No workspace access
+                            No book access
                           </small>
                         </div>
                       </td>
@@ -155,9 +166,6 @@
         </div>
       </div>
     </div>
-
-    <!-- User Modal -->
-    <UserModal v-model="showUserModal" :user="selectedUser" @save="handleUserSaved" />
   </AdminLayout>
 </template>
 
@@ -184,13 +192,14 @@
  */
 
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
-import UserModal from '../../components/modals/UserModal.vue'
 import { useUsersStore } from '../../stores/users'
 import { useConfirm } from '../../composables/useConfirm'
 import { useToast } from '../../composables/useToast'
 
 const usersStore = useUsersStore()
+const router = useRouter()
 const { confirm } = useConfirm()
 const { showToast } = useToast()
 
@@ -198,8 +207,6 @@ const { showToast } = useToast()
 const searchQuery = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
-const showUserModal = ref(false)
-const selectedUser = ref(null)
 
 // Computed properties
 const filteredUsers = computed(() => {
@@ -255,20 +262,8 @@ function formatDate(dateString) {
 }
 
 // User management functions
-function showCreateUserModal() {
-  selectedUser.value = null
-  showUserModal.value = true
-}
-
 function editUser(user) {
-  selectedUser.value = user
-  showUserModal.value = true
-}
-
-function handleUserSaved() {
-  // Refresh the users list to show updated data
-  // The store will already be updated, but this ensures we have the latest data
-  loadUsers()
+  router.push(`/admin/users/${user.id}/edit`)
 }
 
 async function toggleUserStatus(user) {
@@ -332,7 +327,7 @@ async function deleteUser(user) {
         `This action cannot be undone and will permanently remove:<br>` +
         `• The user account<br>` +
         `• All associated data<br>` +
-        `• Access to all workspaces`,
+        `• Access to all books`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       confirmButtonVariant: 'danger'

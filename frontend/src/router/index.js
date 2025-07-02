@@ -1,10 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import WorkspacesView from '../pages/WorkspacesView.vue'
+import BooksView from '../pages/BooksView.vue'
 import CalendarView from '../pages/CalendarView.vue'
 import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
 import AdminUsersView from '../pages/admin/AdminUsersView.vue'
+import AdminUserEditView from '../pages/admin/AdminUserEditView.vue'
+import AdminTeamsView from '../pages/admin/AdminTeamsView.vue'
+import AdminTeamEditView from '../pages/admin/AdminTeamEditView.vue'
 import TransactionsView from '../pages/transactions/TransactionsView.vue'
 
 
@@ -16,12 +19,12 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/workspaces'
+    redirect: '/books'
   },
   {
-    path: '/workspaces',
-    component: WorkspacesView,
-    name: 'workspaces'
+    path: '/books',
+    component: BooksView,
+    name: 'books'
   },
   {
     path: '/calendar',
@@ -52,6 +55,51 @@ const routes = [
     }
   },
   {
+    path: '/admin/users/create',
+    component: AdminUserEditView,
+    name: 'admin-users-create',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/users/:id/edit',
+    component: AdminUserEditView,
+    name: 'admin-users-edit',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams',
+    component: AdminTeamsView,
+    name: 'admin-teams',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams/create',
+    component: AdminTeamEditView,
+    name: 'admin-teams-create',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams/:id/edit',
+    component: AdminTeamEditView,
+    name: 'admin-teams-edit',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
     path: '/transactions',
     component: TransactionsView,
     name: 'transactions',
@@ -76,6 +124,15 @@ router.beforeEach(async (to, from, next) => {
 
   const isPublicRoute = to.meta.public
   const requiresSuperAdmin = to.meta.requiresSuperAdmin
+  const isSuperadminRoute = to.meta.requiresSuperAdmin
+
+  if (isSuperadminRoute) {
+    console.log('Navigating to superadmin route:', to.path)
+    console.log('User authenticated:', usersStore.isAuthenticated)
+    console.log('User is superadmin:', usersStore.isSuperAdmin)
+    console.log('User has selected team:', usersStore.hasSelectedTeam)
+    console.log('Current user:', usersStore.currentUser)
+  }
 
   // If not authenticated and there's a token in localStorage, try to initialize
   if (!usersStore.isAuthenticated && !isPublicRoute && localStorage.getItem('token')) {
@@ -99,7 +156,13 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
   } else if (requiresSuperAdmin && !usersStore.isSuperAdmin) {
     // Redirect non-superadmins away from admin routes
-    next('/workspaces')
+    console.log('Redirecting non-superadmin away from admin route')
+    next('/books')
+  } else if (!isPublicRoute && usersStore.isAuthenticated && !usersStore.hasSelectedTeam && !requiresSuperAdmin) {
+    // If authenticated but no team selected, redirect to login to show team selection
+    // ONLY for non-admin routes (admin routes don't require team selection)
+    console.log('Redirecting to login for team selection (non-admin route)')
+    next('/login')
   } else {
     next()
   }

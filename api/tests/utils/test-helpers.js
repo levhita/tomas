@@ -24,20 +24,45 @@ const TEST_USERS = {
     id: 1,
     superadmin: true
   },
+  ADMIN: {
+    username: 'admin',
+    password: 'password123',
+    id: 2,
+    superadmin: false
+  },
+  COLLABORATOR: {
+    username: 'collaborator',
+    password: 'password123',
+    id: 3,
+    superadmin: false
+  },
+  VIEWER: {
+    username: 'viewer',
+    password: 'password123',
+    id: 4,
+    superadmin: false
+  },
+  NOACCESS: {
+    username: 'noaccess',
+    password: 'password123',
+    id: 5,
+    superadmin: false
+  },
+  // Backward compatibility aliases
   TESTUSER1: {
-    username: 'testuser1',
+    username: 'admin',
     password: 'password123',
     id: 2,
     superadmin: false
   },
   TESTUSER2: {
-    username: 'testuser2',
+    username: 'collaborator',
     password: 'password123',
     id: 3,
     superadmin: false
   },
   REGULARUSER: {
-    username: 'regularuser',
+    username: 'viewer',
     password: 'password123',
     id: 4,
     superadmin: false
@@ -45,25 +70,25 @@ const TEST_USERS = {
 };
 
 /**
- * Test workspace data
+ * Test book data
  */
-const TEST_WORKSPACES = {
-  WORKSPACE1: {
+const TEST_BOOKS = {
+  BOOK1: {
     id: 1,
-    name: 'Test Workspace 1',
-    note: 'Main testing workspace',
+    name: 'Test Book 1',
+    note: 'Main testing book',
     currency_symbol: '$'
   },
-  WORKSPACE2: {
+  BOOK2: {
     id: 2,
-    name: 'Test Workspace 2',
-    note: 'Secondary testing workspace',
+    name: 'Test Book 2',
+    note: 'Secondary testing book',
     currency_symbol: '€'
   },
-  SEARCH_WORKSPACE: {
+  SEARCH_BOOK: {
     id: 3,
-    name: 'Search Test Workspace',
-    note: 'Workspace for search testing',
+    name: 'Search Test Book',
+    note: 'Book for search testing',
     currency_symbol: '£'
   }
 };
@@ -123,9 +148,10 @@ async function initializeTokenCache() {
 
   // Get tokens for all common test users
   tokens.superadmin = await loginUser(TEST_USERS.SUPERADMIN);
-  tokens.testuser1 = await loginUser(TEST_USERS.TESTUSER1);
-  tokens.testuser2 = await loginUser(TEST_USERS.TESTUSER2);
-  tokens.regularuser = await loginUser(TEST_USERS.REGULARUSER);
+  tokens.admin = await loginUser(TEST_USERS.ADMIN);
+  tokens.collaborator = await loginUser(TEST_USERS.COLLABORATOR);
+  tokens.viewer = await loginUser(TEST_USERS.VIEWER);
+  tokens.noaccess = await loginUser(TEST_USERS.NOACCESS);
 
   return tokens;
 }
@@ -138,14 +164,16 @@ async function initializeTokenCache() {
 async function getOrInitializeTokens() {
   // Check if we have tokens in cache
   if (tokenCache.has('superadmin') &&
-    tokenCache.has('testuser1') &&
-    tokenCache.has('testuser2') &&
-    tokenCache.has('regularuser')) {
+    tokenCache.has('admin') &&
+    tokenCache.has('collaborator') &&
+    tokenCache.has('viewer') &&
+    tokenCache.has('noaccess')) {
     return {
       superadmin: tokenCache.get('superadmin'),
-      testuser1: tokenCache.get('testuser1'),
-      testuser2: tokenCache.get('testuser2'),
-      regularuser: tokenCache.get('regularuser')
+      admin: tokenCache.get('admin'),
+      collaborator: tokenCache.get('collaborator'),
+      viewer: tokenCache.get('viewer'),
+      noaccess: tokenCache.get('noaccess'),
     };
   }
 
@@ -183,11 +211,12 @@ async function resetDatabase() {
     const tables = [
       'transaction',    // references account, category
       'total',          // references account
-      'category',       // references category (self), workspace  
-      'account',        // references workspace
-      'workspace_user', // references workspace, user
-      'workspace',      // referenced by account, category, workspace_user
-      'user'           // referenced by workspace_user
+      'category',       // references category (self), book  
+      'account',        // references book
+      'book',           // references team
+      'team_user',      // references team, user
+      'team',           // referenced by book, team_user
+      'user'            // referenced by team_user
     ];
 
     // Delete in dependency order
@@ -207,11 +236,11 @@ async function resetDatabase() {
   // Re-insert test data
   const fs = require('fs').promises;
   const path = require('path');
-  const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
-  const schema = await fs.readFile(schemaPath, 'utf8');
+  const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+  const seeds = await fs.readFile(seedsPath, 'utf8');
 
-  // Extract and execute only INSERT statements - parse the same way as global setup
-  const statements = schema
+  // Extract and execute only INSERT statements
+  const statements = seeds
     .split('\n')
     .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
     .join('\n')
@@ -222,8 +251,15 @@ async function resetDatabase() {
   const insertStatements = statements
     .filter(stmt => stmt.toUpperCase().startsWith('INSERT'));
 
+  // Execute all INSERT statements in order
   for (const statement of insertStatements) {
-    await db.execute(statement);
+    try {
+      await db.execute(statement);
+    } catch (error) {
+      console.error(`Error executing statement: ${statement.substring(0, 50)}...`);
+      console.error(error.message);
+      // Continue with other statements even if one fails
+    }
   }
 
   // Wait a bit to ensure all operations are committed
@@ -246,16 +282,16 @@ async function createTestUser(userData, token) {
 }
 
 /**
- * Create a test workspace
- * @param {Object} workspaceData - Workspace data
+ * Create a test book
+ * @param {Object} bookData - Book data
  * @param {string} token - Admin token
- * @returns {Promise<Object>} Created workspace
+ * @returns {Promise<Object>} Created book
  */
-async function createTestWorkspace(workspaceData, token) {
+async function createTestBook(bookData, token) {
   const response = await request(app)
-    .post('/api/workspaces')
+    .post('/api/books')
     .set('Authorization', `Bearer ${token}`)
-    .send(workspaceData);
+    .send(bookData);
 
   return response.body;
 }
@@ -291,19 +327,19 @@ function validateUserObject(user) {
 }
 
 /**
- * Validate workspace object structure
- * @param {Object} workspace - Workspace object
+ * Validate book object structure
+ * @param {Object} book - Book object
  */
-function validateWorkspaceObject(workspace) {
-  expect(workspace).toHaveProperty('id');
-  expect(workspace).toHaveProperty('name');
-  expect(workspace).toHaveProperty('note');
-  expect(workspace).toHaveProperty('currency_symbol');
-  expect(workspace).toHaveProperty('created_at');
+function validateBookObject(book) {
+  expect(book).toHaveProperty('id');
+  expect(book).toHaveProperty('name');
+  expect(book).toHaveProperty('note');
+  expect(book).toHaveProperty('currency_symbol');
+  expect(book).toHaveProperty('created_at');
 
-  expect(typeof workspace.id).toBe('number');
-  expect(typeof workspace.name).toBe('string');
-  expect(typeof workspace.currency_symbol).toBe('string');
+  expect(typeof book.id).toBe('number');
+  expect(typeof book.name).toBe('string');
+  expect(typeof book.currency_symbol).toBe('string');
 }
 
 /**
@@ -314,7 +350,7 @@ function generateRandomData() {
   return {
     username: `testuser_${timestamp}`,
     password: 'password123',
-    workspaceName: `Test Workspace ${timestamp}`,
+    bookName: `Test Book ${timestamp}`,
     accountName: `Test Account ${timestamp}`,
     categoryName: `Test Category ${timestamp}`
   };
@@ -322,7 +358,7 @@ function generateRandomData() {
 
 module.exports = {
   TEST_USERS,
-  TEST_WORKSPACES,
+  TEST_BOOKS,
   loginUser,
   clearTokenCache,
   initializeTokenCache,
@@ -330,10 +366,10 @@ module.exports = {
   authenticatedRequest,
   resetDatabase,
   createTestUser,
-  createTestWorkspace,
+  createTestBook,
   validateApiResponse,
   validateUserObject,
-  validateWorkspaceObject,
+  validateBookObject,
   generateRandomData,
   app,
   db

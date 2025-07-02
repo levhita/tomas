@@ -81,23 +81,23 @@
  * - name: Required account name (string)
  * - note: Optional account description (string)
  * - type: Account type ('debit' or 'credit')
- * - workspace_id: The ID of the workspace this account belongs to
+ * - book_id: The ID of the book this account belongs to
  * 
  * Events:
  * @event save - Emitted when form is submitted with valid data
- *   Payload: { name: string, note: string, type: string, id?: number, workspace_id: number }
+ *   Payload: { name: string, note: string, type: string, id?: number, book_id: number }
  * 
  * Props:
  * @prop {boolean} modelValue - v-model value for showing/hiding the modal
  * @prop {Object} account - Account object for editing (optional)
- * @prop {number} workspaceId - ID of the workspace where account will be created
+ * @prop {number} bookId - ID of the book where account will be created
  * @prop {boolean} isLoading - Whether save operation is in progress
  * 
  * Usage:
  * <AccountModal 
  *   v-model="showAccountModal"
  *   :account="accountToEdit"
- *   :workspaceId="currentWorkspace.id"
+ *   :bookId="currentBook.id"
  *   :isLoading="accountsStore.isLoading"
  *   @save="handleSaveAccount"
  * />
@@ -128,10 +128,10 @@ const props = defineProps({
   account: Object,
 
   /**
-   * ID of the workspace where the account will be created or exists.
+   * ID of the book where the account will be created or exists.
    * Required for both new and existing accounts.
    */
-  workspaceId: Number,
+  bookId: Number,
 
   /**
    * Indicates whether a save operation is in progress.
@@ -158,7 +158,7 @@ const emit = defineEmits([
    * @param {string} accountData.name - The account name
    * @param {string} accountData.note - The account description/note
    * @param {string} accountData.type - The account type ('debit' or 'credit')
-   * @param {number} accountData.workspace_id - The ID of the workspace
+   * @param {number} accountData.book_id - The ID of the book
    * @param {number} [accountData.id] - The account ID (only for existing accounts)
    */
   'save'
@@ -179,7 +179,7 @@ const form = ref({
   note: '',
   type: 'debit', // Default to debit for new accounts
   id: null,
-  workspace_id: props.workspaceId || null
+  book_id: props.bookId || null
 })
 
 const isEditing = computed(() => {
@@ -201,7 +201,7 @@ function handleSubmit() {
     name: form.value.name.trim(),
     note: form.value.note?.trim() || '',
     type: form.value.type || 'debit',
-    workspace_id: form.value.workspace_id
+    book_id: form.value.book_id
   }
 
   // Include ID for edit operations
@@ -209,9 +209,9 @@ function handleSubmit() {
     accountData.id = form.value.id
   }
 
-  // Make sure we have a workspace_id (should never happen with the other checks in place)
-  if (accountData.workspace_id === undefined || accountData.workspace_id === null) {
-    accountData.workspace_id = props.workspaceId;
+  // Make sure we have a book_id (should never happen with the other checks in place)
+  if (accountData.book_id === undefined || accountData.book_id === null) {
+    accountData.book_id = props.bookId;
   }
 
   emit('save', accountData)
@@ -229,10 +229,10 @@ watch(() => props.account, (newAccount) => {
   if (newAccount) {
     const accountType = newAccount.type === 'credit' ? 'credit' : 'debit';
 
-    // Preserve the account's original workspace_id if it exists
-    const workspace_id = newAccount.workspace_id !== undefined && newAccount.workspace_id !== null
-      ? newAccount.workspace_id  // Use the account's workspace_id
-      : props.workspaceId;      // Fall back to prop only if account doesn't have one
+    // Preserve the account's original book_id if it exists
+    const book_id = newAccount.book_id !== undefined && newAccount.book_id !== null
+      ? newAccount.book_id  // Use the account's book_id
+      : props.bookId;      // Fall back to prop only if account doesn't have one
 
     // Update form when account changes
     form.value = {
@@ -240,7 +240,7 @@ watch(() => props.account, (newAccount) => {
       note: newAccount.note || '',
       type: accountType,
       id: newAccount.id,
-      workspace_id: workspace_id
+      book_id: book_id
     }
   } else {
     // Reset form for new account
@@ -249,7 +249,7 @@ watch(() => props.account, (newAccount) => {
       note: '',
       type: 'debit', // Default type for new accounts
       id: null,
-      workspace_id: props.workspaceId
+      book_id: props.bookId
     }
   }
 }, { immediate: true })
@@ -260,9 +260,9 @@ watch(() => props.modelValue, (newVal) => {
     // Show modal - add modal-open class to body 
     document.body.classList.add('modal-open')
 
-    // Only set workspace_id if it's missing entirely
-    if (form.value.workspace_id === undefined || form.value.workspace_id === null) {
-      form.value.workspace_id = props.workspaceId;
+    // Only set book_id if it's missing entirely
+    if (form.value.book_id === undefined || form.value.book_id === null) {
+      form.value.book_id = props.bookId;
     }
   } else {
     // Remove modal-open class from body when modal hides
@@ -274,26 +274,26 @@ watch(() => props.modelValue, (newVal) => {
 onMounted(() => {
   // Check if we have an account to edit
   if (props.account) {
-    // Preserve the account's original workspace_id if it exists
-    const workspace_id = props.account.workspace_id !== undefined && props.account.workspace_id !== null
-      ? props.account.workspace_id  // Use the account's workspace_id
-      : props.workspaceId;         // Fall back to prop only if account doesn't have one
+    // Preserve the account's original book_id if it exists
+    const book_id = props.account.book_id !== undefined && props.account.book_id !== null
+      ? props.account.book_id  // Use the account's book_id
+      : props.bookId;         // Fall back to prop only if account doesn't have one
 
     form.value = {
       name: props.account.name || '',
       note: props.account.note || '',
       type: normalizedAccountType.value,
       id: props.account.id,
-      workspace_id: workspace_id
+      book_id: book_id
     }
   } else {
-    // Creating new account, ensure workspace_id is set
+    // Creating new account, ensure book_id is set
     form.value = {
       name: '',
       note: '',
       type: 'debit', // Default type for new accounts
       id: null,
-      workspace_id: props.workspaceId
+      book_id: props.bookId
     }
   }
 })

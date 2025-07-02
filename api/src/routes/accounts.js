@@ -1,48 +1,53 @@
 /**
  * Accounts API Router
  * Handles all account-related operations including:
- * - Listing accounts for a workspace
+ * - Listing accounts for a book
  * - Retrieving single account details
  * - Getting account balances
  * - Creating, updating and deleting accounts
  * 
  * Permission model:
- * - READ operations: Any workspace member (admin, collaborator, viewer)
- * - WRITE operations: Admins only (accounts require highest permission)
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Admins and collaborators (accounts can be managed by write access)
  */
 
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite, canAdmin } = require('../utils/workspace');
+const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team');
 
 /**
  * GET /accounts
- * List all accounts for a workspace
+ * List all accounts for a book
  * 
- * @query {number} workspace_id - Required workspace ID
- * @permission Read access to workspace (admin, collaborator, viewer)
+ * @query {number} book_id - Required book ID
+ * @permission Read access to book (via team membership)
  * @returns {Array} List of accounts
  */
 router.get('/', async (req, res) => {
-  const workspaceId = req.query.workspace_id;
+  const bookId = req.query.book_id;
 
-  if (!workspaceId) {
-    return res.status(400).json({ error: 'workspace_id is required' });
+  if (!bookId) {
+    return res.status(400).json({ error: 'book_id is required' });
   }
 
   try {
-    // Verify user has read access to the workspace
-    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    // Verify user has access to the book via team membership
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
 
     const [accounts] = await db.query(`
       SELECT * FROM account 
-      WHERE workspace_id = ?
+      WHERE book_id = ?
       ORDER BY name ASC
-    `, [workspaceId]);
+    `, [bookId]);
 
     res.status(200).json(accounts);
   } catch (err) {
@@ -56,12 +61,12 @@ router.get('/', async (req, res) => {
  * Get details for a single account
  * 
  * @param {number} id - Account ID
- * @permission Read access to the account's workspace
+ * @permission Read access to the account's book (via team membership)
  * @returns {Object} Account details
  */
 router.get('/:id', async (req, res) => {
   try {
-    // First get the account to determine its workspace
+    // First get the account to determine its book
     const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
@@ -71,10 +76,14 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has read access to this account's workspace
-    const workspaceId = accounts[0].workspace_id;
-    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    // Check if user has access to this account's book via team membership
+    const bookId = accounts[0].book_id;
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -92,7 +101,7 @@ router.get('/:id', async (req, res) => {
  * 
  * @param {number} id - Account ID
  * @query {string} upToDate - Optional date string in ISO format (e.g. 2023-04-30)
- * @permission Read access to the account's workspace
+ * @permission Read access to the account's book (via team membership)
  * @returns {Object} Account balance information with exercised and projected totals
  */
 router.get('/:id/balance', async (req, res) => {
@@ -100,7 +109,7 @@ router.get('/:id/balance', async (req, res) => {
   const { upToDate } = req.query;
 
   try {
-    // First get the account to determine its workspace
+    // First get the account to determine its book
     const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
@@ -110,10 +119,14 @@ router.get('/:id/balance', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has read access to this account's workspace
-    const workspaceId = accounts[0].workspace_id;
-    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    // Check if user has access to this account's book via team membership
+    const bookId = accounts[0].book_id;
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -153,34 +166,38 @@ router.get('/:id/balance', async (req, res) => {
  * @body {string} name - Required account name
  * @body {string} note - Optional account description
  * @body {string} type - Account type (debit or credit), defaults to debit
- * @body {number} workspace_id - Required workspace ID
- * @permission Admin access to the workspace
+ * @body {number} book_id - Required book ID
+ * @permission Write access to the book (via team membership: admin, collaborator)
  * @returns {Object} Newly created account
  */
 router.post('/', async (req, res) => {
-  const { name, note = null, type = "debit", workspace_id } = req.body;
+  const { name, note = null, type = "debit", book_id } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  if (!workspace_id) {
-    return res.status(400).json({ error: 'workspace_id is required' });
+  if (!book_id) {
+    return res.status(400).json({ error: 'book_id is required' });
   }
 
   try {
-    // Verify user has admin access to the workspace
-    // (accounts are financial data so we require admin level)
-    const { allowed, message } = await canAdmin(workspace_id, req.user.id);
+    // Verify user has write access to the book via team membership
+    const team = await getTeamByBookId(book_id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
 
     // Insert the new account
     const [result] = await db.query(`
-      INSERT INTO account (name, note, type, workspace_id)
+      INSERT INTO account (name, note, type, book_id)
       VALUES (?, ?, ?, ?)
-    `, [name, note, type, workspace_id]);
+    `, [name, note, type, book_id]);
 
     // Fetch the created account with all fields
     const [accounts] = await db.query(`
@@ -203,14 +220,14 @@ router.post('/', async (req, res) => {
  * @body {string} name - Account name
  * @body {string} note - Account description
  * @body {string} type - Account type (debit or credit)
- * @permission Admin access to the account's workspace
+ * @permission Write access to the account's book (via team membership: admin, collaborator)
  * @returns {Object} Updated account
  */
 router.put('/:id', async (req, res) => {
   const { name, note, type } = req.body;
 
   try {
-    // First get the account to determine its workspace
+    // First get the account to determine its book
     const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
@@ -220,10 +237,14 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has admin access to this account's workspace
-    const workspaceId = accounts[0].workspace_id;
-    const { allowed, message } = await canAdmin(workspaceId, req.user.id);
+    // Check if user has write access to this account's book via team membership
+    const bookId = accounts[0].book_id;
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -259,13 +280,13 @@ router.put('/:id', async (req, res) => {
  * Delete an account
  * 
  * @param {number} id - Account ID to delete
- * @permission Admin access to the account's workspace
+ * @permission Write access to the account's book (via team membership: admin, collaborator)
  * @returns {null} 204 No Content on success
  * @throws {Error} 428 Precondition Required if account has transactions
  */
 router.delete('/:id', async (req, res) => {
   try {
-    // First get the account to determine its workspace
+    // First get the account to determine its book
     const [accounts] = await db.query(`
       SELECT * FROM account 
       WHERE id = ?
@@ -275,12 +296,26 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has admin access to this account's workspace
-    const workspaceId = accounts[0].workspace_id;
-    const { allowed, message } = await canAdmin(workspaceId, req.user.id);
+    // Check if user has write access to this account's book via team membership
+    const bookId = accounts[0].book_id;
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
+    }
+
+    // Check if there are any transactions with this account
+    const [transactions] = await db.query(`
+      SELECT COUNT(*) as count FROM transaction 
+      WHERE account_id = ?
+    `, [req.params.id]);
+
+    if (transactions[0].count > 0) {
+      return res.status(428).json({ error: 'Cannot delete account with transactions' });
     }
 
     // Delete the account

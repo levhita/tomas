@@ -122,11 +122,11 @@ async function validateTestStructure() {
     'tests/setup/test-setup.js',
     'tests/utils/test-helpers.js',
     'tests/integration/users.test.js',
-    'tests/integration/user-workspaces.test.js',
-    'tests/integration/workspaces.test.js',
+    'tests/integration/user-books.test.js',
+    'tests/integration/books.test.js',
     'tests/integration/health.test.js',
     'tests/unit/auth.test.js',
-    'tests/unit/workspace-utils.test.js',
+    'tests/unit/book-utils.test.js',
     'db/test_schema.sql'
   ];
 
@@ -255,8 +255,8 @@ async function validateTestData() {
     // Check test schema file
     const schemaContent = await fs.readFile('db/test_schema.sql', 'utf8');
 
-    const requiredTables = ['user', 'workspace', 'workspace_user', 'account', 'category', 'transaction'];
-    const requiredTestData = ['superadmin', 'testuser1', 'Test Workspace'];
+    const requiredTables = ['user', 'book', 'team_user', 'account', 'category', 'transaction'];
+    const requiredTestData = ['superadmin', 'testuser1', 'Test Book'];
 
     let allTablesPresent = true;
     let allTestDataPresent = true;

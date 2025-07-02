@@ -27,13 +27,14 @@ module.exports = async () => {
 
     // Clean up test data in correct order (children before parents)
     const tables = [
-      'transaction',    // references account, category
-      'total',          // references account
-      'category',       // references category (self), workspace  
-      'account',        // references workspace
-      'workspace_user', // references workspace, user
-      'workspace',      // referenced by account, category, workspace_user
-      'user'           // referenced by workspace_user
+      'transaction',   // references account, category
+      'total',         // references account
+      'category',      // references category (self), book  
+      'account',       // references book
+      'book',          // referenced by account, category
+      'team_user',     // references team, user
+      'user',          // referenced by team_user
+      'team'           // referenced by team_user
     ];
 
     for (const table of tables) {

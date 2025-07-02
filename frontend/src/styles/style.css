@@ -97,8 +97,8 @@ main {
   margin-left: 1rem;
 }
 
-/* Workspace loading state */
-.workspace-loading {
+/* Book loading state */
+.book-loading {
   min-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -112,16 +112,11 @@ main {
 
 /* Login page container */
 .login-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--bs-dark, #212529);
-  z-index: 1000;
 }
 
 /* Login card */
@@ -166,20 +161,20 @@ main {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 2.7 Workspace Cards                                                       */
+/* 2.7 Book Cards                                                       */
 /* -------------------------------------------------------------------------- */
 
-.workspace-card {
+.book-card {
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-.workspace-card:hover {
+.book-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.workspace-card .card-footer {
+.book-card .card-footer {
   border-top: 1px solid rgba(0, 0, 0, 0.125);
   padding: 0.75rem 1rem;
 }

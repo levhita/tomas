@@ -23,6 +23,23 @@
               </RouterLink>
             </div>
             <div class="col-md-4">
+              <RouterLink to="/admin/teams" class="text-decoration-none">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                      <div>
+                        <h6 class="card-title">Total Teams</h6>
+                        <h3 class="mb-0">{{ teamsStore.teamStats.total || 0 }}</h3>
+                      </div>
+                      <div class="align-self-center">
+                        <i class="bi bi-people-fill fs-1 opacity-75"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </RouterLink>
+            </div>
+            <div class="col-md-4">
               <div class="card" :class="healthCardClass">
                 <div class="card-body">
                   <div class="d-flex justify-content-between">
@@ -114,8 +131,8 @@
 
           <!-- Admin Functions Row -->
           <div class="row">
-            <div class="col-md-12">
-              <div class="card">
+            <div class="col-md-6 mb-4">
+              <div class="card h-100">
                 <div class="card-body">
                   <h5 class="card-title">
                     <i class="bi bi-people me-2"></i>
@@ -126,6 +143,23 @@
                   <RouterLink to="/admin/users" class="btn btn-primary">
                     <i class="bi bi-arrow-right me-1"></i>
                     Manage Users
+                  </RouterLink>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Team Management
+                  </h5>
+                  <p class="card-text">Manage teams, team members, and access levels. Create, edit, or delete teams
+                    across the organization.</p>
+                  <RouterLink to="/admin/teams" class="btn btn-success">
+                    <i class="bi bi-arrow-right me-1"></i>
+                    Manage Teams
                   </RouterLink>
                 </div>
               </div>
@@ -145,7 +179,7 @@
  * of system statistics, quick access to admin functions, and status monitoring.
  * 
  * Features:
- * - System statistics dashboard with user and workspace counts
+ * - System statistics dashboard with user and book counts
  * - Quick navigation to admin functions
  * - System health status indicators
  * - Admin role verification and access control
@@ -160,9 +194,11 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '../../layouts/AdminLayout.vue'
 import { useUsersStore } from '../../stores/users'
+import { useTeamsStore } from '../../stores/teams'
 import fetchWithAuth from '../../utils/fetch'
 
 const usersStore = useUsersStore()
+const teamsStore = useTeamsStore()
 
 // Health check state
 const healthStatus = ref('loading')
@@ -201,6 +237,13 @@ async function loadDashboardStats() {
   try {
     // Load user stats from the store
     await usersStore.fetchAllUsers()
+    
+    // Load teams data if needed
+    if (teamsStore.teams.length === 0) {
+      await teamsStore.fetchAllTeams().catch(error => {
+        console.error('Error loading teams:', error)
+      })
+    }
   } catch (error) {
     console.error('Error loading dashboard stats:', error)
   }

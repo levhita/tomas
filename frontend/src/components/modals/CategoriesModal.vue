@@ -176,7 +176,7 @@
 /**
  * CategoriesModal Component
  * 
- * A comprehensive modal component for managing categories within a workspace.
+ * A comprehensive modal component for managing categories within a book.
  * Provides functionality to create, edit, delete, and organize categories
  * in a hierarchical structure with parent-child relationships.
  * 
@@ -194,10 +194,10 @@
  * - name: Required category name (string)
  * - description: Optional category description (string)
  * - parent_category_id: Optional parent category ID for hierarchical organization
- * - workspace_id: Workspace ID (automatically set from current workspace)
+ * - book_id: Book ID (automatically set from current book)
  * 
  * Props:
- * @prop {Object} workspace - Current workspace object containing id
+ * @prop {Object} book - Current book object containing id
  * 
  * Dependencies:
  * - Vue 3 Composition API
@@ -210,14 +210,14 @@
 
 import { ref, computed, watch } from 'vue'
 import { useCategoriesStore } from '../../stores/categories'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 import { useConfirm } from '../../composables/useConfirm'
 import CategoryForm from '../inputs/CategoryForm.vue'
 
 // Props
 const props = defineProps({
   modelValue: Boolean,
-  workspace: Object
+  book: Object
 })
 
 // Events
@@ -225,7 +225,7 @@ const emit = defineEmits(['update:modelValue'])
 
 // Store
 const categoriesStore = useCategoriesStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 const { confirm } = useConfirm()
 
 // Template refs
@@ -254,7 +254,7 @@ const notification = ref({
 })
 
 // Computed properties
-const hasWritePermission = computed(() => workspacesStore.hasWritePermission)
+const hasWritePermission = computed(() => booksStore.hasWritePermission)
 
 const filteredCategories = computed(() => {
   if (categoryFilter.value === 'all') {
@@ -386,7 +386,7 @@ function resetForm() {
  */
 async function handleSubmit() {
   if (!hasWritePermission.value) return;
-  if (!form.value.name.trim() || !props.workspace) return;
+  if (!form.value.name.trim() || !props.book) return;
 
   isLoading.value = true
   try {
@@ -395,7 +395,7 @@ async function handleSubmit() {
       description: form.value.description?.trim() || '',
       parent_category_id: form.value.parent_category_id || null,
       type: form.value.type,
-      workspace_id: props.workspace.id
+      book_id: props.book.id
     }
 
     if (editingCategory.value) {
@@ -509,8 +509,8 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
-// Watch for workspace changes to reset form
-watch(() => props.workspace, () => {
+// Watch for book changes to reset form
+watch(() => props.book, () => {
   resetForm()
 })
 </script>

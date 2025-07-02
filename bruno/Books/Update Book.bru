@@ -1,11 +1,11 @@
 meta {
-  name: Update Workspace
+  name: Update Book
   type: http
   seq: 4
 }
 
 put {
-  url: {{server_url}}/workspaces/:id
+  url: {{server_url}}/books/:id
   body: json
   auth: inherit
 }
@@ -16,7 +16,7 @@ params:path {
 
 body:json {
   {
-    "name": "Updated Workspace",
+    "name": "Updated Book",
     "description": "Some New Description",
     "currency_symbol": "$",
     "week_start": "monday"

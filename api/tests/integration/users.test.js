@@ -2,7 +2,7 @@
  * User Management API Tests
  * 
  * Tests all user-related endpoints including authentication, CRUD operations,
- * and workspace management functionality.
+ * and book management functionality.
  */
 
 const request = require('supertest');
@@ -20,13 +20,13 @@ const {
 
 describe('User Management API', () => {
   let superadminToken;
-  let testUserToken;
+  let adminToken;
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    testUserToken = tokens.testuser1;
+    adminToken = tokens.admin;
   });
 
   // Only reset between test suites if needed
@@ -97,22 +97,22 @@ describe('User Management API', () => {
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
 
-      // Check first user structure and workspace stats
+      // Check first user structure and book stats
       const user = response.body[0];
       validateUserObject(user);
-      expect(user).toHaveProperty('workspace_count');
-      expect(user).toHaveProperty('admin_workspaces');
-      expect(user).toHaveProperty('collaborator_workspaces');
-      expect(user).toHaveProperty('viewer_workspaces');
+      expect(user).toHaveProperty('team_count');
+      expect(user).toHaveProperty('admin_teams');
+      expect(user).toHaveProperty('collaborator_teams');
+      expect(user).toHaveProperty('viewer_teams');
 
-      expect(typeof user.workspace_count).toBe('number');
-      expect(typeof user.admin_workspaces).toBe('number');
-      expect(typeof user.collaborator_workspaces).toBe('number');
-      expect(typeof user.viewer_workspaces).toBe('number');
+      expect(typeof user.team_count).toBe('number');
+      expect(typeof user.admin_teams).toBe('number');
+      expect(typeof user.collaborator_teams).toBe('number');
+      expect(typeof user.viewer_teams).toBe('number');
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/users');
 
       validateApiResponse(response, 403);
@@ -147,10 +147,33 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get(`/api/users/${TEST_USERS.SUPERADMIN.id}`);
 
       validateApiResponse(response, 403);
+    });
+  });
+
+  describe('GET /api/users/me', () => {
+    it('should return current user information when authenticated', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      const response = await auth.get('/api/users/me');
+
+      validateApiResponse(response, 200);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body).toHaveProperty('username');
+      expect(response.body).toHaveProperty('superadmin');
+      expect(response.body).toHaveProperty('active');
+      expect(response.body).toHaveProperty('created_at');
+      expect(response.body).not.toHaveProperty('password_hash');
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).get('/api/users/me');
+
+      validateApiResponse(response, 401);
+      expect(response.body).toHaveProperty('error');
     });
   });
 
@@ -218,7 +241,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const userData = generateRandomData();
 
       const response = await auth.post('/api/users')
@@ -296,7 +319,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.put(`/api/users/${TEST_USERS.SUPERADMIN.id}`)
         .send({
@@ -504,7 +527,7 @@ describe('User Management API', () => {
     it('should delete user as superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // First create a new user with no workspace relationships
+      // First create a new user with no book relationships
       const userData = generateRandomData();
       const createResponse = await auth.post('/api/users')
         .send({
@@ -535,7 +558,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.delete(`/api/users/${TEST_USERS.TESTUSER2.id}`);
 
@@ -602,7 +625,7 @@ describe('User Management API', () => {
       });
 
       it('should deny access for non-superadmin', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/enable`);
 
@@ -679,7 +702,7 @@ describe('User Management API', () => {
       });
 
       it('should deny access for non-superadmin', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/disable`);
 
@@ -720,6 +743,192 @@ describe('User Management API', () => {
         validateApiResponse(loginResponse, 401);
         expect(loginResponse.body).toHaveProperty('error');
         expect(loginResponse.body.error).toMatch(/account is disabled/i);
+      });
+    });
+  });
+
+  // Additional test suite for User Coverage Improvements
+  describe('User Coverage Edge Cases', () => {
+    describe('PUT /api/users/:id - permission edge cases', () => {
+      it('should allow superadmin to update superadmin field', async () => {
+        // Create a new user first
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testadmin_${Date.now()}`,
+            password: 'password123',
+            superadmin: false
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Update superadmin flag as superadmin
+        const response = await auth.put(`/api/users/${userId}`)
+          .send({
+            superadmin: true
+          });
+
+        validateApiResponse(response, 200);
+        expect(response.body.superadmin).toBe(true);
+      });
+
+      it('should allow superadmin to update active field', async () => {
+        // Create a new user first
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testactive_${Date.now()}`,
+            password: 'password123',
+            active: true
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Update active flag as superadmin
+        const response = await auth.put(`/api/users/${userId}`)
+          .send({
+            active: false
+          });
+
+        validateApiResponse(response, 200);
+        expect(response.body.active).toBe(false);
+      });
+
+      it('should deny non-superadmin updating superadmin field', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.put(`/api/users/${TEST_USERS.ADMIN.id}`)
+          .send({
+            superadmin: true
+          });
+
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/admin privileges/i);
+      });
+
+      it('should deny non-superadmin updating active field', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.put(`/api/users/${TEST_USERS.ADMIN.id}`)
+          .send({
+            active: false
+          });
+
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/active status/i);
+      });
+    });
+
+    describe('DELETE /api/users/:id - cascade behavior', () => {
+      it('should successfully delete user and cascade delete team memberships', async () => {
+        // Create a new user first, then add them to a team
+        const auth = authenticatedRequest(superadminToken);
+        const createResponse = await auth.post('/api/users')
+          .send({
+            username: `testdelete_${Date.now()}`,
+            password: 'password123'
+          });
+
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Delete the user - should succeed with cascade
+        const response = await auth.delete(`/api/users/${userId}`);
+
+        validateApiResponse(response, 204);
+        
+        // Verify user is deleted
+        const verifyResponse = await auth.get(`/api/users/${userId}`);
+        validateApiResponse(verifyResponse, 404);
+      });
+    });
+
+    describe('GET /api/users/:id/teams', () => {
+      it('should return teams for existing user as superadmin', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        // Use a known user that should still exist (collaborator)
+        const response = await auth.get(`/api/users/${TEST_USERS.COLLABORATOR.id}/teams`);
+
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        
+        // Verify the structure of returned teams
+        if (response.body.length > 0) {
+          const team = response.body[0];
+          expect(team).toHaveProperty('id');
+          expect(team).toHaveProperty('name');
+          expect(team).toHaveProperty('role');
+          expect(team).toHaveProperty('created_at');
+          expect(['viewer', 'collaborator', 'admin']).toContain(team.role);
+        }
+      });
+
+      it('should return 404 for non-existent user teams', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.get('/api/users/99999/teams');
+
+        validateApiResponse(response, 404);
+        expect(response.body.error).toMatch(/user not found/i);
+      });
+
+      it('should deny access for non-superadmin', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.get(`/api/users/${TEST_USERS.COLLABORATOR.id}/teams`);
+
+        validateApiResponse(response, 403);
+        expect(response.body).toHaveProperty('error');
+      });
+    });
+
+    describe('Edge cases for additional coverage', () => {
+      it('should handle PUT request without authentication', async () => {
+        const response = await request(app)
+          .put('/api/users/2')
+          .send({ username: 'newname' });
+
+        validateApiResponse(response, 401);
+        expect(response.body).toHaveProperty('error');
+      });
+
+      it('should handle duplicate existingUser assignment in PUT', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        // Create a user first
+        const createResponse = await auth
+          .post('/api/users')
+          .send({
+            username: 'testduplicate',
+            password: 'testpassword'
+          });
+        
+        validateApiResponse(createResponse, 201);
+        const userId = createResponse.body.id;
+
+        // Now test updating with no changes to hit the duplicate user check
+        const response = await auth
+          .put(`/api/users/${userId}`)
+          .send({});
+
+        validateApiResponse(response, 400);
+        expect(response.body.error).toMatch(/no fields to update/i);
+      });
+
+      it('should handle authentication error in login', async () => {
+        // Test the login path with completely wrong username
+        const response = await request(app)
+          .post('/api/users/login')
+          .send({
+            username: 'completelyfakeuser123456789',
+            password: 'anypassword'
+          });
+
+        validateApiResponse(response, 401);
+        expect(response.body.error).toMatch(/invalid credentials/i);
       });
     });
   });

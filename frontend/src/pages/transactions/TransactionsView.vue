@@ -1,12 +1,12 @@
 <template>
-  <WorkspaceLayout>
+  <BookLayout>
     <div class="container p-1">
       <h2 class="mb-4">Transactions View</h2>
     </div>
-  </WorkspaceLayout>
+  </BookLayout>
 </template>
 
 <script setup>
 // No logic yet, structure only
-import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue'
+import BookLayout from '../../layouts/BookLayout.vue'
 </script>

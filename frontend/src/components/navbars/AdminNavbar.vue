@@ -7,9 +7,9 @@
     <div class="container-fluid">
       <!-- 
         Brand logo and admin section indicator
-        Links back to main workspaces for quick navigation
+        Links back to main books for quick navigation
       -->
-      <RouterLink class="me-2" to="/workspaces">
+      <RouterLink class="me-2" to="/books">
         <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
       </RouterLink>
 
@@ -50,6 +50,13 @@
             </RouterLink>
           </li>
 
+          <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/admin/teams">
+              <i class="bi bi-people-fill me-1"></i>
+              Teams
+            </RouterLink>
+          </li>
+
           <!-- Add more admin navigation items as needed -->
         </ul>
 
@@ -69,7 +76,7 @@
             User menu component
             Reusable component for user account actions
           -->
-          <UserMenu :workspaceRole="usersStore.isSuperAdmin ? 'superadmin' : 'user'" />
+          <UserMenu :bookRole="usersStore.isSuperAdmin ? 'superadmin' : 'user'" />
         </ul>
       </div>
     </div>
@@ -86,7 +93,7 @@
  * 
  * Features:
  * - Admin section branding with gear icon
- * - Admin-specific navigation (Dashboard, Users, Workspaces, Settings)
+ * - Admin-specific navigation (Dashboard, Users, Books, Settings)
  * - Super Admin role indicator
  * - Quick navigation back to main application
  * - Integrated dark mode toggle
@@ -95,15 +102,15 @@
  * - Theme-aware styling (dark/light mode)
  * 
  * Navigation Structure:
- * - Brand: Links to /workspaces (always visible)
+ * - Brand: Links to /books (always visible)
  * - Admin Badge: Shows "Administration" with gear icon
  * - Dashboard Link: Links to /admin (admin overview)
  * - Users Link: Links to /admin/users (user management)
- * - Workspaces Link: Links to /admin/workspaces (workspace management)
+ * - Books Link: Links to /admin/books (book management)
  * - Settings Link: Links to /admin/settings (system settings)
  * - Super Admin Badge: Shows current user's admin status
  * - Dark Mode Toggle: Theme switching control
- * - Main App Link: Quick return to workspaces
+ * - Main App Link: Quick return to books
  * - User Menu: Account actions and logout
  * 
  * Responsive Behavior:

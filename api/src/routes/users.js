@@ -107,10 +107,10 @@ router.post('/login', async (req, res) => {
 
 /**
  * GET /users
- * Get list of all users with workspace statistics
+ * Get list of all users with team statistics
  * 
  * @permission SuperAdmin only
- * @returns {Array} List of all users (excluding password data) with workspace counts
+ * @returns {Array} List of all users (excluding password data) with team counts
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {
@@ -121,27 +121,27 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         u.superadmin, 
         u.active,
         u.created_at,
-        COUNT(DISTINCT wu.workspace_id) as workspace_count,
-        COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.workspace_id END) as admin_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'collaborator' THEN wu.workspace_id END) as collaborator_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'viewer' THEN wu.workspace_id END) as viewer_workspaces
+        COUNT(DISTINCT tu.team_id) as team_count,
+        COUNT(DISTINCT CASE WHEN tu.role = 'admin' THEN tu.team_id END) as admin_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'collaborator' THEN tu.team_id END) as collaborator_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'viewer' THEN tu.team_id END) as viewer_teams
       FROM user u
-      LEFT JOIN workspace_user wu ON u.id = wu.user_id 
-      LEFT JOIN workspace w ON wu.workspace_id = w.id AND w.deleted_at IS NULL
+      LEFT JOIN team_user tu ON u.id = tu.user_id 
+      LEFT JOIN team t ON tu.team_id = t.id AND t.deleted_at IS NULL
       GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
     `);
 
     res.status(200).json(users.map(user => {
-      // Convert admin and active flags from 0/1 to boolean and workspace counts to numbers
+      // Convert admin and active flags from 0/1 to boolean and team counts to numbers
       return {
         ...user,
         superadmin: user.superadmin === 1,
         active: user.active === 1,
-        workspace_count: parseInt(user.workspace_count) || 0,
-        admin_workspaces: parseInt(user.admin_workspaces) || 0,
-        collaborator_workspaces: parseInt(user.collaborator_workspaces) || 0,
-        viewer_workspaces: parseInt(user.viewer_workspaces) || 0
+        team_count: parseInt(user.team_count) || 0,
+        admin_teams: parseInt(user.admin_teams) || 0,
+        collaborator_teams: parseInt(user.collaborator_teams) || 0,
+        viewer_teams: parseInt(user.viewer_teams) || 0
       };
     }));
   } catch (err) {
@@ -183,6 +183,105 @@ router.get('/me', authenticateToken, async (req, res) => {
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to fetch user information'
+    });
+  }
+});
+
+/**
+ * GET /users/me/teams
+ * Get current user's teams
+ * 
+ * @permission Authenticated user
+ * @returns {Array} List of teams the user has access to with their roles
+ */
+router.get('/me/teams', authenticateToken, async (req, res) => {
+  try {
+    // Get user's team access
+    const [teams] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role,
+        t.created_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
+    `, [req.user.id]);
+
+    res.status(200).json(teams);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to fetch user teams'
+    });
+  }
+});
+
+/**
+ * POST /users/select-team
+ * Select a team and generate new JWT token with team information
+ * 
+ * @body {number} teamId - Team ID to select
+ * @permission Authenticated user
+ * @returns {Object} New JWT token with team information
+ */
+router.post('/select-team', authenticateToken, async (req, res) => {
+  try {
+    const { teamId } = req.body;
+
+    if (!teamId) {
+      return res.status(400).json({
+        error: 'Team ID is required'
+      });
+    }
+
+    // Verify user has access to this team
+    const [teamAccess] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ? AND t.id = ?
+    `, [req.user.id, teamId]);
+
+    if (teamAccess.length === 0) {
+      return res.status(403).json({
+        error: 'Access denied: You do not have access to this team'
+      });
+    }
+
+    const team = teamAccess[0];
+
+    // Generate new JWT token with team information
+    const token = jwt.sign(
+      {
+        userId: req.user.id,
+        username: req.user.username,
+        superadmin: req.user.superadmin,
+        teamId: team.id,
+        teamName: team.name,
+        teamRole: team.role
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      token,
+      team: {
+        id: team.id,
+        name: team.name,
+        role: team.role
+      }
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to select team'
     });
   }
 });
@@ -497,7 +596,7 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
     // Handle foreign key constraint violations (user is referenced elsewhere)
     if (err.code === 'ER_ROW_IS_REFERENCED_2') {
       return res.status(409).json({
-        error: 'Cannot delete user that is a member of workspaces'
+        error: 'Cannot delete user that is a member of teams'
       });
     }
     console.error('Database error:', err);
@@ -508,14 +607,14 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users/:id/workspaces
- * Get workspace access for a specific user
+ * GET /users/:id/teams
+ * Get team access for a specific user
  * 
  * @param {number} id - User ID
  * @permission Super admin only
- * @returns {Array} List of workspaces the user has access to with their roles
+ * @returns {Array} List of teams the user has access to with their roles
  */
-router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
+router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -531,244 +630,24 @@ router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       });
     }
 
-    // Get user's workspace access
-    const [workspaces] = await db.query(`
+    // Get user's team access
+    const [teams] = await db.query(`
       SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
+        t.id, 
+        t.name, 
+        tu.role,
+        t.created_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
     `, [id]);
 
-    res.status(200).json(workspaces);
+    res.status(200).json(teams);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to fetch user workspaces'
-    });
-  }
-});
-
-/**
- * POST /users/:id/workspaces
- * Add user to a workspace with specified role
- * 
- * @param {number} id - User ID
- * @body {number} workspaceId - Workspace ID to add user to
- * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { workspaceId, role } = req.body;
-
-    if (!workspaceId || !role) {
-      return res.status(400).json({
-        error: 'Workspace ID and role are required'
-      });
-    }
-
-    if (!['admin', 'collaborator', 'viewer'].includes(role)) {
-      return res.status(400).json({
-        error: 'Valid role is required (admin, collaborator, or viewer)'
-      });
-    }
-
-    // Check if user exists
-    const [existingUsers] = await db.query(
-      'SELECT id FROM user WHERE id = ?',
-      [id]
-    );
-
-    if (existingUsers.length === 0) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
-    }
-
-    // Check if workspace exists
-    const [existingWorkspaces] = await db.query(
-      'SELECT id FROM workspace WHERE id = ? AND deleted_at IS NULL',
-      [workspaceId]
-    );
-
-    if (existingWorkspaces.length === 0) {
-      return res.status(404).json({
-        error: 'Workspace not found'
-      });
-    }
-
-    // Check if user is already in workspace
-    const [existing] = await db.query(
-      'SELECT 1 FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
-    );
-
-    if (existing.length > 0) {
-      return res.status(409).json({
-        error: 'User already has access to this workspace'
-      });
-    }
-
-    // Add user to workspace
-    await db.query(
-      'INSERT INTO workspace_user (workspace_id, user_id, role) VALUES (?, ?, ?)',
-      [workspaceId, id, role]
-    );
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(201).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to add user to workspace'
-    });
-  }
-});
-
-/**
- * PUT /users/:id/workspaces/:workspaceId
- * Update user's role in a workspace
- * 
- * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
- * @body {string} role - New role (admin, collaborator, viewer)
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id, workspaceId } = req.params;
-    const { role } = req.body;
-
-    if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
-      return res.status(400).json({
-        error: 'Valid role is required (admin, collaborator, or viewer)'
-      });
-    }
-
-    // Update user's role in workspace
-    const [result] = await db.query(
-      'UPDATE workspace_user SET role = ? WHERE workspace_id = ? AND user_id = ?',
-      [role, workspaceId, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        error: 'User workspace access not found'
-      });
-    }
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(200).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to update user workspace role'
-    });
-  }
-});
-
-/**
- * DELETE /users/:id/workspaces/:workspaceId
- * Remove user from a workspace
- * 
- * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id, workspaceId } = req.params;
-
-    // Check if this would remove the last admin from the workspace
-    const [adminCount] = await db.query(`
-      SELECT COUNT(*) as count 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND role = 'admin'
-    `, [workspaceId]);
-
-    const [currentRole] = await db.query(`
-      SELECT role 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [workspaceId, id]);
-
-    if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
-      return res.status(400).json({
-        error: 'Cannot remove the last admin from the workspace'
-      });
-    }
-
-    // Remove user from workspace
-    const [result] = await db.query(
-      'DELETE FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        error: 'User workspace access not found'
-      });
-    }
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(200).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to remove user from workspace'
+      error: 'Failed to fetch user teams'
     });
   }
 });

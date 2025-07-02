@@ -1,6 +1,4 @@
 -- Clean Up --
-DROP TABLE IF EXISTS `workspace_user`;
-
 DROP TABLE IF EXISTS `transaction`;
 
 DROP TABLE IF EXISTS `category`;
@@ -9,7 +7,11 @@ DROP TABLE IF EXISTS `total`;
 
 DROP TABLE IF EXISTS `account`;
 
-DROP TABLE IF EXISTS `workspace`;
+DROP TABLE IF EXISTS `book`;
+
+DROP TABLE IF EXISTS `team_user`;
+
+DROP TABLE IF EXISTS `team`;
 
 DROP TABLE IF EXISTS `user`;
 
@@ -26,29 +28,41 @@ CREATE TABLE
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
 
--- Workspaces --
+-- Teams --
 CREATE TABLE
-  `workspace` (
+  `team` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB;
+
+-- Team Users --
+CREATE TABLE
+  `team_user` (
+    `team_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`team_id`, `user_id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+  ) ENGINE = InnoDB;
+
+-- Books --
+CREATE TABLE
+  `book` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `team_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `currency_symbol` VARCHAR(10) NOT NULL DEFAULT '$',
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`)
-  ) ENGINE = InnoDB;
-
--- Workspace Users --
-CREATE TABLE
-  `workspace_user` (
-    `workspace_id` INT UNSIGNED NOT NULL,
-    `user_id` INT UNSIGNED NOT NULL,
-    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`workspace_id`, `user_id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
-    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Account --
@@ -59,51 +73,51 @@ CREATE TABLE
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Totals --
 CREATE TABLE
   `total` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `account_id` INT UNSIGNED NOT NULL,
     `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
     `date` DATE NOT NULL,
-    `account_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`)
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Categories --
 CREATE TABLE
   `category` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `parent_category_id` INT UNSIGNED DEFAULT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
-    `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Transactions --
 CREATE TABLE
   `transaction` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `account_id` INT UNSIGNED NOT NULL,
+    `category_id` INT UNSIGNED NULL,
     `description` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
     `date` DATE NOT NULL,
     `exercised` BOOLEAN DEFAULT FALSE,
-    `account_id` INT UNSIGNED NOT NULL,
-    `category_id` INT UNSIGNED NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
-    FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL
   ) ENGINE = InnoDB;
