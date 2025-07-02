@@ -107,10 +107,10 @@ router.post('/login', async (req, res) => {
 
 /**
  * GET /users
- * Get list of all users with book statistics
+ * Get list of all users with team statistics
  * 
  * @permission SuperAdmin only
- * @returns {Array} List of all users (excluding password data) with book counts
+ * @returns {Array} List of all users (excluding password data) with team counts
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {
@@ -133,12 +133,12 @@ router.get('/', requireSuperAdmin, async (req, res) => {
     `);
 
     res.status(200).json(users.map(user => {
-      // Convert admin and active flags from 0/1 to boolean and book counts to numbers
+      // Convert admin and active flags from 0/1 to boolean and team counts to numbers
       return {
         ...user,
         superadmin: user.superadmin === 1,
         active: user.active === 1,
-        team_count: parseInt(user.book_count) || 0,
+        team_count: parseInt(user.team_count) || 0,
         admin_teams: parseInt(user.admin_teams) || 0,
         collaborator_teams: parseInt(user.collaborator_teams) || 0,
         viewer_teams: parseInt(user.viewer_teams) || 0
@@ -497,7 +497,7 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
     // Handle foreign key constraint violations (user is referenced elsewhere)
     if (err.code === 'ER_ROW_IS_REFERENCED_2') {
       return res.status(409).json({
-        error: 'Cannot delete user that is a member of books'
+        error: 'Cannot delete user that is a member of teams'
       });
     }
     console.error('Database error:', err);
@@ -508,14 +508,14 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users/:id/books
- * Get book access for a specific user
+ * GET /users/:id/teams
+ * Get team access for a specific user
  * 
  * @param {number} id - User ID
  * @permission Super admin only
- * @returns {Array} List of books the user has access to with their roles
+ * @returns {Array} List of teams the user has access to with their roles
  */
-router.get('/:id/books', requireSuperAdmin, async (req, res) => {
+router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -531,26 +531,24 @@ router.get('/:id/books', requireSuperAdmin, async (req, res) => {
       });
     }
 
-    // Get user's book access
-    const [books] = await db.query(`
+    // Get user's team access
+    const [teams] = await db.query(`
       SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM book w
-      INNER JOIN team_user wu ON w.id = wu.book_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
+        t.id, 
+        t.name, 
+        tu.role,
+        t.created_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
     `, [id]);
 
-    res.status(200).json(books);
+    res.status(200).json(teams);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to fetch user books'
+      error: 'Failed to fetch user teams'
     });
   }
 });
