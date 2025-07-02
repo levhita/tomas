@@ -95,6 +95,10 @@ module.exports = async () => {
           statement.toLowerCase().startsWith('drop table')) {
           console.log(`✓ Executed: ${statement.substring(0, 50)}...`);
         }
+        // Special logging for book table creation
+        if (statement.toLowerCase().includes('create table') && statement.toLowerCase().includes('book')) {
+          console.log(`🔍 Book table creation statement executed successfully`);
+        }
       } catch (error) {
         // Log but don't fail on non-critical errors
         if (!error.message.includes("doesn't exist") &&
@@ -102,12 +106,25 @@ module.exports = async () => {
           console.warn(`Warning on statement ${i + 1}: ${error.message}`);
           console.warn(`Statement: ${statement.substring(0, 100)}...`);
         }
+        // Special error logging for book table
+        if (statement.toLowerCase().includes('book')) {
+          console.error(`❌ Error creating book table: ${error.message}`);
+          console.error(`Book table statement: ${statement}`);
+        }
       }
     }
 
     // Verify tables were created
     const [tables] = await connection.execute('SHOW TABLES');
     console.log(`Created ${tables.length} tables:`, tables.map(t => Object.values(t)[0]));
+
+    // Verify book table schema specifically
+    try {
+      const [bookSchema] = await connection.execute('DESCRIBE book');
+      console.log(`📚 Book table schema:`, bookSchema.map(col => `${col.Field} (${col.Type})`));
+    } catch (error) {
+      console.error(`❌ Failed to describe book table: ${error.message}`);
+    }
 
     // Check if users were inserted
     const [users] = await connection.execute('SELECT * FROM user');

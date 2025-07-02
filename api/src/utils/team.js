@@ -13,6 +13,48 @@
 
 const db = require('../db');
 
+// Schema compatibility cache
+let schemaCache = null;
+
+/**
+ * Check schema compatibility for backward compatibility with older database versions
+ * This ensures the code works whether the book table has deleted_at column or not
+ */
+async function getSchemaInfo() {
+  if (schemaCache !== null) {
+    return schemaCache;
+  }
+
+  try {
+    const [columns] = await db.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'book' 
+      AND COLUMN_NAME = 'deleted_at'
+    `);
+    
+    schemaCache = {
+      bookHasDeletedAt: columns.length > 0
+    };
+    
+    return schemaCache;
+  } catch (error) {
+    console.error('Error checking schema info:', error);
+    // Default to assuming deleted_at exists to maintain current behavior for most cases
+    schemaCache = { bookHasDeletedAt: true };
+    return schemaCache;
+  }
+}
+
+/**
+ * Get the deleted_at condition for book queries based on schema compatibility
+ */
+async function getBookDeletedAtCondition() {
+  const { bookHasDeletedAt } = await getSchemaInfo();
+  return bookHasDeletedAt ? 'AND b.deleted_at IS NULL' : '';
+}
+
 /**
  * Get user's role in a team
  * 
@@ -189,10 +231,24 @@ async function getTeamById(teamId, includeDeleted = false) {
  * @returns {Promise<Object|null>} - Returns team object or null if not found
  */
 async function getTeamByBookId(bookId) {
+  // Check if book table has deleted_at column for backward compatibility
+  const [columns] = await db.execute(`
+    SELECT COLUMN_NAME 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'book' 
+    AND COLUMN_NAME = 'deleted_at'
+  `);
+  
+  const bookHasDeletedAt = columns.length > 0;
+  
+  // Build query conditionally based on schema
+  const bookDeletedAtCondition = bookHasDeletedAt ? 'AND b.deleted_at IS NULL' : '';
+  
   const [teams] = await db.execute(`
     SELECT t.* FROM team t
     INNER JOIN book b ON t.id = b.team_id
-    WHERE b.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
+    WHERE b.id = ? ${bookDeletedAtCondition} AND t.deleted_at IS NULL
   `, [bookId]);
 
   return teams[0] || null;
