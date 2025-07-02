@@ -33,7 +33,7 @@ module.exports = async () => {
       'account',       // references book
       'book',          // referenced by account, category
       'team_user',     // references team, user
-      'user'           // referenced by team_user
+      'user',          // referenced by team_user
       'team'           // referenced by team_user
     ];
 

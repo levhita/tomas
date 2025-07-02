@@ -100,15 +100,15 @@ describe('User Management API', () => {
       // Check first user structure and book stats
       const user = response.body[0];
       validateUserObject(user);
-      expect(user).toHaveProperty('book_count');
-      expect(user).toHaveProperty('admin_books');
-      expect(user).toHaveProperty('collaborator_books');
-      expect(user).toHaveProperty('viewer_books');
+      expect(user).toHaveProperty('team_count');
+      expect(user).toHaveProperty('admin_teams');
+      expect(user).toHaveProperty('collaborator_teams');
+      expect(user).toHaveProperty('viewer_teams');
 
-      expect(typeof user.book_count).toBe('number');
-      expect(typeof user.admin_books).toBe('number');
-      expect(typeof user.collaborator_books).toBe('number');
-      expect(typeof user.viewer_books).toBe('number');
+      expect(typeof user.team_count).toBe('number');
+      expect(typeof user.admin_teams).toBe('number');
+      expect(typeof user.collaborator_teams).toBe('number');
+      expect(typeof user.viewer_teams).toBe('number');
     });
 
     it('should deny access for non-superadmin', async () => {

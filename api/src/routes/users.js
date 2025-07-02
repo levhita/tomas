@@ -121,13 +121,13 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         u.superadmin, 
         u.active,
         u.created_at,
-        COUNT(DISTINCT wu.book_id) as book_count,
-        COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.book_id END) as admin_books,
-        COUNT(DISTINCT CASE WHEN wu.role = 'collaborator' THEN wu.book_id END) as collaborator_books,
-        COUNT(DISTINCT CASE WHEN wu.role = 'viewer' THEN wu.book_id END) as viewer_books
+        COUNT(DISTINCT tu.team_id) as team_count,
+        COUNT(DISTINCT CASE WHEN tu.role = 'admin' THEN tu.team_id END) as admin_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'collaborator' THEN tu.team_id END) as collaborator_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'viewer' THEN tu.team_id END) as viewer_teams
       FROM user u
-      LEFT JOIN team_user wu ON u.id = wu.user_id 
-      LEFT JOIN book w ON wu.book_id = w.id AND w.deleted_at IS NULL
+      LEFT JOIN team_user tu ON u.id = tu.user_id 
+      LEFT JOIN team t ON tu.team_id = t.id AND t.deleted_at IS NULL
       GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
     `);
@@ -138,10 +138,10 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         ...user,
         superadmin: user.superadmin === 1,
         active: user.active === 1,
-        book_count: parseInt(user.book_count) || 0,
-        admin_books: parseInt(user.admin_books) || 0,
-        collaborator_books: parseInt(user.collaborator_books) || 0,
-        viewer_books: parseInt(user.viewer_books) || 0
+        team_count: parseInt(user.book_count) || 0,
+        admin_teams: parseInt(user.admin_teams) || 0,
+        collaborator_teams: parseInt(user.collaborator_teams) || 0,
+        viewer_teams: parseInt(user.viewer_teams) || 0
       };
     }));
   } catch (err) {
