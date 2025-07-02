@@ -104,18 +104,18 @@
             </thead>
             <tbody>
               
-              <tr v-for="(transaction, i) in sortedTransactions" :key="i">
+              <tr v-for="(transaction, i) in transactions" :key="i">
                 <td>
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
                 <td class="text-light-emphasis text-start">{{ transaction.description }}</td>
-                <td class="text-end text-info fw-semibold">{{ transaction.amount }}</td>
-                <td class="text-light-emphasis text-start">{{ transaction.account_id}}</td>
+                <td class="text-end text-info fw-semibold">{{ formatCurrency(transaction.amount, workspaceCurrencySymbol) }}</td>
+                <td class="text-light-emphasis text-start">{{ formatAccounts(transaction.account_id)}}</td>
                 <td class="text-start">
-                  <span class="badge text-white">{{ transaction.category_name}}</span>
+                  <span class="badge bg-info text-white">{{ transaction.category_name}}</span>
                 </td>
                 <td class="text-start">
-                  <span class="badge bg-info  text-white">{{ transaction.type }}</span>
+                  <span class="badge  text-light" :class="colorByType(formatTransactionType(transaction))">{{ formatTransactionType(transaction) }}</span>
                 </td>
                 <td class="text-light-emphasis text-end">{{ transaction.date }}</td>
                 <td class="text-light-emphasis text-start">{{ transaction.note }}</td>
@@ -156,21 +156,37 @@
 </template>
 
 <script setup>
-import {  onMounted } from 'vue'
+  import {  onMounted, ref, watch } from 'vue';
+  import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities'
 
   import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
   import { useRouter, useRoute } from 'vue-router'
 
   import { useWorkspacesStore } from '../../stores/workspaces'
+  import { useTransactionsStore } from '../../stores/transactions'
+  import { useAccountsStore } from '../../stores/accounts'
+
+
 
 
 
   const router = useRouter()
   const route = useRoute()
 
-  const sortedTransactions = [];
-  const workspacesStore = useWorkspacesStore()
+  // Ref to hold the sorted/displayed transactions
+  const transactions = ref([]);
+  const workspacesStore = useWorkspacesStore();
+  const transactionsStore = useTransactionsStore();
+  const accountsStore = useAccountsStore();
 
+  const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
+
+  function formatAccounts(accountID) {
+    console.log('formatAccounts called with:', accountID);
+    const result =  accountsStore.getAccountById(accountID);
+    
+    return result.name || '-';
+  }   
 
   async function validateAndSetWorkspace() {
     const workspaceId = route.params.workspaceId || route.query.workspaceId;
@@ -179,12 +195,28 @@ import {  onMounted } from 'vue'
       return;
     }
     const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
-
+    return result;
 
   }
 
+
+  // Watch for changes in the store's transactions and update the local ref
+  watch(
+    () => transactionsStore.transactions,
+    (newTransactions) => {
+      transactions.value = newTransactions
+    },
+    { immediate: true }
+  )
+
   onMounted(async () => {
     const isWorkspaceValid = await validateAndSetWorkspace();
+    if(isWorkspaceValid){
+      const workspaceID = workspacesStore.currentWorkspace.id;
+      // load transactions by workspace ID
+      await transactionsStore.fetchTransactionsByWorkspace(workspaceID);
+
+    }
     
     
   });
