@@ -61,11 +61,11 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(viewerToken);
-      const nonAccessibleBookId = 999; // Book user has no access to
+      const auth = authenticatedRequest(superadminToken);
+      const accessibleBookId = 1; // Book exists but superadmin has no team access
 
       const response = await auth.get('/api/accounts')
-        .query({ book_id: nonAccessibleBookId });
+        .query({ book_id: accessibleBookId });
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');

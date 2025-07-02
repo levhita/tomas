@@ -24,20 +24,45 @@ const TEST_USERS = {
     id: 1,
     superadmin: true
   },
+  ADMIN: {
+    username: 'admin',
+    password: 'password123',
+    id: 2,
+    superadmin: false
+  },
+  COLLABORATOR: {
+    username: 'collaborator',
+    password: 'password123',
+    id: 3,
+    superadmin: false
+  },
+  VIEWER: {
+    username: 'viewer',
+    password: 'password123',
+    id: 4,
+    superadmin: false
+  },
+  NOACCESS: {
+    username: 'noaccess',
+    password: 'password123',
+    id: 5,
+    superadmin: false
+  },
+  // Backward compatibility aliases
   TESTUSER1: {
-    username: 'testuser1',
+    username: 'admin',
     password: 'password123',
     id: 2,
     superadmin: false
   },
   TESTUSER2: {
-    username: 'testuser2',
+    username: 'collaborator',
     password: 'password123',
     id: 3,
     superadmin: false
   },
   REGULARUSER: {
-    username: 'regularuser',
+    username: 'viewer',
     password: 'password123',
     id: 4,
     superadmin: false
@@ -47,20 +72,20 @@ const TEST_USERS = {
 /**
  * Test book data
  */
-const TEST_WORKSPACES = {
-  WORKSPACE1: {
+const TEST_BOOKS = {
+  BOOK1: {
     id: 1,
     name: 'Test Book 1',
     note: 'Main testing book',
     currency_symbol: '$'
   },
-  WORKSPACE2: {
+  BOOK2: {
     id: 2,
     name: 'Test Book 2',
     note: 'Secondary testing book',
     currency_symbol: '€'
   },
-  SEARCH_WORKSPACE: {
+  SEARCH_BOOK: {
     id: 3,
     name: 'Search Test Book',
     note: 'Book for search testing',
@@ -123,9 +148,10 @@ async function initializeTokenCache() {
 
   // Get tokens for all common test users
   tokens.superadmin = await loginUser(TEST_USERS.SUPERADMIN);
-  tokens.testuser1 = await loginUser(TEST_USERS.TESTUSER1);
-  tokens.testuser2 = await loginUser(TEST_USERS.TESTUSER2);
-  tokens.regularuser = await loginUser(TEST_USERS.REGULARUSER);
+  tokens.admin = await loginUser(TEST_USERS.ADMIN);
+  tokens.collaborator = await loginUser(TEST_USERS.COLLABORATOR);
+  tokens.viewer = await loginUser(TEST_USERS.VIEWER);
+  tokens.noaccess = await loginUser(TEST_USERS.NOACCESS);
 
   return tokens;
 }
@@ -138,14 +164,16 @@ async function initializeTokenCache() {
 async function getOrInitializeTokens() {
   // Check if we have tokens in cache
   if (tokenCache.has('superadmin') &&
-    tokenCache.has('testuser1') &&
-    tokenCache.has('testuser2') &&
-    tokenCache.has('regularuser')) {
+    tokenCache.has('admin') &&
+    tokenCache.has('collaborator') &&
+    tokenCache.has('viewer') &&
+    tokenCache.has('noaccess')) {
     return {
       superadmin: tokenCache.get('superadmin'),
-      testuser1: tokenCache.get('testuser1'),
-      testuser2: tokenCache.get('testuser2'),
-      regularuser: tokenCache.get('regularuser')
+      admin: tokenCache.get('admin'),
+      collaborator: tokenCache.get('collaborator'),
+      viewer: tokenCache.get('viewer'),
+      noaccess: tokenCache.get('noaccess'),
     };
   }
 
@@ -185,9 +213,11 @@ async function resetDatabase() {
       'total',          // references account
       'category',       // references category (self), book  
       'account',        // references book
-      'book_user', // references book, user
-      'book',      // referenced by account, category, book_user
-      'user'           // referenced by book_user
+      'book_user',      // references book, user
+      'book',           // references team
+      'team_user',      // references team, user
+      'team',           // referenced by book, team_user
+      'user'            // referenced by book_user, team_user
     ];
 
     // Delete in dependency order
@@ -322,7 +352,7 @@ function generateRandomData() {
 
 module.exports = {
   TEST_USERS,
-  TEST_WORKSPACES,
+  TEST_BOOKS,
   loginUser,
   clearTokenCache,
   initializeTokenCache,

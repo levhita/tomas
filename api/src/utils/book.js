@@ -14,10 +14,10 @@
 const db = require('../db');
 
 /**
- * Get user's role in a book
+ * Get user's role in a book through team membership
  * 
  * Queries the database to determine what role (if any) a user has
- * in a specific book.
+ * in a specific book through their team membership.
  * 
  * @param {number} bookId - The book ID
  * @param {number} userId - The user ID
@@ -26,8 +26,10 @@ const db = require('../db');
 async function getUserRole(bookId, userId) {
   try {
     const [access] = await db.execute(`
-      SELECT role FROM book_user 
-      WHERE book_id = ? AND user_id = ?
+      SELECT tu.role 
+      FROM team_user tu
+      INNER JOIN book b ON tu.team_id = b.team_id
+      WHERE b.id = ? AND tu.user_id = ? AND b.deleted_at IS NULL
     `, [bookId, userId]);
 
     return access.length > 0 ? access[0].role : null;
@@ -122,10 +124,10 @@ async function canRead(bookId, userId) {
 }
 
 /**
- * Get users of a book
+ * Get users of a book through team membership
  * 
- * Retrieves all users who have access to a book, along with their
- * roles and basic profile information.
+ * Retrieves all users who have access to a book through their
+ * team membership, along with their roles and basic profile information.
  * 
  * This is typically used in book management interfaces and for
  * permission verification.
@@ -139,10 +141,11 @@ async function canRead(bookId, userId) {
  */
 async function getBookUsers(bookId) {
   const [users] = await db.execute(`
-    SELECT u.id, u.username, wu.role, u.created_at
+    SELECT u.id, u.username, tu.role, u.created_at
     FROM user u
-    INNER JOIN book_user wu ON u.id = wu.user_id
-    WHERE wu.book_id = ?
+    INNER JOIN team_user tu ON u.id = tu.user_id
+    INNER JOIN book b ON tu.team_id = b.team_id
+    WHERE b.id = ? AND b.deleted_at IS NULL
     ORDER BY u.username ASC
   `, [bookId]);
 

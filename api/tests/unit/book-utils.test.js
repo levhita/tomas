@@ -21,32 +21,32 @@ describe('Book Utilities', () => {
 
   describe('canAdmin', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (superadmin) has admin role in book 1
-      const result = await canAdmin(1, 1);
+      // Using test data: user 2 (admin) has admin role in team 1 (book 1)
+      const result = await canAdmin(1, 2);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
     it('should deny collaborator users', async () => {
-      // Using test data: user 2 (testuser1) has collaborator role in book 1
-      const result = await canAdmin(1, 2);
-
-      expect(result.allowed).toBe(false);
-      expect(result.message).toBe('Admin privileges required for this operation');
-    });
-
-    it('should deny viewer users', async () => {
-      // Using test data: user 3 (testuser2) has viewer role in book 1
+      // Using test data: user 3 (collaborator) has collaborator role in team 1 (book 1)
       const result = await canAdmin(1, 3);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Admin privileges required for this operation');
     });
 
-    it('should deny users with no access', async () => {
-      // Using test data: user 4 (regularuser) has no access to book 1
+    it('should deny viewer users', async () => {
+      // Using test data: user 4 (viewer) has viewer role in team 1 (book 1)
       const result = await canAdmin(1, 4);
+
+      expect(result.allowed).toBe(false);
+      expect(result.message).toBe('Admin privileges required for this operation');
+    });
+
+    it('should deny users with no access', async () => {
+      // Using test data: user 1 (superadmin) is not a member of any team
+      const result = await canAdmin(1, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this book');
@@ -55,32 +55,32 @@ describe('Book Utilities', () => {
 
   describe('canWrite', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (superadmin) has admin role in book 1
-      const result = await canWrite(1, 1);
-
-      expect(result.allowed).toBe(true);
-      expect(result.message).toBe('Access granted');
-    });
-
-    it('should allow collaborator users', async () => {
-      // Using test data: user 2 (testuser1) has collaborator role in book 1
+      // Using test data: user 2 (admin) has admin role in team 1 (book 1)
       const result = await canWrite(1, 2);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
-    it('should deny viewer users', async () => {
-      // Using test data: user 3 (testuser2) has viewer role in book 1
+    it('should allow collaborator users', async () => {
+      // Using test data: user 3 (collaborator) has collaborator role in team 1 (book 1)
       const result = await canWrite(1, 3);
+
+      expect(result.allowed).toBe(true);
+      expect(result.message).toBe('Access granted');
+    });
+
+    it('should deny viewer users', async () => {
+      // Using test data: user 4 (viewer) has viewer role in team 1 (book 1)
+      const result = await canWrite(1, 4);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Write access required for this operation');
     });
 
     it('should deny users with no access', async () => {
-      // Using test data: user 4 (regularuser) has no access to book 1
-      const result = await canWrite(1, 4);
+      // Using test data: user 1 (superadmin) is not a member of any team
+      const result = await canWrite(1, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this book');
@@ -89,32 +89,32 @@ describe('Book Utilities', () => {
 
   describe('canRead', () => {
     it('should allow admin users', async () => {
-      // Using test data: user 1 (superadmin) has admin role in book 1
-      const result = await canRead(1, 1);
-
-      expect(result.allowed).toBe(true);
-      expect(result.message).toBe('Access granted');
-    });
-
-    it('should allow collaborator users', async () => {
-      // Using test data: user 2 (testuser1) has collaborator role in book 1
+      // Using test data: user 2 (admin) has admin role in team 1 (book 1)
       const result = await canRead(1, 2);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
-    it('should allow viewer users', async () => {
-      // Using test data: user 3 (testuser2) has viewer role in book 1
+    it('should allow collaborator users', async () => {
+      // Using test data: user 3 (collaborator) has collaborator role in team 1 (book 1)
       const result = await canRead(1, 3);
 
       expect(result.allowed).toBe(true);
       expect(result.message).toBe('Access granted');
     });
 
-    it('should deny users with no access', async () => {
-      // Using test data: user 4 (regularuser) has no access to book 1
+    it('should allow viewer users', async () => {
+      // Using test data: user 4 (viewer) has viewer role in team 1 (book 1)
       const result = await canRead(1, 4);
+
+      expect(result.allowed).toBe(true);
+      expect(result.message).toBe('Access granted');
+    });
+
+    it('should deny users with no access', async () => {
+      // Using test data: user 1 (superadmin) is not a member of any team
+      const result = await canRead(1, 1);
 
       expect(result.allowed).toBe(false);
       expect(result.message).toBe('Access denied to this book');

@@ -169,6 +169,13 @@ VALUES
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE,
     TRUE
+  ),
+  (
+    5,
+    'noaccess',
+    '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
+    FALSE,
+    TRUE
   );
 
 -- Test Teams

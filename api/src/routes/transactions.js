@@ -6,14 +6,14 @@
  * - Creating, updating and deleting transactions
  * 
  * Permission model:
- * - READ operations: Any book member (admin, collaborator, viewer)
- * - WRITE operations: Book editors (admin, collaborator)
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Team editors (admin, collaborator)
  */
 
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite } = require('../utils/book');
+const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
 /**
  * GET /transactions
@@ -22,7 +22,7 @@ const { canRead, canWrite } = require('../utils/book');
  * @query {number} accountId - Optional filter by account ID
  * @query {string} startDate - Optional start date (ISO format)
  * @query {string} endDate - Optional end date (ISO format)
- * @permission Read access to the account's book
+ * @permission Read access to the account's book (via team membership)
  * @returns {Array} List of transactions
  */
 router.get('/', async (req, res) => {
@@ -42,10 +42,15 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has read access to the account's book
+    // Check if user has access to the account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -91,7 +96,7 @@ router.get('/', async (req, res) => {
  * Get details for a single transaction
  * 
  * @param {number} id - Transaction ID
- * @permission Read access to the account's book
+ * @permission Read access to the account's book (via team membership)
  * @returns {Object} Transaction details
  */
 router.get('/:id', async (req, res) => {
@@ -118,10 +123,15 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Associated account not found' });
     }
 
-    // Check if user has read access to this account's book
+    // Check if user has access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -199,10 +209,15 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has write access to the account's book
+    // Check if user has write access to the account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canWrite(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -320,10 +335,15 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has write access to the account's book
+    // Check if user has write access to the account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canWrite(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -409,10 +429,15 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Associated account not found' });
     }
 
-    // Check if user has write access to this account's book
+    // Check if user has write access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canWrite(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
