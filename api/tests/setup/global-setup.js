@@ -110,31 +110,31 @@ module.exports = async () => {
     console.log(`Created ${tables.length} tables:`, tables.map(t => Object.values(t)[0]));
 
     // Check if users were inserted
-    const [users] = await connection.execute('SELECT id, username, superadmin FROM user');
+    const [users] = await connection.execute('SELECT * FROM user');
     console.log(`Inserted ${users.length} users:`, users);
 
     // Check if teams were inserted
-    const [teams] = await connection.execute('SELECT id, name FROM team');
+    const [teams] = await connection.execute('SELECT * FROM team');
     console.log(`Inserted ${teams.length} teams:`, teams);
 
     // Check if team_user assignments were inserted
-    const [teamUsers] = await connection.execute('SELECT team_id, user_id, role FROM team_user');
+    const [teamUsers] = await connection.execute('SELECT * FROM team_user');
     console.log(`Inserted ${teamUsers.length} team-user assignments:`, teamUsers);
 
     // Check if books were inserted
-    const [books] = await connection.execute('SELECT id, name, currency_symbol, team_id FROM book');
+    const [books] = await connection.execute('SELECT * FROM book');
     console.log(`Inserted ${books.length} books:`, books);
 
     // Check if accounts were inserted
-    const [accounts] = await connection.execute('SELECT id, name, type, book_id FROM account');
+    const [accounts] = await connection.execute('SELECT * FROM account');
     console.log(`Inserted ${accounts.length} accounts:`, accounts);
 
     // Check if categories were inserted
-    const [categories] = await connection.execute('SELECT id, name, type, book_id FROM category');
+    const [categories] = await connection.execute('SELECT * FROM category');
     console.log(`Inserted ${categories.length} categories:`, categories);
 
     // Check if transactions were inserted
-    const [transactions] = await connection.execute('SELECT id, description, amount, account_id, category_id FROM transaction');
+    const [transactions] = await connection.execute('SELECT * FROM transaction');
     console.log(`Inserted ${transactions.length} transactions:`, transactions);
 
     console.log('✅ Test database setup complete');
