@@ -1,4 +1,3 @@
-
 /**
  * Currency Utilities
  * 
@@ -39,4 +38,19 @@ export function formatTransactionType({account_id, amount}) {
     default:
       return transaction.description || 'Unknown'; 
     } 
+}
+
+export function colorByType(type) {
+  switch (type.toLowerCase()) {
+    case 'income':
+      return 'bg-income';
+    case 'payment':
+      return 'bg-payment';
+    case 'expense' :
+      return 'bg-expense';  
+    case 'charge':
+      return 'bg-charge';
+    default:
+      return '';
+  }
 }
