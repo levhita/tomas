@@ -48,10 +48,10 @@ VALUES
 
 -- Test Teams
 INSERT INTO
-  `team` (`id`, `name`)
+  `team` (`id`, `name`, `deleted_at`)
 VALUES
-  (1, 'Test Team 1'),
-  (2, 'Test Team 2');
+  (1, 'Test Team 1', NULL),
+  (2, 'Test Team 2', NULL);
 
 -- Team User Assignments
 INSERT INTO
@@ -72,23 +72,33 @@ INSERT INTO
     `name`,
     `note`,
     `currency_symbol`,
-    `team_id`
+    `team_id`,
+    'deleted_at'
   )
 VALUES
-  (1, 'Test Book 1', 'Main testing book', '$', 1),
+  (
+    1,
+    'Test Book 1',
+    'Main testing book',
+    '$',
+    1,
+    NULL
+  ),
   (
     2,
     'Test Book 2',
     'Secondary testing book',
     '€',
-    2
+    2,
+    NULL
   ),
   (
     3,
     'Test Book 3',
     'Third book in team 1 for testing',
     '£',
-    1
+    1,
+    NULL
   );
 
 -- Test Accounts

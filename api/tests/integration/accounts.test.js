@@ -354,28 +354,6 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny superadmin access without team permission', async () => {
-      // DEBUG: Add comprehensive diagnostic for CI debugging
-      const { getTeamByBookId } = require('../../src/utils/team');
-      const team = await getTeamByBookId(testBookId);
-      console.log(`🐛 CI Debug - Book ${testBookId} team lookup result:`, team);
-      
-      if (!team) {
-        console.error(`🚨 CI ISSUE: Book ${testBookId} returns no team! This explains 404 vs 403.`);
-        // Let's also check if the book exists at all
-        const db = require('../../src/db');
-        const [books] = await db.execute('SELECT * FROM book WHERE id = ?', [testBookId]);
-        console.log(`📚 Book ${testBookId} existence check:`, books);
-        
-        if (books.length === 0) {
-          console.error(`💥 Book ${testBookId} does not exist in database!`);
-        } else {
-          console.log(`📖 Book exists but team_id is:`, books[0].team_id);
-          // Check if the team exists
-          const [teams] = await db.execute('SELECT * FROM team WHERE id = ?', [books[0].team_id]);
-          console.log(`👥 Team ${books[0].team_id} existence check:`, teams);
-        }
-      }
-
       const auth = authenticatedRequest(superadminToken);
       const accountData = {
         name: 'Superadmin No Access Account',
@@ -384,9 +362,6 @@ describe('Accounts Management API', () => {
 
       const response = await auth.post('/api/accounts')
         .send(accountData);
-
-      // Show actual response for debugging
-      console.log(`🔍 Response status: ${response.status}, body:`, response.body);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
