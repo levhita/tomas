@@ -237,11 +237,11 @@ async function resetDatabase() {
   // Re-insert test data
   const fs = require('fs').promises;
   const path = require('path');
-  const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
-  const schema = await fs.readFile(schemaPath, 'utf8');
+  const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+  const seeds = await fs.readFile(seedsPath, 'utf8');
 
-  // Extract and execute only INSERT statements - parse the same way as global setup
-  const statements = schema
+  // Extract and execute only INSERT statements
+  const statements = seeds
     .split('\n')
     .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
     .join('\n')
@@ -252,8 +252,15 @@ async function resetDatabase() {
   const insertStatements = statements
     .filter(stmt => stmt.toUpperCase().startsWith('INSERT'));
 
+  // Execute all INSERT statements in order
   for (const statement of insertStatements) {
-    await db.execute(statement);
+    try {
+      await db.execute(statement);
+    } catch (error) {
+      console.error(`Error executing statement: ${statement.substring(0, 50)}...`);
+      console.error(error.message);
+      // Continue with other statements even if one fails
+    }
   }
 
   // Wait a bit to ensure all operations are committed

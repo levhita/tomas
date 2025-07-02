@@ -1,7 +1,28 @@
 /**
  * Global Test Setup
  * 
- * This file runs before all tests and sets up the test database environment.
+ * This file runs before all tests an    console.log(`Found ${seedStatements.length} seed statements to execute`);
+
+    // Execute all statements in sequence: schema first, then seeds
+    const allStatements = [...schemaStatements, ...seedStatements];
+
+    for (let i = 0; i < allStatements.length; i++) {
+      const statement = allStatements[i];
+      try {
+        await connection.execute(statement);
+        if (statement.toLowerCase().startsWith('create table') ||
+          statement.toLowerCase().startsWith('drop table')) {
+          console.log(`✓ Executed: ${statement.substring(0, 50)}...`);
+        }
+      } catch (error) {
+        // Log but don't fail on non-critical errors
+        if (!error.message.includes("doesn't exist") &&
+          !error.message.includes("Unknown table")) {
+          console.warn(`Warning on statement ${i + 1}: ${error.message}`);
+          console.warn(`Statement: ${statement.substring(0, 100)}...`);
+        }
+      }
+    }database environment.
  * It creates a separate test database and applies the test schema.
  */
 
@@ -32,15 +53,17 @@ module.exports = async () => {
   });
 
   try {
-    // Read and execute test schema (which includes DROP TABLE statements)
-    const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
+    // Read schema files
+    const schemaPath = path.join(__dirname, '../../db/schema.sql');
+    const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+
     const schema = await fs.readFile(schemaPath, 'utf8');
+    const seeds = await fs.readFile(seedsPath, 'utf8');
 
     console.log('🔄 Recreating tables with test data...');
-    console.log(`Schema file size: ${schema.length} characters`);
 
-    // Split statements more carefully - remove comments and empty lines first
-    const statements = schema
+    // Process schema statements first
+    const schemaStatements = schema
       .split('\n')
       .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
       .join('\n')
@@ -48,10 +71,24 @@ module.exports = async () => {
       .map(stmt => stmt.trim())
       .filter(stmt => stmt.length > 0);
 
-    console.log(`Found ${statements.length} statements to execute`);
+    console.log(`Found ${schemaStatements.length} schema statements to execute`);
 
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
+    // Then process seed statements
+    const seedStatements = seeds
+      .split('\n')
+      .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
+      .join('\n')
+      .split(';')
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0);
+
+    console.log(`Found ${seedStatements.length} seed statements to execute`);
+
+    // Execute all statements in sequence: schema first, then seeds
+    const allStatements = [...schemaStatements, ...seedStatements];
+
+    for (let i = 0; i < allStatements.length; i++) {
+      const statement = allStatements[i];
       try {
         await connection.execute(statement);
         if (statement.toLowerCase().startsWith('create table') ||

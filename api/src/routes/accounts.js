@@ -300,12 +300,22 @@ router.delete('/:id', async (req, res) => {
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
+    }
+
+    // Check if there are any transactions with this account
+    const [transactions] = await db.query(`
+      SELECT COUNT(*) as count FROM transaction 
+      WHERE account_id = ?
+    `, [req.params.id]);
+
+    if (transactions[0].count > 0) {
+      return res.status(428).json({ error: 'Cannot delete account with transactions' });
     }
 
     // Delete the account

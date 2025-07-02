@@ -376,13 +376,50 @@ describe('Categories Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should prevent deletion of category with transactions', async () => {
+    it('should allow deletion of category with transactions', async () => {
       const auth = authenticatedRequest(adminToken);
       // Category 1 should have transactions in test data
       const response = await auth.delete('/api/categories/1');
 
+      validateApiResponse(response, 204); // No Content
+    });
+
+    it('should prevent deletion of category with child categories', async () => {
+      const auth = authenticatedRequest(adminToken);
+      
+      // First create a parent category
+      const parentData = {
+        name: 'Parent Category for Delete Test',
+        book_id: 1,
+        type: 'expense'
+      };
+      const parentResponse = await auth.post('/api/categories').send(parentData);
+      validateApiResponse(parentResponse, 201);
+      const parentId = parentResponse.body.id;
+      
+      // Now create a child category
+      const childData = {
+        name: 'Child Category for Delete Test',
+        book_id: 1,
+        parent_category_id: parentId
+      };
+      const childResponse = await auth.post('/api/categories').send(childData);
+      validateApiResponse(childResponse, 201);
+      
+      // Try to delete the parent category (should fail)
+      const response = await auth.delete(`/api/categories/${parentId}`);
+      
       validateApiResponse(response, 428); // Precondition Required
       expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('Cannot delete category with child categories');
+      
+      // Clean up by deleting the child first
+      const deleteChildResponse = await auth.delete(`/api/categories/${childResponse.body.id}`);
+      validateApiResponse(deleteChildResponse, 204);
+      
+      // Now we should be able to delete the parent
+      const deleteParentResponse = await auth.delete(`/api/categories/${parentId}`);
+      validateApiResponse(deleteParentResponse, 204);
     });
 
     it('should allow collaborator to delete categories', async () => {
@@ -407,18 +444,50 @@ describe('Categories Management API', () => {
 
     it('should deny access to user without permission', async () => {
       const auth = authenticatedRequest(noaccessToken);
-      const response = await auth.delete('/api/categories/1');
+      
+      // First create a category to try to delete
+      const adminAuth = authenticatedRequest(adminToken);
+      const createData = {
+        name: 'Category for Permission Test',
+        book_id: 1
+      };
+      const createResponse = await adminAuth.post('/api/categories').send(createData);
+      validateApiResponse(createResponse, 201);
+      const categoryId = createResponse.body.id;
+      
+      // Now try to delete with noaccess user
+      const response = await auth.delete(`/api/categories/${categoryId}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
+      
+      // Clean up with admin user
+      const deleteResponse = await adminAuth.delete(`/api/categories/${categoryId}`);
+      validateApiResponse(deleteResponse, 204);
     });
 
     it('should deny superadmin access without team permission', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.delete('/api/categories/1');
+      
+      // First create a category to try to delete
+      const adminAuth = authenticatedRequest(adminToken);
+      const createData = {
+        name: 'Category for Superadmin Test',
+        book_id: 1
+      };
+      const createResponse = await adminAuth.post('/api/categories').send(createData);
+      validateApiResponse(createResponse, 201);
+      const categoryId = createResponse.body.id;
+      
+      // Now try to delete with superadmin user who doesn't have access to the team
+      const response = await auth.delete(`/api/categories/${categoryId}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
+      
+      // Clean up with admin user
+      const deleteResponse = await adminAuth.delete(`/api/categories/${categoryId}`);
+      validateApiResponse(deleteResponse, 204);
     });
 
     it('should deny access without authentication', async () => {
@@ -487,8 +556,8 @@ describe('Categories Management API', () => {
         // collaborator has admin access to team 2 (book 2) but not team 1 (book 1)
         const categoryData = {
           name: 'Cross-book Child',
-          book_id: 2,
-          parent_category_id: 1 // Category 1 is in book 1
+          book_id: 1,
+          parent_category_id: 3 // Category 3 is "Entertainment" in book 2
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
@@ -592,9 +661,10 @@ describe('Categories Management API', () => {
       });
 
       it('should deny superadmin update access to categories in books they are not a member of', async () => {
-        // Try to update category 1 as superadmin (should be denied)
+        // Try to update category 2 as superadmin (should be denied)
+        // Category 2 is "Transportation" in book 1
         const superadminAuth = authenticatedRequest(superadminToken);
-        const updateResponse = await superadminAuth.put(`/api/categories/1`).send({
+        const updateResponse = await superadminAuth.put(`/api/categories/2`).send({
           name: 'Superadmin Unauthorized Update'
         });
         validateApiResponse(updateResponse, 403);
@@ -602,9 +672,10 @@ describe('Categories Management API', () => {
       });
 
       it('should deny superadmin delete access to categories in books they are not a member of', async () => {
-        // Try to delete category 1 as superadmin (should be denied)
+        // Try to delete category 2 as superadmin (should be denied)
+        // Category 2 is "Transportation" in book 1
         const superadminAuth = authenticatedRequest(superadminToken);
-        const deleteResponse = await superadminAuth.delete(`/api/categories/1`);
+        const deleteResponse = await superadminAuth.delete(`/api/categories/2`);
         validateApiResponse(deleteResponse, 403);
         expect(deleteResponse.body).toHaveProperty('error');
       });
@@ -917,11 +988,11 @@ describe('Categories Management API', () => {
       it('should handle database errors during deletion', async () => {
         const auth = authenticatedRequest(adminToken);
 
-        // Try to delete category 1 which has transactions in the test data
-        // This should fail due to foreign key constraint
-        const deleteResponse = await auth.delete(`/api/categories/1`);
-        validateApiResponse(deleteResponse, 428);
-        expect(deleteResponse.body).toHaveProperty('error', 'Cannot delete category with transactions');
+        // We allow deletion of categories with transactions now (they're set to NULL)
+        // Instead, test that deleting a non-existent category returns a 404
+        const deleteResponse = await auth.delete('/api/categories/99999');
+        validateApiResponse(deleteResponse, 404);
+        expect(deleteResponse.body).toHaveProperty('error', 'Category not found');
       });
 
       it('should handle database connection errors in get categories', async () => {
@@ -940,11 +1011,12 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(adminToken);
 
         // Test the catch block in GET /categories/:id
-        const response = await auth.get('/api/categories/1');
+        // Category 2 is "Transportation" in book 1
+        const response = await auth.get('/api/categories/2');
 
         // This should work normally, but we're testing that the endpoint has proper error handling
         validateApiResponse(response, 200);
-        expect(response.body).toHaveProperty('id', 1);
+        expect(response.body).toHaveProperty('id', 2);
       });
 
       it('should handle database connection errors in create category', async () => {

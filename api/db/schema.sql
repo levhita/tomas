@@ -46,8 +46,8 @@ CREATE TABLE
     `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`team_id`, `user_id`),
-    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`),
-    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Books --
@@ -58,11 +58,11 @@ CREATE TABLE
     `note` TEXT NULL,
     `currency_symbol` VARCHAR(10) NOT NULL DEFAULT '$',
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
+    `team_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-    `team_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`)
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Account --
@@ -75,7 +75,7 @@ CREATE TABLE
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Totals --
@@ -87,7 +87,7 @@ CREATE TABLE
     `account_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`)
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Categories --
@@ -101,8 +101,8 @@ CREATE TABLE
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`),
-    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
+    FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Transactions --
@@ -118,6 +118,6 @@ CREATE TABLE
     `category_id` INT UNSIGNED NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`),
-    FOREIGN KEY (`category_id`) REFERENCES `category` (`id`)
+    FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL
   ) ENGINE = InnoDB;

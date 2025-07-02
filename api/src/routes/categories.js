@@ -439,12 +439,24 @@ router.delete('/:id', async (req, res) => {
     // Verify user has write access to the book via team membership
     const team = await getTeamByBookId(bookId);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
+    }
+
+    // No need to check for transactions - they will have their category_id set to null
+
+    // Check if there are any child categories
+    const [children] = await db.query(`
+      SELECT COUNT(*) as count FROM category 
+      WHERE parent_category_id = ?
+    `, [req.params.id]);
+
+    if (children[0].count > 0) {
+      return res.status(428).json({ error: 'Cannot delete category with child categories' });
     }
 
     const [result] = await db.query(`
@@ -458,8 +470,9 @@ router.delete('/:id', async (req, res) => {
 
     res.status(204).send();
   } catch (err) {
+    // Only handle child category reference constraint, transactions can be set to null
     if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(428).json({ error: 'Cannot delete category with transactions' });
+      return res.status(428).json({ error: 'Cannot delete category with child categories' });
     }
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to delete category' });

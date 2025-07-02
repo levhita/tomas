@@ -165,7 +165,7 @@ router.get('/:id', async (req, res) => {
  * @returns {Object} Created team details
  */
 router.post('/', async (req, res) => {
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Team name is required' });
@@ -177,8 +177,8 @@ router.post('/', async (req, res) => {
 
     // Create the team
     const [result] = await connection.query(`
-      INSERT INTO team (name, description) VALUES (?, ?)
-    `, [name.trim(), description || null]);
+      INSERT INTO team (name) VALUES (?)
+    `, [name.trim()]);
 
     const teamId = result.insertId;
 
@@ -212,7 +212,7 @@ router.post('/', async (req, res) => {
  * @returns {Object} Updated team details
  */
 router.put('/:id', async (req, res) => {
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Team name is required' });
@@ -235,8 +235,8 @@ router.put('/:id', async (req, res) => {
 
     // Update the team
     await db.query(`
-      UPDATE team SET name = ?, description = ? WHERE id = ?
-    `, [name.trim(), description || null, req.params.id]);
+      UPDATE team SET name = ? WHERE id = ?
+    `, [name.trim(), req.params.id]);
 
     // Fetch updated team
     const updatedTeam = await getTeamById(req.params.id);
