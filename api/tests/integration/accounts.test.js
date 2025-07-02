@@ -18,19 +18,23 @@ const {
 
 describe('Accounts Management API', () => {
   let superadminToken;
-  let testUserToken;
+  let adminToken;          // User with admin role in team 1
+  let viewerToken;         // User with viewer role in team 1  
+  let collaboratorToken;   // User with collaborator role in team 1
   let testBookId = 1; // From test data
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    testUserToken = tokens.testuser1;
+    adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
+    viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
+    collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
   });
 
   describe('GET /api/accounts', () => {
     it('should return accounts for book with read access', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token for team 1 access
       const response = await auth.get('/api/accounts')
         .query({ book_id: testBookId });
 
@@ -48,7 +52,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access without book_id parameter', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/accounts');
 
       validateApiResponse(response, 400);
@@ -57,7 +61,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(viewerToken);
       const nonAccessibleBookId = 999; // Book user has no access to
 
       const response = await auth.get('/api/accounts')
@@ -74,12 +78,22 @@ describe('Accounts Management API', () => {
 
       validateApiResponse(response, 401);
     });
+
+    it('should deny superadmin access to team resources', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/accounts')
+        .query({ book_id: testBookId });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/access.*denied|permission|forbidden/i);
+    });
   });
 
   describe('GET /api/accounts/:id', () => {
     it('should return account details for valid account', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const testAccountId = 1; // From test data
+      const auth = authenticatedRequest(adminToken); // User 2 has admin access to team 1
+      const testAccountId = 1; // From test data - belongs to book 1 (team 1)
 
       const response = await auth.get(`/api/accounts/${testAccountId}`);
 
@@ -92,7 +106,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token instead of superadmin
 
       const response = await auth.get('/api/accounts/99999');
 
@@ -102,21 +116,10 @@ describe('Accounts Management API', () => {
     });
 
     it('should allow access to account in book with permission', async () => {
-      // Get a fresh token for testuser1 to avoid any token caching issues
-      const freshTestUserToken = await loginUser(TEST_USERS.TESTUSER1);
-      const auth = authenticatedRequest(freshTestUserToken);
-      const superAuth = authenticatedRequest(superadminToken);
+      // Use collaborator token (user 3) who is admin of team 2 which owns book 2
+      const auth = authenticatedRequest(collaboratorToken);
 
-      // Verify testuser1 has admin permissions in book 2, if not, add them
-      const addUserResponse = await superAuth.post('/api/books/2/users').send({
-        userId: 2, // testuser1's ID from test schema
-        role: 'admin'
-      });
-      if (addUserResponse.status !== 409 && addUserResponse.status !== 201) {
-        throw new Error(`Failed to add testuser1 to book 2. Status: ${addUserResponse.status}, Body: ${JSON.stringify(addUserResponse.body)}`);
-      }
-
-      // Create a fresh account for this test 
+      // Create a fresh account for this test in book 2 where user 3 has admin access
       const createAccountResponse = await auth.post('/api/accounts').send({
         name: 'Test Account for Permission Check',
         note: 'Created for testing book permission access',
@@ -130,7 +133,7 @@ describe('Accounts Management API', () => {
 
       const testAccountId = createAccountResponse.body.id;
 
-      // Test that testuser1 can access the account they just created in book 2
+      // Test that user 3 (collaborator in team 1, admin in team 2) can access the account they created in book 2
       const response = await auth.get(`/api/accounts/${testAccountId}`);
 
       validateApiResponse(response, 200);
@@ -147,7 +150,7 @@ describe('Accounts Management API', () => {
 
   describe('GET /api/accounts/:id/balance', () => {
     it('should return account balance for valid account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token for team 1 access
       const testAccountId = 1; // From test data
 
       const response = await auth.get(`/api/accounts/${testAccountId}/balance`);
@@ -160,7 +163,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should return balance up to specific date', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token
       const testAccountId = 1;
       const upToDate = '2024-12-01';
 
@@ -173,7 +176,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should reject invalid date format', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token
       const testAccountId = 1;
 
       const response = await auth.get(`/api/accounts/${testAccountId}/balance`)
@@ -185,7 +188,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin token
 
       const response = await auth.get('/api/accounts/99999/balance');
 
@@ -202,7 +205,7 @@ describe('Accounts Management API', () => {
 
   describe('POST /api/accounts', () => {
     it('should create new account as admin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountData = {
         name: `Test Account ${Date.now()}`,
         note: 'Test account description',
@@ -223,7 +226,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should create credit account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountData = {
         name: `Credit Account ${Date.now()}`,
         type: 'credit',
@@ -238,7 +241,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should default to debit type when not specified', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountData = {
         name: `Default Type Account ${Date.now()}`,
         book_id: testBookId
@@ -252,7 +255,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should reject missing name', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountData = {
         book_id: testBookId
       };
@@ -266,7 +269,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should reject missing book_id', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountData = {
         name: 'Test Account'
       };
@@ -280,7 +283,8 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access for non-admin users', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      // Use viewer token (user 4) who only has viewer role in team 1 (read-only access)
+      const auth = authenticatedRequest(viewerToken);
       const accountData = {
         name: 'Unauthorized Account',
         book_id: testBookId
@@ -309,7 +313,7 @@ describe('Accounts Management API', () => {
 
   describe('PUT /api/accounts/:id', () => {
     it('should update account as admin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
 
       // First create an account to update
       const createResponse = await auth.post('/api/accounts')
@@ -337,7 +341,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const updateData = {
         name: 'Updated Name'
       };
@@ -350,7 +354,8 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access for non-admin users', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      // Use viewer token (user 4) who only has viewer role in team 1 (read-only access)
+      const auth = authenticatedRequest(viewerToken);
       const updateData = {
         name: 'Unauthorized Update'
       };
@@ -377,7 +382,7 @@ describe('Accounts Management API', () => {
 
   describe('DELETE /api/accounts/:id', () => {
     it('should delete account without transactions as admin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
 
       // First create an account to delete
       const createResponse = await auth.post('/api/accounts')
@@ -399,7 +404,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.delete('/api/accounts/99999');
 
@@ -408,7 +413,7 @@ describe('Accounts Management API', () => {
     });
 
     it('should prevent deletion of account with transactions', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken);
       const accountIdWithTransactions = 1; // Account from test data that has transactions
 
       const response = await auth.delete(`/api/accounts/${accountIdWithTransactions}`);
@@ -419,9 +424,21 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access for non-admin users', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      // Use viewer token (user 4) who only has viewer role in team 1 (read-only access)
+      const auth = authenticatedRequest(viewerToken);
 
-      const response = await auth.delete('/api/accounts/1');
+      // Try to delete any account in team 1 - should be denied due to lack of permission
+      // Use an account without transactions (we'll create a fresh one) to ensure we get 403, not 428
+      const adminAuth = authenticatedRequest(adminToken);
+      const createResponse = await adminAuth.post('/api/accounts').send({
+        name: 'Account for Permission Test',
+        book_id: testBookId
+      });
+
+      expect(createResponse.status).toBe(201);
+      const testAccountId = createResponse.body.id;
+
+      const response = await auth.delete(`/api/accounts/${testAccountId}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');

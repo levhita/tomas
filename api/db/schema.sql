@@ -1,6 +1,4 @@
 -- Clean Up --
-DROP TABLE IF EXISTS `book_user`;
-
 DROP TABLE IF EXISTS `transaction`;
 
 DROP TABLE IF EXISTS `category`;
@@ -10,6 +8,10 @@ DROP TABLE IF EXISTS `total`;
 DROP TABLE IF EXISTS `account`;
 
 DROP TABLE IF EXISTS `book`;
+
+DROP TABLE IF EXISTS `team_user`;
+
+DROP TABLE IF EXISTS `team`;
 
 DROP TABLE IF EXISTS `user`;
 
@@ -26,6 +28,28 @@ CREATE TABLE
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
 
+-- Teams --
+CREATE TABLE
+  `team` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB;
+
+-- Team Users --
+CREATE TABLE
+  `team_user` (
+    `team_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`team_id`, `user_id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+  ) ENGINE = InnoDB;
+
 -- Books --
 CREATE TABLE
   `book` (
@@ -36,19 +60,9 @@ CREATE TABLE
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`)
-  ) ENGINE = InnoDB;
-
--- Book Users --
-CREATE TABLE
-  `book_user` (
-    `book_id` INT UNSIGNED NOT NULL,
-    `user_id` INT UNSIGNED NOT NULL,
-    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`book_id`, `user_id`),
-    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`),
-    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+    `team_id` INT UNSIGNED NOT NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`)
   ) ENGINE = InnoDB;
 
 -- Account --

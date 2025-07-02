@@ -9,7 +9,7 @@ erDiagram
         timestamp created_at
     }
     
-    WORKSPACE {
+    BOOK {
         int id PK
         varchar name
         text description
@@ -19,7 +19,7 @@ erDiagram
         timestamp deleted_at
     }
     
-    WORKSPACE_USER {
+    BOOK_USER {
         int book_id PK,FK
         int user_id PK,FK
         enum role
@@ -65,10 +65,10 @@ erDiagram
         timestamp created_at
     }
     
-    USER ||--o{ WORKSPACE_USER : "has access to"
-    WORKSPACE ||--o{ WORKSPACE_USER : "gives access to"
-    WORKSPACE ||--o{ ACCOUNT : "contains"
-    WORKSPACE ||--o{ CATEGORY : "contains"
+    USER ||--o{ BOOK_USER : "has access to"
+    BOOK ||--o{ BOOK_USER : "gives access to"
+    BOOK ||--o{ ACCOUNT : "contains"
+    BOOK ||--o{ CATEGORY : "contains"
     ACCOUNT ||--o{ TRANSACTION : "has"
     ACCOUNT ||--o{ TOTAL : "has"
     CATEGORY ||--o{ TRANSACTION : "categorizes"

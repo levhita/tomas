@@ -191,8 +191,8 @@ const TEST_USERS = {
 Predefined books with different configurations:
 
 ```javascript
-const TEST_WORKSPACES = {
-  WORKSPACE1: {
+const TEST_BOOKS = {
+  BOOK1: {
     id: 1,
     name: 'Test Book 1',
     description: 'Main testing book',

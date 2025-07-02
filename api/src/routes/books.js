@@ -2,23 +2,20 @@
  * Books API Router
  * Handles all book-related operations including:
  * - Managing books (create, read, update, delete)
- * - Book soft deletion and r * Create a new book
+ * - Book soft deletion and restoration
  * 
- * @body {string} name - Required book name
- * @body {string} note - Optional book note
- * @body {string} currency_symbol - Currency symbol (default: '$')ation
- * - User access management for books
- * - Role assignment within books
+ * Permission model (team-based):
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Team editors (admin, collaborator)
+ * - ADMIN operations: Team admins only
  * 
- * Permission model:
- * - READ operations: Any book member (admin, collaborator, viewer)
- * - WRITE operations: Book editors (admin, collaborator)
- * - ADMIN operations: Book admins only
- * 
- * Book roles:
- * - admin: Full control including user management and book deletion
- * - collaborator: Can edit book content but not manage users
+ * Team roles:
+ * - admin: Full control including book management and deletion
+ * - collaborator: Can edit book content but not manage books
  * - viewer: Read-only access to book content
+ * 
+ * Note: User management for books has been moved to teams.
+ * Books are now accessed based on team membership.
  */
 
 const express = require('express');
@@ -26,29 +23,33 @@ const router = express.Router();
 const db = require('../db');
 const { requireSuperAdmin } = require('../middleware/auth');
 const {
-  canAdmin,
-  canWrite,
-  canRead,
-  getBookUsers,
   getBookById,
   getBookByIdIncludingDeleted
 } = require('../utils/book');
+const {
+  canRead,
+  canWrite,
+  canAdmin,
+  getTeamByBookId,
+  getUserRole
+} = require('../utils/team');
 
 /**
  * GET /books
  * List all books accessible to the current user
  * 
- * @permission Requires authentication, returns only books the user is a member of
+ * @permission Requires authentication, returns only books from teams the user is a member of
  * @returns {Array} List of books the user has access to
  */
 router.get('/', async (req, res) => {
   try {
     const [books] = await db.query(`
-      SELECT w.*, wu.role 
-      FROM book w
-      INNER JOIN book_user wu ON w.id = wu.book_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
+      SELECT b.*, tu.role, t.name as team_name
+      FROM book b
+      INNER JOIN team t ON b.team_id = t.id
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ? AND b.deleted_at IS NULL
+      ORDER BY b.name ASC
     `, [req.user.id]);
 
     res.status(200).json(books);
@@ -150,7 +151,7 @@ router.get('/all', requireSuperAdmin, async (req, res) => {
  * Get details for a single book
  * 
  * @param {number} id - Book ID
- * @permission Read access to the book (admin, collaborator, viewer)
+ * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
  * @returns {Object} Book details
  */
 router.get('/:id', async (req, res) => {
@@ -161,10 +162,18 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Then check if user has read access
-    const { allowed, message } = await canRead(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // Superadmin can access any book
+    if (!req.user.superadmin) {
+      // Check team-based access
+      const team = await getTeamByBookId(req.params.id);
+      if (!team) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+
+      const { allowed, message } = await canRead(team.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
     }
 
     res.status(200).json(book);
@@ -176,52 +185,53 @@ router.get('/:id', async (req, res) => {
 
 /**
  * POST /books
- * Create a new book
+ * Create a new book within a team
  * 
  * @body {string} name - Required book name
+ * @body {number} teamId - Required team ID where the book will be created
  * @body {string} note - Optional book note
  * @body {string} currency_symbol - Currency symbol, defaults to '$'
  * @body {string} week_start - First day of the week, defaults to 'monday'
- * @permission Any authenticated user can create a book
+ * @permission Admin or collaborator access to the specified team
  * @returns {Object} Newly created book
- * 
- * Note: Creating user is automatically assigned the admin role in the new book
  */
 router.post('/', async (req, res) => {
-  const { name, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
+  const { name, teamId, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
+  if (!teamId) {
+    return res.status(400).json({ error: 'Team ID is required' });
+  }
+
   try {
-    // Use a transaction to ensure book and user association are created together
-    const connection = await db.getConnection();
-    await connection.beginTransaction();
+    // Import team utilities
+    const { canWrite: canWriteTeam, getTeamById } = require('../utils/team');
 
-    try {
-      // Create the book
-      const [result] = await connection.query(
-        'INSERT INTO book (name, note, currency_symbol, week_start) VALUES (?, ?, ?, ?)',
-        [name, note, currency_symbol, week_start]
-      );
-
-      // Add current user as admin of the book
-      await connection.query(
-        'INSERT INTO book_user (book_id, user_id, role) VALUES (?, ?, ?)',
-        [result.insertId, req.user.id, 'admin']
-      );
-
-      await connection.commit();
-      connection.release();
-
-      const book = await getBookById(result.insertId);
-      res.status(201).json(book);
-    } catch (err) {
-      await connection.rollback();
-      connection.release();
-      throw err;
+    // Check if team exists
+    const team = await getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
     }
+
+    // Check if user has write access to the team (unless superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canWriteTeam(teamId, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Create the book
+    const [result] = await db.query(
+      'INSERT INTO book (name, note, currency_symbol, week_start, team_id) VALUES (?, ?, ?, ?, ?)',
+      [name, note, currency_symbol, week_start, teamId]
+    );
+
+    const book = await getBookById(result.insertId);
+    res.status(201).json(book);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create book' });
@@ -237,7 +247,7 @@ router.post('/', async (req, res) => {
  * @body {string} note - Optional book note
  * @body {string} currency_symbol - Currency symbol
  * @body {string} week_start - First day of the week
- * @permission Admin access to the book (admin only)
+ * @permission Write access via team membership (admin or collaborator) or superadmin
  * @returns {Object} Updated book details
  */
 router.put('/:id', async (req, res) => {
@@ -254,21 +264,29 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Then check if user has admin access
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // Check team-based write permissions (unless superadmin)
+    if (!req.user.superadmin) {
+      const team = await getTeamByBookId(req.params.id);
+      if (!team) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+
+      const { allowed, message } = await canWrite(team.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
     }
 
     const currencySymbol = currency_symbol !== undefined ? currency_symbol : existingBook.currency_symbol;
     const weekStart = week_start !== undefined ? week_start : existingBook.week_start;
 
     const [result] = await db.query(`
-      UPDATE book        SET name = ?, 
+      UPDATE book 
+      SET name = ?, 
           note = ?, 
           currency_symbol = ?, 
           week_start = ?
-        WHERE id = ?
+      WHERE id = ?
     `, [name, note, currencySymbol, weekStart, req.params.id]);
 
     if (result.affectedRows === 0) {
@@ -288,7 +306,7 @@ router.put('/:id', async (req, res) => {
  * Soft delete a book
  * 
  * @param {number} id - Book ID
- * @permission Admin access to the book
+ * @permission Admin access via team membership or superadmin
  * @returns {void}
  */
 router.delete('/:id', async (req, res) => {
@@ -299,10 +317,17 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Then check if user has admin access
-    const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
+    // Check team-based admin permissions (unless superadmin)
+    if (!req.user.superadmin) {
+      const team = await getTeamByBookId(req.params.id);
+      if (!team) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+
+      const { allowed, message } = await canAdmin(team.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
     }
 
     const [result] = await db.query(`
@@ -428,7 +453,7 @@ router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
         DELETE FROM account WHERE book_id = ?
       `, [req.params.id]);
 
-      // 5. Delete book users
+      // 5. Delete legacy book users (if any remain)
       await connection.query(`
         DELETE FROM book_user WHERE book_id = ?
       `, [req.params.id]);
@@ -462,228 +487,56 @@ router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
  * POST /books/:id/users
  * Add a user to a book
  * 
- * @param {number} id - Book ID
- * @body {number} userId - User ID to add
- * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Admin access to the book or superadmin
- * @returns {Array} Updated list of book users
+ * @deprecated This endpoint has been moved to teams. Use POST /api/teams/:teamId/users instead.
+ * Books are now managed at the team level.
  */
 router.post('/:id/users', async (req, res) => {
-  const { userId, role } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID is required' });
-  }
-
-  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
-    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
-  }
-
-  try {
-    // First check if the book exists
-    const book = await getBookById(req.params.id);
-    if (!book) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    // Then check if user has admin access (or is superadmin)
-    if (!req.user.superadmin) {
-      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
-    }
-
-    // Check if user exists
-    const [users] = await db.query('SELECT id FROM user WHERE id = ?', [userId]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Check if user is already in book
-    const [existing] = await db.query(`
-      SELECT 1 FROM book_user 
-      WHERE book_id = ? AND user_id = ?
-    `, [req.params.id, userId]);
-
-    if (existing.length > 0) {
-      return res.status(409).json({ error: 'User already in book' });
-    }
-
-    // Add user to book with specified role
-    await db.query(`
-      INSERT INTO book_user (book_id, user_id, role) 
-      VALUES (?, ?, ?)
-    `, [req.params.id, userId, role]);
-
-    const updatedUsers = await getBookUsers(req.params.id);
-    res.status(201).json(updatedUsers);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to add user to book' });
-  }
+  res.status(410).json({
+    error: 'This endpoint has been moved to teams. Use POST /api/teams/:teamId/users instead.',
+    deprecated: true
+  });
 });
 
 /**
  * DELETE /books/:id/users/:userId
  * Remove a user from a book
  * 
- * @param {number} id - Book ID
- * @param {number} userId - User ID to remove
- * @permission Admin access to the book or superadmin
- * @returns {void}
+ * @deprecated This endpoint has been moved to teams. Use DELETE /api/teams/:teamId/users/:userId instead.
+ * Books are now managed at the team level.
  */
 router.delete('/:id/users/:userId', async (req, res) => {
-  try {
-    // First check if book exists
-    const book = await getBookById(req.params.id);
-    if (!book) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    // Then check admin permission (or is superadmin)
-    if (!req.user.superadmin) {
-      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
-    }
-
-    // Check if user exists in book first
-    const [existingUser] = await db.query(`
-      SELECT role FROM book_user 
-      WHERE book_id = ? AND user_id = ?
-    `, [req.params.id, req.params.userId]);
-
-    if (existingUser.length === 0) {
-      return res.status(404).json({ error: 'User not found in book' });
-    }
-
-    // Prevent removing the last admin (unless user is superadmin)
-    if (existingUser[0].role === 'admin' && !req.user.superadmin) {
-      const [adminCount] = await db.query(`
-        SELECT COUNT(*) as count FROM book_user 
-        WHERE book_id = ? AND role = 'admin'
-      `, [req.params.id]);
-
-      if (adminCount[0].count === 1) {
-        return res.status(409).json({ error: 'Cannot remove the last admin from the book' });
-      }
-    }
-
-    // Remove user from book
-    const [result] = await db.query(`
-      DELETE FROM book_user 
-      WHERE book_id = ? AND user_id = ?
-    `, [req.params.id, req.params.userId]);
-
-    res.status(204).send();
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to remove user from book' });
-  }
+  res.status(410).json({
+    error: 'This endpoint has been moved to teams. Use DELETE /api/teams/:teamId/users/:userId instead.',
+    deprecated: true
+  });
 });
 
 /**
  * PUT /books/:id/users/:userId
  * Update a user's role in a book
  * 
- * @param {number} id - Book ID
- * @param {number} userId - User ID to update
- * @body {string} role - New role to assign (admin, collaborator, viewer)
- * @permission Admin access to the book or superadmin
- * @returns {Array} Updated list of book users
+ * @deprecated This endpoint has been moved to teams. Use PUT /api/teams/:teamId/users/:userId instead.
+ * Books are now managed at the team level.
  */
 router.put('/:id/users/:userId', async (req, res) => {
-  const { role } = req.body;
-
-  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
-    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
-  }
-
-  try {
-    // First check if the book exists
-    const book = await getBookById(req.params.id);
-    if (!book) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    // Then check if user has admin access (or is superadmin)
-    if (!req.user.superadmin) {
-      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
-    }
-
-    // Prevent removing the last admin (unless user is superadmin)
-    if (role !== 'admin' && !req.user.superadmin) {
-      const [adminCount] = await db.query(`
-        SELECT COUNT(*) as count 
-        FROM book_user 
-        WHERE book_id = ? AND role = 'admin'
-      `, [req.params.id]);
-
-      const [currentRole] = await db.query(`
-        SELECT role 
-        FROM book_user 
-        WHERE book_id = ? AND user_id = ?
-      `, [req.params.id, req.params.userId]);
-
-      if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
-        return res.status(409).json({ error: 'Cannot remove the last admin from the book' });
-      }
-    }
-
-    // Update user's role
-    const [result] = await db.query(`
-      UPDATE book_user 
-      SET role = ? 
-      WHERE book_id = ? AND user_id = ?
-    `, [role, req.params.id, req.params.userId]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'User not found in book' });
-    }
-
-    const updatedUsers = await getBookUsers(req.params.id);
-    res.status(200).json(updatedUsers);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to update user role' });
-  }
+  res.status(410).json({
+    error: 'This endpoint has been moved to teams. Use PUT /api/teams/:teamId/users/:userId instead.',
+    deprecated: true
+  });
 });
 
 /**
  * GET /books/:id/users
  * List all users in a book
  * 
- * @param {number} id - Book ID
- * @permission Read access to the book (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of book users
+ * @deprecated This endpoint has been moved to teams. Use GET /api/teams/:teamId/users instead.
+ * Books are now managed at the team level.
  */
 router.get('/:id/users', async (req, res) => {
-  try {
-    // First check if the book exists
-    const book = await getBookById(req.params.id);
-    if (!book) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    // Superadmin can access users of any book
-    if (!req.user.superadmin) {
-      const { allowed, message } = await canRead(req.params.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
-    }
-
-    const users = await getBookUsers(req.params.id);
-    res.status(200).json(users);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch book users' });
-  }
+  res.status(410).json({
+    error: 'This endpoint has been moved to teams. Use GET /api/teams/:teamId/users instead.',
+    deprecated: true
+  });
 });
 
 module.exports = router;

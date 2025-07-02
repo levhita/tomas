@@ -7,21 +7,21 @@
  * - Creating, updating and deleting accounts
  * 
  * Permission model:
- * - READ operations: Any book member (admin, collaborator, viewer)
- * - WRITE operations: Admins only (accounts require highest permission)
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Admins and collaborators (accounts can be managed by write access)
  */
 
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite, canAdmin } = require('../utils/book');
+const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team');
 
 /**
  * GET /accounts
  * List all accounts for a book
  * 
  * @query {number} book_id - Required book ID
- * @permission Read access to book (admin, collaborator, viewer)
+ * @permission Read access to book (via team membership)
  * @returns {Array} List of accounts
  */
 router.get('/', async (req, res) => {
@@ -32,8 +32,13 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // Verify user has read access to the book
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    // Verify user has access to the book via team membership
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -56,7 +61,7 @@ router.get('/', async (req, res) => {
  * Get details for a single account
  * 
  * @param {number} id - Account ID
- * @permission Read access to the account's book
+ * @permission Read access to the account's book (via team membership)
  * @returns {Object} Account details
  */
 router.get('/:id', async (req, res) => {
@@ -71,10 +76,14 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has read access to this account's book
+    // Check if user has access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -92,7 +101,7 @@ router.get('/:id', async (req, res) => {
  * 
  * @param {number} id - Account ID
  * @query {string} upToDate - Optional date string in ISO format (e.g. 2023-04-30)
- * @permission Read access to the account's book
+ * @permission Read access to the account's book (via team membership)
  * @returns {Object} Account balance information with exercised and projected totals
  */
 router.get('/:id/balance', async (req, res) => {
@@ -110,10 +119,14 @@ router.get('/:id/balance', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has read access to this account's book
+    // Check if user has access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -154,7 +167,7 @@ router.get('/:id/balance', async (req, res) => {
  * @body {string} note - Optional account description
  * @body {string} type - Account type (debit or credit), defaults to debit
  * @body {number} book_id - Required book ID
- * @permission Admin access to the book
+ * @permission Write access to the book (via team membership: admin, collaborator)
  * @returns {Object} Newly created account
  */
 router.post('/', async (req, res) => {
@@ -169,9 +182,13 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Verify user has admin access to the book
-    // (accounts are financial data so we require admin level)
-    const { allowed, message } = await canAdmin(book_id, req.user.id);
+    // Verify user has write access to the book via team membership
+    const team = await getTeamByBookId(book_id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -203,7 +220,7 @@ router.post('/', async (req, res) => {
  * @body {string} name - Account name
  * @body {string} note - Account description
  * @body {string} type - Account type (debit or credit)
- * @permission Admin access to the account's book
+ * @permission Write access to the account's book (via team membership: admin, collaborator)
  * @returns {Object} Updated account
  */
 router.put('/:id', async (req, res) => {
@@ -220,10 +237,14 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has admin access to this account's book
+    // Check if user has write access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canAdmin(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -259,7 +280,7 @@ router.put('/:id', async (req, res) => {
  * Delete an account
  * 
  * @param {number} id - Account ID to delete
- * @permission Admin access to the account's book
+ * @permission Write access to the account's book (via team membership: admin, collaborator)
  * @returns {null} 204 No Content on success
  * @throws {Error} 428 Precondition Required if account has transactions
  */
@@ -275,10 +296,14 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has admin access to this account's book
+    // Check if user has write access to this account's book via team membership
     const bookId = accounts[0].book_id;
-    const { allowed, message } = await canAdmin(bookId, req.user.id);
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }

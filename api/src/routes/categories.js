@@ -7,8 +7,8 @@
  * - Managing hierarchical category structure with parent-child relationships
  * 
  * Permission model:
- * - READ operations: Any book member (admin, collaborator, viewer)
- * - WRITE operations: Book editors (admin, collaborator)
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Team editors (admin, collaborator)
  * 
  * Hierarchy constraints:
  * - Categories can only be nested two levels deep (parent-child)
@@ -19,14 +19,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite } = require('../utils/book');
+const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
 /**
  * GET /categories
  * List all categories for a book in alphabetical order by name
  * 
  * @query {number} book_id - Required book ID
- * @permission Read access to book (admin, collaborator, viewer)
+ * @permission Read access to book (via team membership)
  * @returns {Array} List of categories ordered alphabetically by name
  */
 router.get('/', async (req, res) => {
@@ -37,8 +37,13 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // Verify user has read access to the book
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    // Verify user has access to the book via team membership
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -61,7 +66,7 @@ router.get('/', async (req, res) => {
  * Get details for a single category
  * 
  * @param {number} id - Category ID
- * @permission Read access to the category's book
+ * @permission Read access to the category's book (via team membership)
  * @returns {Object} Category details
  */
 router.get('/:id', async (req, res) => {
@@ -75,10 +80,13 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    // Check if user has read access to the book this category belongs to
-    const bookId = categories[0].book_id;
-    const { allowed, message } = await canRead(bookId, req.user.id);
+    // Check if user has access to the book this category belongs to via team membership
+    const team = await getTeamByBookId(categories[0].book_id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
+    const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -129,8 +137,13 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Verify user has write access to the book
-    const { allowed, message } = await canWrite(book_id, req.user.id);
+    // Verify user has write access to the book via team membership
+    const team = await getTeamByBookId(book_id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -223,8 +236,13 @@ router.put('/:id', async (req, res) => {
     const categoryId = parseInt(req.params.id);
     const currentCategory = categories[0];
 
-    // Verify user has write access to the book
-    const { allowed, message } = await canWrite(bookId, req.user.id);
+    // Verify user has write access to the book via team membership
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -418,8 +436,13 @@ router.delete('/:id', async (req, res) => {
 
     const bookId = categories[0].book_id;
 
-    // Verify user has write access to the book
-    const { allowed, message } = await canWrite(bookId, req.user.id);
+    // Verify user has write access to the book via team membership
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }

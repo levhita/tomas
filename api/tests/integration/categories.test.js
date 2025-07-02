@@ -10,23 +10,24 @@ const {
   loginUser,
   initializeTokenCache,
   authenticatedRequest,
-  validateApiResponse,
-  TEST_USERS
+  validateApiResponse
 } = require('../utils/test-helpers');
 
 describe('Categories Management API', () => {
-  let superadminToken, testUserToken;
+  let superadminToken, adminToken, collaboratorToken, viewerToken;
 
   beforeAll(async () => {
     // Use the new token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    testUserToken = tokens.testuser1;
+    adminToken = tokens.admin;
+    collaboratorToken = tokens.collaborator;
+    viewerToken = tokens.viewer;
   });
 
   describe('GET /api/categories', () => {
     it('should return categories for book with read access', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/categories?book_id=1');
 
       validateApiResponse(response, 200);
@@ -44,7 +45,7 @@ describe('Categories Management API', () => {
     });
 
     it('should deny access without book_id parameter', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/categories');
 
       validateApiResponse(response, 400);
@@ -52,8 +53,8 @@ describe('Categories Management API', () => {
     });
 
     it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/categories?book_id=999');
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/categories?book_id=1');
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
@@ -70,7 +71,7 @@ describe('Categories Management API', () => {
 
   describe('GET /api/categories/:id', () => {
     it('should return category details for valid category', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/categories/1');
 
       validateApiResponse(response, 200);
@@ -80,7 +81,7 @@ describe('Categories Management API', () => {
     });
 
     it('should return 404 for non-existent category', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/categories/99999');
 
       validateApiResponse(response, 404);
@@ -88,7 +89,7 @@ describe('Categories Management API', () => {
     });
 
     it('should allow access to category in book with permission', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/categories/2');
 
       validateApiResponse(response, 200);
@@ -106,7 +107,7 @@ describe('Categories Management API', () => {
 
   describe('POST /api/categories', () => {
     it('should create new category as admin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Test Category',
         book_id: 1,
@@ -124,7 +125,7 @@ describe('Categories Management API', () => {
     });
 
     it('should create category with minimal data', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Minimal Category',
         book_id: 1
@@ -139,7 +140,7 @@ describe('Categories Management API', () => {
     });
 
     it('should create income category', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Income Category',
         book_id: 1,
@@ -153,7 +154,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject missing name', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         book_id: 1
       };
@@ -165,7 +166,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject missing book_id', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Test Category'
       };
@@ -177,7 +178,7 @@ describe('Categories Management API', () => {
     });
 
     it('should reject invalid category type', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Test Category',
         book_id: 1,
@@ -191,7 +192,7 @@ describe('Categories Management API', () => {
     });
 
     it('should allow collaborator to create categories', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const categoryData = {
         name: 'Collaborator Test Category',
         book_id: 1
@@ -222,7 +223,7 @@ describe('Categories Management API', () => {
   describe('PUT /api/categories/:id', () => {
     it('should update category as admin', async () => {
       // First create a category to update
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const createData = {
         name: 'Category to Update',
         book_id: 1
@@ -244,7 +245,7 @@ describe('Categories Management API', () => {
     });
 
     it('should return 404 for non-existent category', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const updateData = { name: 'Updated Name' };
 
       const response = await auth.put('/api/categories/99999').send(updateData);
@@ -254,7 +255,7 @@ describe('Categories Management API', () => {
     });
 
     it('should allow collaborator to update categories', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const updateData = { name: 'Updated by Collaborator' };
 
       const response = await auth.put('/api/categories/1').send(updateData);
@@ -278,7 +279,7 @@ describe('Categories Management API', () => {
   describe('DELETE /api/categories/:id', () => {
     it('should delete category without transactions as admin', async () => {
       // First create a category to delete
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const createData = {
         name: 'Category to Delete',
         book_id: 1
@@ -297,7 +298,7 @@ describe('Categories Management API', () => {
     });
 
     it('should return 404 for non-existent category', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.delete('/api/categories/99999');
 
       validateApiResponse(response, 404);
@@ -305,7 +306,7 @@ describe('Categories Management API', () => {
     });
 
     it('should prevent deletion of category with transactions', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       // Category 1 should have transactions in test data
       const response = await auth.delete('/api/categories/1');
 
@@ -315,7 +316,7 @@ describe('Categories Management API', () => {
 
     it('should allow collaborator to delete categories', async () => {
       // First create a category to delete
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const createData = {
         name: 'Category to Delete by Collaborator',
         book_id: 1
@@ -345,7 +346,7 @@ describe('Categories Management API', () => {
   describe('Advanced Category Scenarios', () => {
     describe('Hierarchical Categories', () => {
       it('should create category with parent category', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // First create a parent category
         const parentData = {
@@ -371,7 +372,7 @@ describe('Categories Management API', () => {
       });
 
       it('should prevent three-level nesting', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create grandparent
         const grandparentData = { name: 'Grandparent', book_id: 1, type: 'expense' };
@@ -393,9 +394,10 @@ describe('Categories Management API', () => {
       });
 
       it('should enforce parent-child book consistency', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(collaboratorToken);
 
         // Try to create category with parent from different book
+        // collaborator has admin access to team 2 (book 2) but not team 1 (book 1)
         const categoryData = {
           name: 'Cross-book Child',
           book_id: 2,
@@ -409,7 +411,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle non-existent parent category', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
         const categoryData = {
           name: 'Orphaned Category',
           book_id: 1,
@@ -424,7 +426,7 @@ describe('Categories Management API', () => {
 
     describe('Category Types', () => {
       it('should create expense category by default', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
         const categoryData = {
           name: 'Default Type Category',
           book_id: 1
@@ -436,7 +438,7 @@ describe('Categories Management API', () => {
       });
 
       it('should inherit type from parent category', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create income parent
         const parentData = { name: 'Income Parent', book_id: 1, type: 'income' };
@@ -459,22 +461,11 @@ describe('Categories Management API', () => {
 
     describe('Book Permission Variations', () => {
       it('should allow collaborator to create categories', async () => {
-        // First, we need to add testuser1 as collaborator to book 2
-        const adminAuth = authenticatedRequest(superadminToken);
-
-        // Remove user from book 2 first (in case they're already there)
-        await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Ignore error if not found
-
-        // Add user as collaborator to book 2
-        await adminAuth.post('/api/books/2/users').send({
-          userId: 2,
-          role: 'collaborator'
-        });
-
-        const collabAuth = authenticatedRequest(testUserToken);
+        // Use collaborator token who has access to book 1 as collaborator via team 1
+        const collabAuth = authenticatedRequest(collaboratorToken);
         const categoryData = {
           name: 'Collaborator Category',
-          book_id: 2
+          book_id: 1 // collaborator has access to team 1 which owns book 1
         };
         const response = await collabAuth.post('/api/categories').send(categoryData);
 
@@ -483,21 +474,11 @@ describe('Categories Management API', () => {
       });
 
       it('should deny viewer access to create categories', async () => {
-        const adminAuth = authenticatedRequest(superadminToken);
-
-        // Remove user from book 2 first (in case they're already there)
-        await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Ignore error if not found
-
-        // Add user as viewer to book 2
-        await adminAuth.post('/api/books/2/users').send({
-          userId: 2,
-          role: 'viewer'
-        });
-
-        const viewerAuth = authenticatedRequest(testUserToken);
+        // Use viewer token who is a viewer in team 1 (book 1) according to test data
+        const viewerAuth = authenticatedRequest(viewerToken);
         const categoryData = {
           name: 'Viewer Category',
-          book_id: 2
+          book_id: 1 // viewer is a viewer in team 1 which owns book 1
         };
         const response = await viewerAuth.post('/api/categories').send(categoryData);
 
@@ -506,63 +487,45 @@ describe('Categories Management API', () => {
       });
 
       it('should deny superadmin access to books they are not a member of', async () => {
-        // Test that superadmin cannot access book 5 (where they are not a member)
+        // Test that superadmin cannot access book 1 (where they are not a member)
         const superadminAuth = authenticatedRequest(superadminToken);
 
-        // Try to get categories from book 5
-        const getResponse = await superadminAuth.get('/api/categories?book_id=5');
+        // Try to get categories from book 1
+        const getResponse = await superadminAuth.get('/api/categories?book_id=1');
         validateApiResponse(getResponse, 403);
         expect(getResponse.body).toHaveProperty('error');
 
-        // Try to create a category in book 5
+        // Try to create a category in book 1
         const createResponse = await superadminAuth.post('/api/categories').send({
           name: 'Superadmin Unauthorized Category',
-          book_id: 5
+          book_id: 1
         });
         validateApiResponse(createResponse, 403);
         expect(createResponse.body).toHaveProperty('error');
       });
 
       it('should deny superadmin update access to categories in books they are not a member of', async () => {
-        // First, get a category from book 5 using a valid user (testuser1 who is admin of book 5)
-        const validUserAuth = authenticatedRequest(testUserToken);
-        const getResponse = await validUserAuth.get('/api/categories?book_id=5');
-        validateApiResponse(getResponse, 200);
-
-        if (getResponse.body.length > 0) {
-          const categoryId = getResponse.body[0].id;
-
-          // Now try to update it as superadmin (should be denied)
-          const superadminAuth = authenticatedRequest(superadminToken);
-          const updateResponse = await superadminAuth.put(`/api/categories/${categoryId}`).send({
-            name: 'Superadmin Unauthorized Update'
-          });
-          validateApiResponse(updateResponse, 403);
-          expect(updateResponse.body).toHaveProperty('error');
-        }
+        // Try to update category 1 as superadmin (should be denied)
+        const superadminAuth = authenticatedRequest(superadminToken);
+        const updateResponse = await superadminAuth.put(`/api/categories/1`).send({
+          name: 'Superadmin Unauthorized Update'
+        });
+        validateApiResponse(updateResponse, 403);
+        expect(updateResponse.body).toHaveProperty('error');
       });
 
       it('should deny superadmin delete access to categories in books they are not a member of', async () => {
-        // First, get a category from book 5 using a valid user (testuser1 who is admin of book 5)
-        const validUserAuth = authenticatedRequest(testUserToken);
-        const getResponse = await validUserAuth.get('/api/categories?book_id=5');
-        validateApiResponse(getResponse, 200);
-
-        if (getResponse.body.length > 0) {
-          const categoryId = getResponse.body[0].id;
-
-          // Now try to delete it as superadmin (should be denied)
-          const superadminAuth = authenticatedRequest(superadminToken);
-          const deleteResponse = await superadminAuth.delete(`/api/categories/${categoryId}`);
-          validateApiResponse(deleteResponse, 403);
-          expect(deleteResponse.body).toHaveProperty('error');
-        }
+        // Try to delete category 1 as superadmin (should be denied)
+        const superadminAuth = authenticatedRequest(superadminToken);
+        const deleteResponse = await superadminAuth.delete(`/api/categories/1`);
+        validateApiResponse(deleteResponse, 403);
+        expect(deleteResponse.body).toHaveProperty('error');
       });
     });
 
     describe('Category Updates', () => {
       it('should update category type and preserve relationships', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category to update
         const createData = { name: 'Updateable Category', book_id: 1, type: 'expense' };
@@ -584,7 +547,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle partial updates', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category
         const createData = { name: 'Partial Update Category', book_id: 1, note: 'Original note' };
@@ -603,7 +566,7 @@ describe('Categories Management API', () => {
 
     describe('Category Filtering and Querying', () => {
       it('should return categories ordered alphabetically by name', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
         const response = await auth.get('/api/categories?book_id=1');
 
         validateApiResponse(response, 200);
@@ -625,11 +588,18 @@ describe('Categories Management API', () => {
       });
 
       it('should return empty array for book with no categories', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
-        // Create a new book first
-        const bookData = { name: 'Empty Book', currency_symbol: '$' };
+        // Create a new book first - it should be linked to a team the superadmin has access to
+        const bookData = {
+          name: 'Empty Book',
+          currency_symbol: '$',
+          teamId: 1 // superadmin is admin of team 1
+        };
         const bookResponse = await auth.post('/api/books').send(bookData);
+
+        // Check if book creation succeeded
+        expect(bookResponse.status).toBe(201);
         const bookId = bookResponse.body.id;
 
         const response = await auth.get(`/api/categories?book_id=${bookId}`);
@@ -641,7 +611,7 @@ describe('Categories Management API', () => {
 
     describe('Category Validation', () => {
       it('should reject empty category name', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
         const categoryData = {
           name: '',
           book_id: 1
@@ -653,7 +623,7 @@ describe('Categories Management API', () => {
       });
 
       it('should reject null category name', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
         const categoryData = {
           name: null,
           book_id: 1
@@ -665,7 +635,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle very long category names', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
         const categoryData = {
           name: 'a'.repeat(300), // Very long name
           book_id: 1
@@ -681,23 +651,23 @@ describe('Categories Management API', () => {
       it('should handle database connection errors gracefully', async () => {
         // This test would require mocking the database, which we're avoiding
         // But we can test invalid book IDs which might cause DB errors
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
         const response = await auth.get('/api/categories?book_id=99999');
 
-        validateApiResponse(response, 403); // Should be permission denied, not crash
+        validateApiResponse(response, 404); // Should be book not found, not crash
       });
 
       it('should handle malformed book_id parameter', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
         const response = await auth.get('/api/categories?book_id=invalid');
 
-        expect([400, 403]).toContain(response.status);
+        expect([400, 403, 404]).toContain(response.status);
       });
     });
 
     describe('Error Handling and Edge Cases', () => {
       it('should handle update with no fields provided', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category first
         const createResponse = await auth.post('/api/categories')
@@ -718,7 +688,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle update affecting zero rows (race condition)', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // This tests the scenario where a category is deleted between 
         // the initial fetch and the update query
@@ -732,7 +702,7 @@ describe('Categories Management API', () => {
       });
 
       it('should update child categories when parent type changes', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
@@ -769,7 +739,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle database errors gracefully during updates', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
@@ -791,7 +761,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle very long category names during update', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
@@ -814,7 +784,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle invalid type during update', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a test category first
         const createResponse = await auth.post('/api/categories')
@@ -836,7 +806,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle successful category deletion', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category to delete
         const createResponse = await auth.post('/api/categories')
@@ -858,37 +828,17 @@ describe('Categories Management API', () => {
       });
 
       it('should handle database errors during deletion', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
-        // Create a category and transaction to test foreign key constraint
-        const createCategoryResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category with Transaction',
-            book_id: 1
-          });
-        expect(createCategoryResponse.status).toBe(201);
-        const categoryId = createCategoryResponse.body.id;
-
-        // Create a transaction that references this category
-        const createTransactionResponse = await auth.post('/api/transactions')
-          .send({
-            amount: 100.00,
-            description: 'Test transaction',
-            date: '2024-01-01',
-            account_id: 1,
-            category_id: categoryId,
-            book_id: 1
-          });
-        expect(createTransactionResponse.status).toBe(201);
-
-        // Try to delete the category - should fail due to foreign key constraint
-        const deleteResponse = await auth.delete(`/api/categories/${categoryId}`);
+        // Try to delete category 1 which has transactions in the test data
+        // This should fail due to foreign key constraint
+        const deleteResponse = await auth.delete(`/api/categories/1`);
         validateApiResponse(deleteResponse, 428);
         expect(deleteResponse.body).toHaveProperty('error', 'Cannot delete category with transactions');
       });
 
       it('should handle database connection errors in get categories', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Mock a database error by using an invalid book_id format that could cause DB issues
         // This tests the catch block in the GET /categories endpoint
@@ -900,7 +850,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle database connection errors in get single category', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Test the catch block in GET /categories/:id
         const response = await auth.get('/api/categories/1');
@@ -911,7 +861,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle database connection errors in create category', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Test the catch block in POST /categories by attempting to create with valid data
         const response = await auth.post('/api/categories')
@@ -926,7 +876,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle deletion affecting zero rows (race condition)', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Try to delete a non-existent category
         const response = await auth.delete('/api/categories/99999');
@@ -936,7 +886,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle child category type inheritance edge case', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
@@ -968,7 +918,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle moving category from child to root level', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
@@ -1002,7 +952,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle updating note field specifically', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create category
         const createResponse = await auth.post('/api/categories')
@@ -1025,7 +975,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle updating parent_category_id field specifically', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create parent category
         const parentResponse = await auth.post('/api/categories')
@@ -1058,7 +1008,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle general database errors during update operations', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category first
         const createResponse = await auth.post('/api/categories')
@@ -1081,7 +1031,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle general database errors during delete operations', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a category first
         const createResponse = await auth.post('/api/categories')
@@ -1100,7 +1050,7 @@ describe('Categories Management API', () => {
       });
 
       it('should handle general database errors during create operations', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(adminToken);
 
         // This test ensures the catch block in create is covered
         // Since we can't easily simulate DB errors, we test a valid create
@@ -1119,7 +1069,7 @@ describe('Categories Management API', () => {
       let parentCategoryId, childCategoryId, rootCategoryId;
 
       beforeEach(async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         // Create a root category
         const rootResponse = await auth.post('/api/categories').send({
@@ -1148,7 +1098,7 @@ describe('Categories Management API', () => {
 
       describe('When parent_category_id is NOT provided (undefined)', () => {
         it('should allow updating name and note without affecting parent relationship', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             name: 'Updated Child Name',
@@ -1165,7 +1115,7 @@ describe('Categories Management API', () => {
         });
 
         it('should enforce type inheritance when updating type of child category', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             name: 'Child with Type Update',
@@ -1181,7 +1131,7 @@ describe('Categories Management API', () => {
         });
 
         it('should allow updating type of root category when no parent', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             name: 'Updated Root Category',
@@ -1199,7 +1149,7 @@ describe('Categories Management API', () => {
 
       describe('When parent_category_id is explicitly set to null', () => {
         it('should move child category to root level and allow type change', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             name: 'Moved to Root',
@@ -1216,7 +1166,7 @@ describe('Categories Management API', () => {
         });
 
         it('should move child to root and keep current type if not specified', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             name: 'Moved to Root No Type',
@@ -1235,7 +1185,7 @@ describe('Categories Management API', () => {
 
       describe('When parent_category_id is explicitly set to a category ID', () => {
         it('should move category to new parent and inherit type', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           // Move root category to be child of parent
           const updateData = {
@@ -1252,7 +1202,7 @@ describe('Categories Management API', () => {
         });
 
         it('should reject setting itself as parent (circular reference)', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             parent_category_id: childCategoryId // Self as parent
@@ -1265,7 +1215,7 @@ describe('Categories Management API', () => {
         });
 
         it('should reject setting parent when category has children', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           // Try to make parent category (which has children) a child of root
           const updateData = {
@@ -1279,7 +1229,7 @@ describe('Categories Management API', () => {
         });
 
         it('should reject three-level nesting', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           // Create another category to try as grandchild
           const grandchildResponse = await auth.post('/api/categories').send({
@@ -1300,21 +1250,15 @@ describe('Categories Management API', () => {
         });
 
         it('should reject parent from different book', async () => {
-          const auth = authenticatedRequest(testUserToken);
-          const adminAuth = authenticatedRequest(superadminToken);
+          const auth = authenticatedRequest(adminToken);
 
-          // Ensure testuser1 has admin access to book 2 for this test
-          // (previous tests might have changed the role)
-          await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Remove if exists
-          await adminAuth.post('/api/books/2/users').send({
-            userId: 2,
-            role: 'admin'
-          });
-
-          // Create category in book 2
-          const ws2Response = await auth.post('/api/categories').send({
-            name: 'Category in WS2',
-            book_id: 2
+          // Try to create category in book 1 with parent from book 2
+          // But admin user doesn't have access to book 2, so let's create a category 
+          // in book 2 first using collaborator token (who has admin access to team 2/book 2)
+          const collabAuth = authenticatedRequest(collaboratorToken);
+          const ws2Response = await collabAuth.post('/api/categories').send({
+            name: 'Category in Book 2',
+            book_id: 2 // collaborator is admin of team 2 which owns book 2
           });
           const ws2CategoryId = ws2Response.body.id;
 
@@ -1330,7 +1274,7 @@ describe('Categories Management API', () => {
         });
 
         it('should reject non-existent parent category', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           const updateData = {
             parent_category_id: 99999 // Non-existent ID
@@ -1345,7 +1289,7 @@ describe('Categories Management API', () => {
 
       describe('Type inheritance edge cases', () => {
         it('should update child categories when parent type changes', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           // First get current child type
           const childBeforeResponse = await auth.get(`/api/categories/${childCategoryId}`);
@@ -1366,7 +1310,7 @@ describe('Categories Management API', () => {
         });
 
         it('should handle complex parent changes with type inheritance', async () => {
-          const auth = authenticatedRequest(testUserToken);
+          const auth = authenticatedRequest(adminToken);
 
           // Create second parent with different type
           const parent2Response = await auth.post('/api/categories').send({

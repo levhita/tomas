@@ -29,6 +29,7 @@ const categoriesRouter = require('./routes/categories');
 const accountsRouter = require('./routes/accounts');
 const healthRouter = require('./routes/health');
 const booksRouter = require('./routes/books');
+const teamsRouter = require('./routes/teams');
 
 // Initialize Express application
 const app = express();
@@ -81,6 +82,7 @@ app.use('/api', authenticateToken);
  * - /api/accounts: Financial accounts management (accountsRouter)
  * - /api/health: System health monitoring (healthRouter)
  * - /api/books: Multi-tenant book management (booksRouter)
+ * - /api/teams: Team management and user access control (teamsRouter)
  */
 app.use('/api', indexRouter);
 app.use('/api/users', usersRouter);
@@ -89,6 +91,7 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/accounts', accountsRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/books', booksRouter);
+app.use('/api/teams', teamsRouter);
 
 /**
  * Static File Serving

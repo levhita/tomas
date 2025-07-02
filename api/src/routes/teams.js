@@ -1,0 +1,475 @@
+/**
+ * Teams API Router
+ * Handles all team-related operations including:
+ * - Managing teams (create, read, update)
+ * - User access management for teams
+ * - Role assignment within teams
+ * 
+ * Permission model:
+ * - READ operations: Any team member (admin, collaborator, viewer)
+ * - WRITE operations: Team editors (admin, collaborator)
+ * - ADMIN operations: Team admins only
+ * 
+ * Team roles:
+ * - admin: Full control including user management and team settings
+ * - collaborator: Can edit team content (books, accounts, transactions) but not manage users
+ * - viewer: Read-only access to team content
+ */
+
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+const { requireSuperAdmin } = require('../middleware/auth');
+const {
+  canAdmin,
+  canWrite,
+  canRead,
+  getTeamUsers,
+  getTeamById
+} = require('../utils/team');
+
+/**
+ * GET /teams
+ * List all teams accessible to the current user
+ * 
+ * @permission Requires authentication, returns only teams the user is a member of
+ * @returns {Array} List of teams the user has access to
+ */
+router.get('/', async (req, res) => {
+  try {
+    const [teams] = await db.query(`
+      SELECT t.*, tu.role 
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
+    `, [req.user.id]);
+
+    res.status(200).json(teams);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch teams' });
+  }
+});
+
+/**
+ * GET /teams/search
+ * Search teams by name
+ * 
+ * @query {string} q - Search query
+ * @query {number} limit - Maximum number of results (default: 20, max: 100)
+ * @permission Super admin only
+ * @returns {Array} List of teams matching the search criteria
+ */
+router.get('/search', requireSuperAdmin, async (req, res) => {
+  try {
+    const searchTerm = req.query.q || '';
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+
+    let query, params;
+
+    if (!searchTerm.trim()) {
+      // If no search term, return all teams
+      query = `
+        SELECT id, name, created_at
+        FROM team 
+        ORDER BY name ASC
+        LIMIT ?
+      `;
+      params = [limit];
+    } else {
+      // Search by team name (partial match, case-insensitive)
+      query = `
+        SELECT id, name, created_at
+        FROM team 
+        WHERE name LIKE ?
+        ORDER BY 
+          CASE WHEN name = ? THEN 0 ELSE 1 END,
+          LENGTH(name) ASC,
+          name ASC
+        LIMIT ?
+      `;
+      params = [`%${searchTerm}%`, searchTerm, limit];
+    }
+
+    const [teams] = await db.query(query, params);
+    res.status(200).json(teams);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to search teams' });
+  }
+});
+
+/**
+ * GET /teams/all
+ * Get all teams (admin only)
+ * 
+ * @permission Super admin only
+ * @returns {Array} List of all teams
+ * @deprecated Use /teams/search instead for better performance
+ */
+router.get('/all', requireSuperAdmin, async (req, res) => {
+  try {
+    const [teams] = await db.query(`
+      SELECT id, name, created_at
+      FROM team 
+      ORDER BY name ASC
+    `);
+
+    res.status(200).json(teams);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch all teams' });
+  }
+});
+
+/**
+ * GET /teams/:id
+ * Get details for a single team
+ * 
+ * @param {number} id - Team ID
+ * @permission Read access to the team (admin, collaborator, viewer) or superadmin
+ * @returns {Object} Team details
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Superadmin can access any team
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canRead(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    res.status(200).json(team);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch team' });
+  }
+});
+
+/**
+ * POST /teams
+ * Create a new team
+ * 
+ * @body {string} name - Required team name
+ * @permission Any authenticated user
+ * @returns {Object} Created team details
+ */
+router.post('/', async (req, res) => {
+  const { name, description } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Team name is required' });
+  }
+
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Create the team
+    const [result] = await connection.query(`
+      INSERT INTO team (name, description) VALUES (?, ?)
+    `, [name.trim(), description || null]);
+
+    const teamId = result.insertId;
+
+    // Add the creator as admin
+    await connection.query(`
+      INSERT INTO team_user (team_id, user_id, role) 
+      VALUES (?, ?, 'admin')
+    `, [teamId, req.user.id]);
+
+    await connection.commit();
+
+    // Fetch the created team
+    const team = await getTeamById(teamId);
+    res.status(201).json(team);
+  } catch (err) {
+    await connection.rollback();
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to create team' });
+  } finally {
+    connection.release();
+  }
+});
+
+/**
+ * PUT /teams/:id
+ * Update a team
+ * 
+ * @param {number} id - Team ID
+ * @body {string} name - Team name
+ * @permission Admin access to the team or superadmin
+ * @returns {Object} Updated team details
+ */
+router.put('/:id', async (req, res) => {
+  const { name, description } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Team name is required' });
+  }
+
+  try {
+    // First check if the team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check permissions (only admins can update team settings)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Update the team
+    await db.query(`
+      UPDATE team SET name = ?, description = ? WHERE id = ?
+    `, [name.trim(), description || null, req.params.id]);
+
+    // Fetch updated team
+    const updatedTeam = await getTeamById(req.params.id);
+    res.status(200).json(updatedTeam);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to update team' });
+  }
+});
+
+/**
+ * POST /teams/:id/users
+ * Add a user to a team
+ * 
+ * @param {number} id - Team ID
+ * @body {number} userId - User ID to add
+ * @body {string} role - Role to assign (admin, collaborator, viewer)
+ * @permission Admin access to the team or superadmin
+ * @returns {Array} Updated list of team users
+ */
+router.post('/:id/users', async (req, res) => {
+  const { userId, role } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
+  }
+
+  try {
+    // First check if the team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Then check if user has admin access (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Check if user exists
+    const [users] = await db.query('SELECT id FROM user WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user is already in team
+    const [existing] = await db.query(`
+      SELECT 1 FROM team_user 
+      WHERE team_id = ? AND user_id = ?
+    `, [req.params.id, userId]);
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'User already in team' });
+    }
+
+    // Add user to team with specified role
+    await db.query(`
+      INSERT INTO team_user (team_id, user_id, role) 
+      VALUES (?, ?, ?)
+    `, [req.params.id, userId, role]);
+
+    const updatedUsers = await getTeamUsers(req.params.id);
+    res.status(201).json(updatedUsers);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to add user to team' });
+  }
+});
+
+/**
+ * DELETE /teams/:id/users/:userId
+ * Remove a user from a team
+ * 
+ * @param {number} id - Team ID
+ * @param {number} userId - User ID to remove
+ * @permission Admin access to the team or superadmin
+ * @returns {void}
+ */
+router.delete('/:id/users/:userId', async (req, res) => {
+  try {
+    // First check if team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Then check admin permission (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Check if user exists in team first
+    const [existingUser] = await db.query(`
+      SELECT role FROM team_user 
+      WHERE team_id = ? AND user_id = ?
+    `, [req.params.id, req.params.userId]);
+
+    if (existingUser.length === 0) {
+      return res.status(404).json({ error: 'User not found in team' });
+    }
+
+    // Prevent removing the last admin (unless user is superadmin)
+    if (existingUser[0].role === 'admin' && !req.user.superadmin) {
+      const [adminCount] = await db.query(`
+        SELECT COUNT(*) as count FROM team_user 
+        WHERE team_id = ? AND role = 'admin'
+      `, [req.params.id]);
+
+      if (adminCount[0].count === 1) {
+        return res.status(409).json({ error: 'Cannot remove the last admin from the team' });
+      }
+    }
+
+    // Remove user from team
+    await db.query(`
+      DELETE FROM team_user 
+      WHERE team_id = ? AND user_id = ?
+    `, [req.params.id, req.params.userId]);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to remove user from team' });
+  }
+});
+
+/**
+ * PUT /teams/:id/users/:userId
+ * Update a user's role in a team
+ * 
+ * @param {number} id - Team ID
+ * @param {number} userId - User ID to update
+ * @body {string} role - New role to assign (admin, collaborator, viewer)
+ * @permission Admin access to the team or superadmin
+ * @returns {Array} Updated list of team users
+ */
+router.put('/:id/users/:userId', async (req, res) => {
+  const { role } = req.body;
+
+  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
+  }
+
+  try {
+    // First check if the team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Then check if user has admin access (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Prevent removing the last admin (unless user is superadmin)
+    if (role !== 'admin' && !req.user.superadmin) {
+      const [adminCount] = await db.query(`
+        SELECT COUNT(*) as count 
+        FROM team_user 
+        WHERE team_id = ? AND role = 'admin'
+      `, [req.params.id]);
+
+      const [currentRole] = await db.query(`
+        SELECT role 
+        FROM team_user 
+        WHERE team_id = ? AND user_id = ?
+      `, [req.params.id, req.params.userId]);
+
+      if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
+        return res.status(409).json({ error: 'Cannot remove the last admin from the team' });
+      }
+    }
+
+    // Update user's role
+    const [result] = await db.query(`
+      UPDATE team_user 
+      SET role = ? 
+      WHERE team_id = ? AND user_id = ?
+    `, [role, req.params.id, req.params.userId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found in team' });
+    }
+
+    const updatedUsers = await getTeamUsers(req.params.id);
+    res.status(200).json(updatedUsers);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+/**
+ * GET /teams/:id/users
+ * List all users in a team
+ * 
+ * @param {number} id - Team ID
+ * @permission Read access to the team (admin, collaborator, viewer) or superadmin
+ * @returns {Array} List of team users
+ */
+router.get('/:id/users', async (req, res) => {
+  try {
+    // First check if the team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Superadmin can access users of any team
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canRead(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    const users = await getTeamUsers(req.params.id);
+    res.status(200).json(users);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch team users' });
+  }
+});
+
+module.exports = router;

@@ -4,9 +4,6 @@
 SET
   FOREIGN_KEY_CHECKS = 0;
 
--- Clean Up --
-DROP TABLE IF EXISTS `book_user`;
-
 DROP TABLE IF EXISTS `transaction`;
 
 DROP TABLE IF EXISTS `category`;
@@ -16,6 +13,10 @@ DROP TABLE IF EXISTS `total`;
 DROP TABLE IF EXISTS `account`;
 
 DROP TABLE IF EXISTS `book`;
+
+DROP TABLE IF EXISTS `team_user`;
+
+DROP TABLE IF EXISTS `team`;
 
 DROP TABLE IF EXISTS `user`;
 
@@ -36,6 +37,28 @@ CREATE TABLE
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
 
+-- Teams --
+CREATE TABLE
+  `team` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+  ) ENGINE = InnoDB;
+
+-- Team Users --
+CREATE TABLE
+  `team_user` (
+    `team_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`team_id`, `user_id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+  ) ENGINE = InnoDB;
+
 -- Books --
 CREATE TABLE
   `book` (
@@ -44,21 +67,11 @@ CREATE TABLE
     `note` TEXT NULL,
     `currency_symbol` VARCHAR(10) NOT NULL DEFAULT '$',
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
+    `team_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-    PRIMARY KEY (`id`)
-  ) ENGINE = InnoDB;
-
--- Book Users --
-CREATE TABLE
-  `book_user` (
-    `book_id` INT UNSIGNED NOT NULL,
-    `user_id` INT UNSIGNED NOT NULL,
-    `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
-    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`book_id`, `user_id`),
-    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`),
-    FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`team_id`) REFERENCES `team` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB;
 
 -- Accounts --
@@ -138,67 +151,75 @@ VALUES
   ),
   (
     2,
-    'testuser1',
+    'admin',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE,
     TRUE
   ),
   (
     3,
-    'testuser2',
+    'collaborator',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE,
     TRUE
   ),
   (
     4,
-    'regularuser',
+    'viewer',
     '$2b$10$sVuIfubxXJ5tjznQuDuV6.wwfM5PMm2uGHTtHBNwNFlJm4vWYabkq',
     FALSE,
     TRUE
   );
 
+-- Test Teams
+INSERT INTO
+  `team` (`id`, `name`, `description`)
+VALUES
+  (1, 'Test Team 1', 'Main testing team'),
+  (
+    2,
+    'Test Team 2',
+    'Secondary testing team for cross-permission tests'
+  );
+
+-- Team User Assignments
+INSERT INTO
+  `team_user` (`team_id`, `user_id`, `role`)
+VALUES
+  (1, 2, 'admin'), -- admin is admin of team 1
+  (1, 3, 'collaborator'), -- collaborator is collaborator of team 1
+  (1, 4, 'viewer'), -- viewer is viewer of team 1
+  (2, 2, 'viewer'), -- admin is viewer of team 2 (cross-permission test)
+  (2, 3, 'admin'), -- collaborator is admin of team 2 (cross-permission test)
+  (2, 4, 'collaborator');
+
+-- viewer is collaborator of team 2 (cross-permission test)
 -- Test Books
 INSERT INTO
-  `book` (`id`, `name`, `note`, `currency_symbol`)
+  `book` (
+    `id`,
+    `name`,
+    `note`,
+    `currency_symbol`,
+    `team_id`
+  )
 VALUES
-  (1, 'Test Book 1', 'Main testing book', '$'),
-  (2, 'Test Book 2', 'Secondary testing book', '€'),
+  (1, 'Test Book 1', 'Main testing book', '$', 1),
+  (
+    2,
+    'Test Book 2',
+    'Secondary testing book',
+    '€',
+    2
+  ),
   (
     3,
-    'Search Test Book',
-    'Book for search testing',
-    '£'
-  ),
-  (
-    4,
-    'Inactive Book',
-    'Book for deletion testing',
-    '$'
-  ),
-  (
-    5,
-    'No Superadmin Book',
-    'Book where superadmin has no access',
-    '¥'
+    'Test Book 3',
+    'Third book in team 1 for testing',
+    '£',
+    1
   );
 
--- Test Book Users
-INSERT INTO
-  `book_user` (`book_id`, `user_id`, `role`)
-VALUES
-  (1, 1, 'admin'), -- superadmin is admin of book 1
-  (1, 2, 'collaborator'), -- testuser1 is collaborator of book 1
-  (1, 3, 'viewer'), -- testuser2 is viewer of book 1
-  (2, 1, 'admin'), -- superadmin is admin of book 2
-  (2, 2, 'admin'), -- testuser1 is admin of book 2
-  (3, 1, 'admin'), -- superadmin is admin of book 3
-  (4, 1, 'admin'), -- superadmin is admin of book 4
-  (5, 2, 'admin'), -- testuser1 is admin of book 5 (superadmin is NOT a member)
-  (5, 4, 'collaborator');
-
--- regularuser is collaborator of book 5
--- superadmin is admin of book 4
 -- Test Accounts
 INSERT INTO
   `account` (`id`, `name`, `note`, `type`, `book_id`)
@@ -226,10 +247,10 @@ VALUES
   ),
   (
     4,
-    'Book 5 Account',
-    'Account in book without superadmin',
+    'Investment Account',
+    'Investment account in book 3',
     'debit',
-    5
+    3
   );
 
 -- Test Categories
@@ -255,10 +276,10 @@ VALUES
     2
   ),
   (
-    'Book 5 Category',
-    'Category in book without superadmin',
-    'expense',
-    5
+    'Investment Income',
+    'Category for investment returns',
+    'income',
+    3
   );
 
 -- Test Transactions
@@ -310,9 +331,9 @@ VALUES
     3
   ),
   (
-    'Book 5 transaction',
-    'Transaction in book without superadmin access',
-    -30.00,
+    'Investment dividend',
+    'Dividend payment from investment account',
+    50.00,
     '2024-12-05',
     TRUE,
     4,

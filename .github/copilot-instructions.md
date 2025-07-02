@@ -42,16 +42,16 @@ Credit accounts: Expenses increase the debt/balance (positive), Income/payments 
 ## Permissions
 We use a permissions system to control access to certain features and pages. Please ensure that any new components or pages are compatible with the permissions system.
 
-User roles outside books:
+User roles outside teams:
 - superadmin: Has access to admin dashboard features and can manage users and permissions.
-- regular user: has access to his user profile and can view the books he is a member of.
+- regular user: has access to his user profile and can view the teams he is a member of.
 
-Inside books superadmins dont have special permissions, they are treated as regular users with the roles they have assigned in the book.
+Inside teams and books superadmins dont have special permissions, they are treated as regular users with the roles they have assigned in the team.
 
-The roles inside books are:
-- admin: full access to books, can give other users access to books, can manage edit where he is admin, and can view and edit accounts, categories and transactions.
-- collaborator: can view and edit books where he is a collaborator, can view accounts but cannot manage them. can view and edit categories. can view and edit transactions.
-- viewer: can view books where he is a viewer, can view accounts, categories and transactions but cannot edit them.
+The roles inside teams are:
+- admin: full access to team team, can give other users access to team, can manage edit where he is admin, can view and edit books, can view and edit accounts, categories and transactions.
+- collaborator: can view teams where he is a collaborator, can view books where he is a collaborator but cannot manage them, can view accounts but cannot manage them. can view and edit categories. can view and edit transactions.
+- viewer: can view teams where he is a viewer, can view books where he is a viewer, can view accounts, categories and transactions but cannot edit them.
 
 # Frontend Testing
 We use Storybook 9 for component testing, this means that we need to use `storybook/test` instead of `@storybook/test` in the tests.
