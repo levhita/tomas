@@ -20,7 +20,7 @@ describe('Transactions Management API', () => {
   let superadminToken, adminToken, collaboratorToken, viewerToken, noaccessToken;
   // Make sure these IDs match what's in the test_seeds.sql file
   let testBookId = 1; // From test data
-  let testAccountId = 1; // Test Checking Account
+  let testAccountId = 2; // Test Checking Account
   let testCategoryId = 2; // Food & Dining category
 
   beforeAll(async () => {
