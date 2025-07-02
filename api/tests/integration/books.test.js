@@ -1,8 +1,7 @@
 /**
  * Book Management API Tests
  * 
- * Tests all book-related endpoints including CRUD operations,
- * user management, and search functionality.
+ * Tests all book-related endpoints including CRUD operations.
  */
 
 const request = require('supertest');
@@ -50,9 +49,10 @@ describe('Book Management API', () => {
   };
 
   describe('GET /api/books', () => {
-    it('should return user books for authenticated user', async () => {
+    it('should return books for team with write access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
-      const response = await auth.get('/api/books');
+      const response = await auth.get('/api/books?teamId=1');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -63,130 +63,61 @@ describe('Book Management API', () => {
       validateBookObject(book);
       expect(book).toHaveProperty('role');
       expect(['viewer', 'collaborator', 'admin']).toContain(book.role);
+      expect(book.team_name).toBe('Test Team 1'); // Should be from team 1
     });
 
-    it('should return empty array for user with no books', async () => {
+    it('should return books for team with read access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1, collaborator in team 2
+      const response = await auth.get('/api/books?teamId=1');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+
+      // Check book structure
+      const book = response.body[0];
+      validateBookObject(book);
+      expect(book).toHaveProperty('role');
+      expect(['viewer', 'collaborator', 'admin']).toContain(book.role);
+      expect(book.team_name).toBe('Test Team 1'); // Should be from team 1
+    });
+
+    it('should require teamId parameter', async () => {
+      const auth = authenticatedRequest(collaboratorToken);
+      const response = await auth.get('/api/books');
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/teamId.*required/i);
+    });
+
+    it('should deny access to team user has no access to', async () => {
       const auth = authenticatedRequest(noaccessToken); // User with no team access
-      const response = await auth.get('/api/books');
+      const response = await auth.get('/api/books?teamId=1');
 
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(0);
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
-    it('should return empty array for superadmin with no team access', async () => {
+    it('should deny superadmin access without team membership', async () => {
       const auth = authenticatedRequest(superadminToken); // Superadmin with no team membership
-      const response = await auth.get('/api/books');
+      const response = await auth.get('/api/books?teamId=1');
 
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(0);
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should deny access without authentication', async () => {
-      const response = await request(app).get('/api/books');
+      const response = await request(app).get('/api/books?teamId=1');
 
       validateApiResponse(response, 401);
     });
   });
 
-  describe('GET /api/books/all', () => {
-    it('should return all books for superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/books/all');
-
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-
-      // Check that all test books are included
-      const bookIds = response.body.map(w => w.id);
-      expect(bookIds).toContain(TEST_BOOKS.BOOK1.id);
-      expect(bookIds).toContain(TEST_BOOKS.BOOK2.id);
-      expect(bookIds).toContain(TEST_BOOKS.SEARCH_BOOK.id);
-
-      // Verify structure
-      response.body.forEach(book => {
-        validateBookObject(book);
-      });
-    });
-
-    it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const response = await auth.get('/api/books/all');
-
-      validateApiResponse(response, 403);
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/admin privileges required/i);
-    });
-  });
-
-  describe('GET /api/books/search', () => {
-    it('should search books by name for superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/books/search?q=Test&limit=10');
-
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-
-      // Verify all results contain "Test" in name
-      response.body.forEach(book => {
-        validateBookObject(book);
-        expect(book.name.toLowerCase()).toContain('test');
-      });
-    });
-
-    it('should search books by ID for superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get(`/api/books/search?q=${TEST_BOOKS.BOOK1.id}&limit=10`);
-
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-
-      if (response.body.length > 0) {
-        const book = response.body.find(w => w.id === TEST_BOOKS.BOOK1.id);
-        expect(book).toBeDefined();
-        validateBookObject(book);
-      }
-    });
-
-    it('should limit search results', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/books/search?q=Book&limit=2');
-
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeLessThanOrEqual(2);
-    });
-
-    it('should return empty array for no matches', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/books/search?q=NonExistentBook&limit=10');
-
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(0);
-    });
-
-    it('should require search query parameter', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/books/search');
-
-      validateApiResponse(response, 400);
-      expect(response.body).toHaveProperty('error');
-    });
-
-    it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const response = await auth.get('/api/books/search?q=Test&limit=10');
-
-      validateApiResponse(response, 403);
-    });
-  });
-
   describe('GET /api/books/:id', () => {
     it('should return book for user with access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -197,6 +128,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access to book user has no access to', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(noaccessToken); // User with no team access
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 

@@ -17,7 +17,8 @@ const db = require('../db');
  * Get user's role in a book through team membership
  * 
  * Queries the database to determine what role (if any) a user has
- * in a specific book through their team membership.
+ * in a specific book through their team membership. Only considers
+ * books in active (non-deleted) teams.
  * 
  * @param {number} bookId - The book ID
  * @param {number} userId - The user ID
@@ -29,7 +30,8 @@ async function getUserRole(bookId, userId) {
       SELECT tu.role 
       FROM team_user tu
       INNER JOIN book b ON tu.team_id = b.team_id
-      WHERE b.id = ? AND tu.user_id = ? AND b.deleted_at IS NULL
+      INNER JOIN team t ON tu.team_id = t.id
+      WHERE b.id = ? AND tu.user_id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
     `, [bookId, userId]);
 
     return access.length > 0 ? access[0].role : null;
@@ -145,7 +147,8 @@ async function getBookUsers(bookId) {
     FROM user u
     INNER JOIN team_user tu ON u.id = tu.user_id
     INNER JOIN book b ON tu.team_id = b.team_id
-    WHERE b.id = ? AND b.deleted_at IS NULL
+    INNER JOIN team t ON tu.team_id = t.id
+    WHERE b.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
     ORDER BY u.username ASC
   `, [bookId]);
 
@@ -153,10 +156,10 @@ async function getBookUsers(bookId) {
 }
 
 /**
- * Get book by ID (excludes deleted books)
+ * Get book by ID (excludes deleted books and books in deleted teams)
  * 
  * Retrieves a book's full details by its ID. Only returns
- * active books (not soft-deleted ones).
+ * active books (not soft-deleted ones) that belong to active teams.
  * 
  * This function is commonly used to verify book existence
  * and to retrieve book settings.
@@ -169,10 +172,11 @@ async function getBookUsers(bookId) {
  * // { id: 1, name: 'Personal Finance', note: '...', created_at: '2023-01-01', ... }
  */
 async function getBookById(bookId) {
-  const [books] = await db.execute(
-    'SELECT * FROM book WHERE id = ? AND deleted_at IS NULL',
-    [bookId]
-  );
+  const [books] = await db.execute(`
+    SELECT b.* FROM book b
+    INNER JOIN team t ON b.team_id = t.id
+    WHERE b.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
+  `, [bookId]);
 
   return books[0] || null;
 }

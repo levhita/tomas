@@ -14,7 +14,7 @@ const {
 } = require('../utils/test-helpers');
 
 describe('Categories Management API', () => {
-  let superadminToken, adminToken, collaboratorToken, viewerToken;
+  let superadminToken, adminToken, collaboratorToken, viewerToken, noaccessToken;
 
   beforeAll(async () => {
     // Use the new token cache initialization for better performance
@@ -23,6 +23,7 @@ describe('Categories Management API', () => {
     adminToken = tokens.admin;
     collaboratorToken = tokens.collaborator;
     viewerToken = tokens.viewer;
+    noaccessToken = tokens.noaccess;
   });
 
   describe('GET /api/categories', () => {
@@ -53,6 +54,14 @@ describe('Categories Management API', () => {
     });
 
     it('should deny access to book without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const response = await auth.get('/api/categories?book_id=1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
       const auth = authenticatedRequest(superadminToken);
       const response = await auth.get('/api/categories?book_id=1');
 
@@ -94,6 +103,22 @@ describe('Categories Management API', () => {
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', 2);
+    });
+
+    it('should deny access to category without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const response = await auth.get('/api/categories/1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/categories/1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should deny access without authentication', async () => {
@@ -205,6 +230,32 @@ describe('Categories Management API', () => {
       expect(response.body).toHaveProperty('book_id', categoryData.book_id);
     });
 
+    it('should deny access to user without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const categoryData = {
+        name: 'Test Category',
+        book_id: 1
+      };
+
+      const response = await auth.post('/api/categories').send(categoryData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const categoryData = {
+        name: 'Test Category',
+        book_id: 1
+      };
+
+      const response = await auth.post('/api/categories').send(categoryData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
     it('should deny access without authentication', async () => {
       const categoryData = {
         name: 'Test Category',
@@ -262,6 +313,26 @@ describe('Categories Management API', () => {
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('name', updateData.name);
+    });
+
+    it('should deny access to user without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const updateData = { name: 'Updated Name' };
+
+      const response = await auth.put('/api/categories/1').send(updateData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const updateData = { name: 'Updated Name' };
+
+      const response = await auth.put('/api/categories/1').send(updateData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should deny access without authentication', async () => {
@@ -332,6 +403,22 @@ describe('Categories Management API', () => {
       // Verify it's deleted
       const getResponse = await auth.get(`/api/categories/${categoryId}`);
       validateApiResponse(getResponse, 404);
+    });
+
+    it('should deny access to user without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const response = await auth.delete('/api/categories/1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.delete('/api/categories/1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should deny access without authentication', async () => {

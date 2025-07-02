@@ -17,7 +17,7 @@ const db = require('../db');
  * Get user's role in a team
  * 
  * Queries the database to determine what role (if any) a user has
- * in a specific team.
+ * in a specific team. Only considers active (non-deleted) teams.
  * 
  * @param {number} teamId - The team ID
  * @param {number} userId - The user ID
@@ -26,8 +26,9 @@ const db = require('../db');
 async function getUserRole(teamId, userId) {
   try {
     const [access] = await db.execute(`
-      SELECT role FROM team_user 
-      WHERE team_id = ? AND user_id = ?
+      SELECT tu.role FROM team_user tu
+      INNER JOIN team t ON tu.team_id = t.id
+      WHERE tu.team_id = ? AND tu.user_id = ? AND t.deleted_at IS NULL
     `, [teamId, userId]);
 
     return access.length > 0 ? access[0].role : null;
@@ -125,7 +126,7 @@ async function canRead(teamId, userId) {
  * Get users of a team
  * 
  * Retrieves all users who have access to a team, along with their
- * roles and basic profile information.
+ * roles and basic profile information. Only works for active (non-deleted) teams.
  * 
  * This is typically used in team management interfaces and for
  * permission verification.
@@ -142,7 +143,8 @@ async function getTeamUsers(teamId) {
     SELECT u.id, u.username, tu.role, u.created_at
     FROM user u
     INNER JOIN team_user tu ON u.id = tu.user_id
-    WHERE tu.team_id = ?
+    INNER JOIN team t ON tu.team_id = t.id
+    WHERE tu.team_id = ? AND t.deleted_at IS NULL
     ORDER BY u.username ASC
   `, [teamId]);
 
@@ -153,23 +155,26 @@ async function getTeamUsers(teamId) {
  * Get team by ID
  * 
  * Retrieves a team's full details by its ID.
+ * By default, excludes soft-deleted teams.
  * 
  * This function is commonly used to verify team existence
  * and to retrieve team settings.
  * 
  * @param {number} teamId - The team ID to get
+ * @param {boolean} includeDeleted - Whether to include soft-deleted teams (default: false)
  * @returns {Promise<Object|null>} - Returns team object or null if not found
  * 
  * @example
  * // Returns an object like:
  * // { id: 1, name: 'Personal Finance Team', created_at: '2023-01-01', ... }
  */
-async function getTeamById(teamId) {
-  const [teams] = await db.execute(
-    'SELECT * FROM team WHERE id = ?',
-    [teamId]
-  );
+async function getTeamById(teamId, includeDeleted = false) {
+  let query = 'SELECT * FROM team WHERE id = ?';
+  if (!includeDeleted) {
+    query += ' AND deleted_at IS NULL';
+  }
 
+  const [teams] = await db.execute(query, [teamId]);
   return teams[0] || null;
 }
 
@@ -178,6 +183,7 @@ async function getTeamById(teamId) {
  * 
  * Retrieves the team that owns a specific book.
  * Used to check team permissions when accessing book resources.
+ * Only returns active (non-deleted) teams.
  * 
  * @param {number} bookId - The book ID to get team for
  * @returns {Promise<Object|null>} - Returns team object or null if not found
@@ -186,7 +192,7 @@ async function getTeamByBookId(bookId) {
   const [teams] = await db.execute(`
     SELECT t.* FROM team t
     INNER JOIN book b ON t.id = b.team_id
-    WHERE b.id = ? AND b.deleted_at IS NULL
+    WHERE b.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
   `, [bookId]);
 
   return teams[0] || null;

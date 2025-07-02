@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
       SELECT t.*, tu.role 
       FROM team t
       INNER JOIN team_user tu ON t.id = tu.team_id
-      WHERE tu.user_id = ?
+      WHERE tu.user_id = ? AND t.deleted_at IS NULL
       ORDER BY t.name ASC
     `, [req.user.id]);
 
@@ -65,14 +65,16 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
   try {
     const searchTerm = req.query.q || '';
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const includeDeleted = req.query.includeDeleted === 'true';
 
     let query, params;
 
     if (!searchTerm.trim()) {
       // If no search term, return all teams
       query = `
-        SELECT id, name, created_at
+        SELECT id, name, created_at, deleted_at
         FROM team 
+        ${includeDeleted ? '' : 'WHERE deleted_at IS NULL'}
         ORDER BY name ASC
         LIMIT ?
       `;
@@ -80,9 +82,9 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
     } else {
       // Search by team name (partial match, case-insensitive)
       query = `
-        SELECT id, name, created_at
+        SELECT id, name, created_at, deleted_at
         FROM team 
-        WHERE name LIKE ?
+        WHERE name LIKE ? ${includeDeleted ? '' : 'AND deleted_at IS NULL'}
         ORDER BY 
           CASE WHEN name = ? THEN 0 ELSE 1 END,
           LENGTH(name) ASC,
@@ -111,8 +113,9 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
 router.get('/all', requireSuperAdmin, async (req, res) => {
   try {
     const [teams] = await db.query(`
-      SELECT id, name, created_at
+      SELECT id, name, created_at, deleted_at
       FROM team 
+      WHERE deleted_at IS NULL
       ORDER BY name ASC
     `);
 
@@ -469,6 +472,147 @@ router.get('/:id/users', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch team users' });
+  }
+});
+
+/**
+ * DELETE /teams/:id
+ * Soft-delete a team
+ * 
+ * @param {number} id - Team ID
+ * @permission Admin access to the team
+ * @returns {void}
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    // First check if the team exists and is not already deleted
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check permissions (only team admins can soft-delete their team)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Soft-delete the team
+    await db.query(`
+      UPDATE team SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?
+    `, [req.params.id]);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to delete team' });
+  }
+});
+
+/**
+ * POST /teams/:id/restore
+ * Restore a soft-deleted team
+ * 
+ * @param {number} id - Team ID
+ * @permission Super admin only
+ * @returns {Object} Restored team details
+ */
+router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
+  try {
+    // Check if the team exists and is soft-deleted
+    const team = await getTeamById(req.params.id, true); // Include deleted teams
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    if (!team.deleted_at) {
+      return res.status(400).json({ error: 'Team is not deleted' });
+    }
+
+    // Restore the team
+    await db.query(`
+      UPDATE team SET deleted_at = NULL WHERE id = ?
+    `, [req.params.id]);
+
+    // Fetch the restored team
+    const restoredTeam = await getTeamById(req.params.id);
+    res.status(200).json(restoredTeam);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to restore team' });
+  }
+});
+
+/**
+ * DELETE /teams/:id/permanent
+ * Permanently delete a team and all associated data
+ * 
+ * @param {number} id - Team ID
+ * @permission Super admin only
+ * @returns {void}
+ */
+router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
+  try {
+    // Check if the team exists (including soft-deleted)
+    const team = await getTeamById(req.params.id, true);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Delete all transactions for books in this team
+      await connection.query(`
+        DELETE t FROM transaction t
+        INNER JOIN account a ON t.account_id = a.id
+        INNER JOIN book b ON a.book_id = b.id
+        WHERE b.team_id = ?
+      `, [req.params.id]);
+
+      // Delete all accounts for books in this team
+      await connection.query(`
+        DELETE a FROM account a
+        INNER JOIN book b ON a.book_id = b.id
+        WHERE b.team_id = ?
+      `, [req.params.id]);
+
+      // Delete all categories for books in this team
+      await connection.query(`
+        DELETE c FROM category c
+        INNER JOIN book b ON c.book_id = b.id
+        WHERE b.team_id = ?
+      `, [req.params.id]);
+
+      // Delete all books for this team
+      await connection.query(`
+        DELETE FROM book WHERE team_id = ?
+      `, [req.params.id]);
+
+      // Delete all team user relationships
+      await connection.query(`
+        DELETE FROM team_user WHERE team_id = ?
+      `, [req.params.id]);
+
+      // Finally, delete the team itself
+      await connection.query(`
+        DELETE FROM team WHERE id = ?
+      `, [req.params.id]);
+
+      await connection.commit();
+      res.status(204).send();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to permanently delete team' });
   }
 });
 

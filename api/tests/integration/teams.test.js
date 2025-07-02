@@ -23,6 +23,7 @@ describe('Teams Management API', () => {
   let adminToken;          // User with admin role in team 1
   let viewerToken;         // User with viewer role in team 1  
   let collaboratorToken;   // User with collaborator role in team 1
+  let noaccessToken;       // User with no team access for permission-denied scenarios
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
@@ -31,6 +32,7 @@ describe('Teams Management API', () => {
     adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
     viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
     collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
+    noaccessToken = tokens.noaccess;     // User 5: no team access
   });
 
   // Reset database only before tests that modify data or create conflicts
@@ -42,6 +44,7 @@ describe('Teams Management API', () => {
     adminToken = tokens.admin;
     viewerToken = tokens.viewer;
     collaboratorToken = tokens.collaborator;
+    noaccessToken = tokens.noaccess;
   };
 
   describe('GET /api/teams', () => {
@@ -88,6 +91,36 @@ describe('Teams Management API', () => {
       const response = await request(app).get('/api/teams');
 
       validateApiResponse(response, 401);
+    });
+
+    it('should support team creation and user management', async () => {
+      // This test validates the team-books integration workflow:
+      // 1. Create a new team without books
+      // 2. Add a user to the team  
+      // 3. Verify the user can access the team's books (empty list)
+
+      const auth = authenticatedRequest(superadminToken);
+      const teamResponse = await auth.post('/api/teams')
+        .send({
+          name: 'Empty Team for Books Test'
+        });
+
+      const teamId = teamResponse.body.id;
+
+      // Add the collaborator user to this new team
+      await auth.post(`/api/teams/${teamId}/users`)
+        .send({
+          userId: 3, // collaborator user
+          role: 'viewer'
+        });
+
+      // Now test with the collaborator - verify they can access books for this team
+      const userAuth = authenticatedRequest(collaboratorToken);
+      const response = await userAuth.get(`/api/books?teamId=${teamId}`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0); // New team has no books yet
     });
   });
 
@@ -179,7 +212,7 @@ describe('Teams Management API', () => {
 
     it('should deny access to team user has no access to', async () => {
       // Create a new team that existing users don't have access to
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(noaccessToken);
       const teamData = {
         name: `Isolated Team ${Date.now()}`
       };
@@ -566,6 +599,208 @@ describe('Teams Management API', () => {
       const usersResponse = await superAuth.get('/api/teams/1/users');
       const removedUser = usersResponse.body.find(u => u.id === TEST_USERS.VIEWER.id);
       expect(removedUser).toBeUndefined();
+    });
+  });
+
+  describe('Team Deletion Management', () => {
+    describe('DELETE /api/teams/:id - Soft Delete', () => {
+      beforeEach(async () => {
+        await resetBeforeTest(); // Reset for clean state
+      });
+
+      it('should allow team admin to soft-delete their team', async () => {
+        const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+
+        const response = await auth.delete('/api/teams/1');
+        validateApiResponse(response, 204);
+
+        // Verify team is soft-deleted
+        const teamResponse = await auth.get('/api/teams/1');
+        validateApiResponse(teamResponse, 404);
+
+        // Verify team no longer appears in user's teams list
+        const teamsResponse = await auth.get('/api/teams');
+        const deletedTeam = teamsResponse.body.find(t => t.id === 1);
+        expect(deletedTeam).toBeUndefined();
+      });
+
+      it('should allow superadmin to soft-delete any team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.delete('/api/teams/2');
+        validateApiResponse(response, 204);
+
+        // Verify team is soft-deleted
+        const teamResponse = await auth.get('/api/teams/2');
+        validateApiResponse(teamResponse, 404);
+      });
+
+      it('should deny collaborator from soft-deleting team', async () => {
+        const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
+
+        const response = await auth.delete('/api/teams/1');
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/admin privileges required/i);
+      });
+
+      it('should deny viewer from soft-deleting team', async () => {
+        const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1
+
+        const response = await auth.delete('/api/teams/1');
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/admin privileges required/i);
+      });
+
+      it('should return 404 for non-existent team', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.delete('/api/teams/99999');
+        validateApiResponse(response, 404);
+      });
+
+      it('should return 404 when trying to soft-delete already deleted team', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        // First soft-delete
+        await auth.delete('/api/teams/1');
+
+        // Try to soft-delete again
+        const response = await auth.delete('/api/teams/1');
+        validateApiResponse(response, 404);
+      });
+    });
+
+    describe('POST /api/teams/:id/restore - Restore Soft-deleted Team', () => {
+      beforeEach(async () => {
+        await resetBeforeTest();
+        // Soft-delete team 1 for testing restore
+        const auth = authenticatedRequest(superadminToken);
+        await auth.delete('/api/teams/1');
+      });
+
+      it('should allow superadmin to restore soft-deleted team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.post('/api/teams/1/restore');
+        validateApiResponse(response, 200);
+        expect(response.body).toHaveProperty('id', 1);
+        expect(response.body).toHaveProperty('name');
+        expect(response.body.deleted_at).toBeNull();
+
+        // Verify team is accessible again
+        const teamResponse = await auth.get('/api/teams/1');
+        validateApiResponse(teamResponse, 200);
+      });
+
+      it('should deny non-superadmin from restoring team', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.post('/api/teams/1/restore');
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/admin privileges required/i);
+      });
+
+      it('should return 404 for non-existent team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.post('/api/teams/99999/restore');
+        validateApiResponse(response, 404);
+      });
+
+      it('should return 400 when trying to restore non-deleted team', async () => {
+        await resetBeforeTest(); // Reset to get non-deleted state
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.post('/api/teams/1/restore');
+        validateApiResponse(response, 400);
+        expect(response.body.error).toMatch(/not deleted/i);
+      });
+    });
+
+    describe('DELETE /api/teams/:id/permanent - Permanent Delete', () => {
+      beforeEach(async () => {
+        await resetBeforeTest();
+      });
+
+      it('should allow superadmin to permanently delete team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.delete('/api/teams/1/permanent');
+        validateApiResponse(response, 204);
+
+        // Verify team is completely gone
+        const teamResponse = await auth.get('/api/teams/1');
+        validateApiResponse(teamResponse, 404);
+
+        // Verify with includeDeleted flag in search (should still not find it)
+        const searchResponse = await auth.get('/api/teams/search?includeDeleted=true&q=Test Team 1');
+        const deletedTeam = searchResponse.body.find(t => t.id === 1);
+        expect(deletedTeam).toBeUndefined();
+      });
+
+      it('should permanently delete soft-deleted team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        // First soft-delete the team
+        await auth.delete('/api/teams/1');
+
+        // Then permanently delete
+        const response = await auth.delete('/api/teams/1/permanent');
+        validateApiResponse(response, 204);
+
+        // Verify team is completely gone
+        const teamResponse = await auth.get('/api/teams/1');
+        validateApiResponse(teamResponse, 404);
+      });
+
+      it('should deny non-superadmin from permanent deletion', async () => {
+        const auth = authenticatedRequest(adminToken);
+
+        const response = await auth.delete('/api/teams/1/permanent');
+        validateApiResponse(response, 403);
+        expect(response.body.error).toMatch(/admin privileges required/i);
+      });
+
+      it('should return 404 for non-existent team', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.delete('/api/teams/99999/permanent');
+        validateApiResponse(response, 404);
+      });
+    });
+
+    describe('Search with deleted teams', () => {
+      beforeEach(async () => {
+        await resetBeforeTest();
+        // Soft-delete team 1 for testing
+        const auth = authenticatedRequest(superadminToken);
+        await auth.delete('/api/teams/1');
+      });
+
+      it('should exclude soft-deleted teams by default in search', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.get('/api/teams/search?q=Test');
+        const deletedTeam = response.body.find(t => t.id === 1);
+        expect(deletedTeam).toBeUndefined();
+      });
+
+      it('should include soft-deleted teams when requested', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.get('/api/teams/search?q=Test&includeDeleted=true');
+        const deletedTeam = response.body.find(t => t.id === 1);
+        expect(deletedTeam).toBeDefined();
+        expect(deletedTeam.deleted_at).not.toBeNull();
+      });
+
+      it('should exclude soft-deleted teams in /all endpoint', async () => {
+        const auth = authenticatedRequest(superadminToken);
+
+        const response = await auth.get('/api/teams/all');
+        const deletedTeam = response.body.find(t => t.id === 1);
+        expect(deletedTeam).toBeUndefined();
+      });
     });
   });
 });

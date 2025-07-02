@@ -21,7 +21,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireSuperAdmin } = require('../middleware/auth');
 const {
   getBookById,
   getBookByIdIncludingDeleted
@@ -36,115 +35,51 @@ const {
 
 /**
  * GET /books
- * List all books accessible to the current user
+ * List all books for a specific team
  * 
- * @permission Requires authentication, returns only books from teams the user is a member of
- * @returns {Array} List of books the user has access to
+ * @query {number} teamId - Required team ID
+ * @permission Requires authentication and team membership (any role)
+ * @returns {Array} List of books for the specified team
  */
 router.get('/', async (req, res) => {
+  const teamId = req.query.teamId;
+
+  if (!teamId) {
+    return res.status(400).json({ error: 'teamId parameter is required' });
+  }
+
   try {
+    // Check if user has read access to this team
+    const { allowed, message } = await canRead(teamId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Get user's role in this team
+    const userRole = await getUserRole(teamId, req.user.id);
+
     const [books] = await db.query(`
-      SELECT b.*, tu.role, t.name as team_name
+      SELECT b.*, t.name as team_name
       FROM book b
       INNER JOIN team t ON b.team_id = t.id
-      INNER JOIN team_user tu ON t.id = tu.team_id
-      WHERE tu.user_id = ? AND b.deleted_at IS NULL
+      WHERE b.team_id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
       ORDER BY b.name ASC
-    `, [req.user.id]);
+    `, [teamId]);
 
-    res.status(200).json(books);
+    // Add role to each book for consistency with previous API
+    const booksWithRole = books.map(book => ({
+      ...book,
+      role: userRole
+    }));
+
+    res.status(200).json(booksWithRole);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch books' });
   }
 });
 
-/**
- * GET /books/search
- * Search books by name or ID (admin only)
- * 
- * @query {string} q - Search query (book name or ID)
- * @query {number} limit - Maximum results to return (default: 10, max: 50)
- * @permission Super admin only
- * @returns {Array} List of matching books
- */
-router.get('/search', requireSuperAdmin, async (req, res) => {
-  try {
-    const { q, limit = 10 } = req.query;
 
-    if (!q || q.trim().length === 0) {
-      return res.status(400).json({ error: 'Search query is required' });
-    }
-
-    const searchTerm = q.trim();
-    const resultLimit = Math.min(parseInt(limit) || 10, 50); // Cap at 50 results
-
-    // Check if search term is a number (ID search)
-    const isNumericSearch = /^\d+$/.test(searchTerm);
-
-    let query;
-    let params;
-
-    if (isNumericSearch) {
-      // Search by exact ID or partial ID
-      query = `
-        SELECT id, name, note, currency_symbol, created_at
-        FROM book 
-        WHERE deleted_at IS NULL 
-        AND (id = ? OR CAST(id AS CHAR) LIKE ?)
-        ORDER BY 
-          CASE WHEN id = ? THEN 0 ELSE 1 END,
-          name ASC
-        LIMIT ?
-      `;
-      params = [parseInt(searchTerm), `${searchTerm}%`, parseInt(searchTerm), resultLimit];
-    } else {
-      // Search by book name (partial match, case-insensitive)
-      query = `
-        SELECT id, name, note, currency_symbol, created_at
-        FROM book 
-        WHERE deleted_at IS NULL 
-        AND name LIKE ?
-        ORDER BY 
-          CASE WHEN name = ? THEN 0 ELSE 1 END,
-          LENGTH(name) ASC,
-          name ASC
-        LIMIT ?
-      `;
-      params = [`%${searchTerm}%`, searchTerm, resultLimit];
-    }
-
-    const [books] = await db.query(query, params);
-    res.status(200).json(books);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to search books' });
-  }
-});
-
-/**
- * GET /books/all
- * Get all books (admin only)
- * 
- * @permission Super admin only
- * @returns {Array} List of all books
- * @deprecated Use /books/search instead for better performance
- */
-router.get('/all', requireSuperAdmin, async (req, res) => {
-  try {
-    const [books] = await db.query(`
-      SELECT id, name, note, currency_symbol, created_at
-      FROM book 
-      WHERE deleted_at IS NULL
-      ORDER BY name ASC
-    `);
-
-    res.status(200).json(books);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch all books' });
-  }
-});
 
 /**
  * GET /books/:id
