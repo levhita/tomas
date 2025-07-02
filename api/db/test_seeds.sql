@@ -73,7 +73,7 @@ INSERT INTO
     `note`,
     `currency_symbol`,
     `team_id`,
-    'deleted_at'
+    `deleted_at`
   )
 VALUES
   (
