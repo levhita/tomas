@@ -76,6 +76,57 @@ $danger: $gnome-red-3;
 $light: $gnome-light-2;
 $dark: $gnome-dark-3;
 
+
+
+$payment: rgba($gnome-purple-4, 0.7); // Payment color credit card type
+$income: darken($gnome-green-5, 15%); // Income color debit card type
+$expense: $gnome-blue-5; // Expense color debit card type 
+$charge: $gnome-yellow-5; // Charge color credit card type
+
+.bg-payment {
+  background-color: $payment !important;
+  @extend .text-white;
+  /*
+    - Payments would be  *Lavender* because  purple
+     helps to spiritual development and works
+      against home and work stress. 
+      When we pay our debts we calm our stress 
+      and feel a little bit more stable.
+  */
+}
+.bg-income {
+  background-color: $income !important;
+    @extend .text-white;
+    /*
+      - Income: *Green* We are using green to attract more transactions like this, 
+      abundance, money and spiritual growth, 
+      help us heal the emotions and Brings luck in business endeavors 
+    */
+
+}
+.bg-expense {
+  background-color: $expense !important;
+    @extend .text-white;
+    /*
+   Expenses is *blue* because it brings tranquility to the soul, 
+   banishes anger and invite us to meditation 
+   on our consume habits
+    */
+
+}
+.bg-charge {
+  background-color: $charge !important;
+  @extend .text-white;
+  /*
+  With each charge and the ablility to have visibility on it
+  we want to promote learning nd awareness of our money habits, sparks intuition 
+  *should I keep using my credit for charges like this one?*
+  That is the reason why we use *yellow* for Charges
+  */
+  
+
+}
+
 // Background colors
 // $body-bg: $gnome-light-1;
 // $body-color: $gnome-dark-4;
