@@ -255,7 +255,7 @@ async function validateTestData() {
     // Check test schema file
     const schemaContent = await fs.readFile('db/test_schema.sql', 'utf8');
 
-    const requiredTables = ['user', 'book', 'book_user', 'account', 'category', 'transaction'];
+    const requiredTables = ['user', 'book', 'team_user', 'account', 'category', 'transaction'];
     const requiredTestData = ['superadmin', 'testuser1', 'Test Book'];
 
     let allTablesPresent = true;

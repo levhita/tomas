@@ -213,11 +213,10 @@ async function resetDatabase() {
       'total',          // references account
       'category',       // references category (self), book  
       'account',        // references book
-      'book_user',      // references book, user
       'book',           // references team
       'team_user',      // references team, user
       'team',           // referenced by book, team_user
-      'user'            // referenced by book_user, team_user
+      'user'            // referenced by team_user
     ];
 
     // Delete in dependency order

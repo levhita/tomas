@@ -391,11 +391,6 @@ router.delete('/:id/permanent', async (req, res) => {
         DELETE FROM account WHERE book_id = ?
       `, [req.params.id]);
 
-      // 5. Delete legacy book users (if any remain)
-      await connection.query(`
-        DELETE FROM book_user WHERE book_id = ?
-      `, [req.params.id]);
-
       // 6. Finally delete the book
       const [result] = await connection.query(`
         DELETE FROM book WHERE id = ?
