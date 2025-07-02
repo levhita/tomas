@@ -162,18 +162,15 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Superadmin can access any book
-    if (!req.user.superadmin) {
-      // Check team-based access
-      const team = await getTeamByBookId(req.params.id);
-      if (!team) {
-        return res.status(404).json({ error: 'Book not found' });
-      }
+    // Check team-based access for all users including superadmin
+    const team = await getTeamByBookId(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
-      const { allowed, message } = await canRead(team.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
+    const { allowed, message } = await canRead(team.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     res.status(200).json(book);
@@ -216,12 +213,10 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check if user has write access to the team (unless superadmin)
-    if (!req.user.superadmin) {
-      const { allowed, message } = await canWriteTeam(teamId, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
+    // Check if user has write access to the team
+    const { allowed, message } = await canWriteTeam(teamId, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // Create the book
@@ -264,17 +259,15 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Check team-based write permissions (unless superadmin)
-    if (!req.user.superadmin) {
-      const team = await getTeamByBookId(req.params.id);
-      if (!team) {
-        return res.status(404).json({ error: 'Book not found' });
-      }
+    // Check team-based write permissions for all users including superadmin
+    const team = await getTeamByBookId(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
-      const { allowed, message } = await canWrite(team.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
+    const { allowed, message } = await canWrite(team.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const currencySymbol = currency_symbol !== undefined ? currency_symbol : existingBook.currency_symbol;
@@ -317,17 +310,15 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Check team-based admin permissions (unless superadmin)
-    if (!req.user.superadmin) {
-      const team = await getTeamByBookId(req.params.id);
-      if (!team) {
-        return res.status(404).json({ error: 'Book not found' });
-      }
+    // Check team-based admin permissions for all users including superadmin
+    const team = await getTeamByBookId(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
 
-      const { allowed, message } = await canAdmin(team.id, req.user.id);
-      if (!allowed) {
-        return res.status(403).json({ error: message });
-      }
+    const { allowed, message } = await canAdmin(team.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     const [result] = await db.query(`
@@ -352,15 +343,21 @@ router.delete('/:id', async (req, res) => {
  * Restore a soft-deleted book
  * 
  * @param {number} id - Book ID
- * @permission Superadmin only
+ * @permission Team admin only
  * @returns {Object} Restored book details
  */
-router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
+router.post('/:id/restore', async (req, res) => {
   try {
     // First check if book exists (including soft-deleted ones)
     const book = await getBookByIdIncludingDeleted(req.params.id);
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
+    }
+
+    // Check if user has admin access to the team that owns this book
+    const { allowed, message } = await canAdmin(book.team_id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // Check if book is already active
@@ -391,7 +388,7 @@ router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
  * Permanently delete a book and cascade delete all related data
  * 
  * @param {number} id - Book ID
- * @permission Superadmin only
+ * @permission Team admin only
  * @returns {void}
  * 
  * Note: This will cascade delete ALL related data including:
@@ -402,12 +399,18 @@ router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
  * - All book users
  * - The book itself
  */
-router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
+router.delete('/:id/permanent', async (req, res) => {
   try {
     // First check if book exists (including soft-deleted ones)
     const book = await getBookByIdIncludingDeleted(req.params.id);
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
+    }
+
+    // Check if user has admin access to the team that owns this book
+    const { allowed, message } = await canAdmin(book.team_id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
     }
 
     // Check if book is soft-deleted (requirement for permanent deletion)

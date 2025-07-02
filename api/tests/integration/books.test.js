@@ -25,6 +25,7 @@ describe('Book Management API', () => {
   let adminToken;          // User with admin role in team 1
   let viewerToken;         // User with viewer role in team 1  
   let collaboratorToken;   // User with collaborator role in team 1
+  let noaccessToken;       // User with no team access for permission-denied scenarios
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
@@ -33,6 +34,7 @@ describe('Book Management API', () => {
     adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
     viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
     collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
+    noaccessToken = tokens.noaccess;     // User 5: no team access
   });
 
   // Reset database only before tests that modify data or create conflicts
@@ -44,6 +46,7 @@ describe('Book Management API', () => {
     adminToken = tokens.admin;
     viewerToken = tokens.viewer;
     collaboratorToken = tokens.collaborator;
+    noaccessToken = tokens.noaccess;
   };
 
   describe('GET /api/books', () => {
@@ -63,24 +66,17 @@ describe('Book Management API', () => {
     });
 
     it('should return empty array for user with no books', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get('/api/books');
 
-      // Create a new user with no book access
-      const userData = generateRandomData();
-      const newUser = await createTestUser({
-        username: userData.username,
-        password: userData.password
-      }, superadminToken);
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0);
+    });
 
-      // Get token for the new user directly through cache
-      const newUserToken = await loginUser({
-        username: userData.username,
-        password: userData.password,
-        id: newUser.id
-      });
-
-      const newUserAuth = authenticatedRequest(newUserToken);
-      const response = await newUserAuth.get('/api/books');
+    it('should return empty array for superadmin with no team access', async () => {
+      const auth = authenticatedRequest(superadminToken); // Superadmin with no team membership
+      const response = await auth.get('/api/books');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -201,27 +197,11 @@ describe('Book Management API', () => {
     });
 
     it('should deny access to book user has no access to', async () => {
-      const auth = authenticatedRequest(superadminToken); // Superadmin is not a member of any team
-      // Superadmin should be denied access to team-specific books via normal user access
-      // But since superadmin has override privileges, this test actually needs to test 
-      // a different scenario. Let's create a new user with no team access.
-
-      const userData = generateRandomData();
-      const newUser = await createTestUser({
-        username: userData.username,
-        password: userData.password
-      }, superadminToken);
-
-      const newUserToken = await loginUser({
-        username: userData.username,
-        password: userData.password,
-        id: newUser.id
-      });
-
-      const newUserAuth = authenticatedRequest(newUserToken);
-      const response = await newUserAuth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
       validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should return 404 for non-existent book', async () => {
@@ -285,6 +265,34 @@ describe('Book Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
+    it('should deny access for user without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const bookData = generateRandomData();
+
+      const response = await auth.post('/api/books')
+        .send({
+          name: bookData.bookName,
+          teamId: 1
+        });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const bookData = generateRandomData();
+
+      const response = await auth.post('/api/books')
+        .send({
+          name: bookData.bookName,
+          teamId: 1
+        });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
     it('should deny access without authentication', async () => {
       const response = await request(app)
         .post('/api/books')
@@ -300,10 +308,10 @@ describe('Book Management API', () => {
     beforeEach(resetBeforeTest);
 
     it('should update book as admin', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: admin in team 2 (book 2)
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1 (book 1)
       const newName = `Updated ${Date.now()}`;
 
-      const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK2.id}`)
+      const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`)
         .send({
           name: newName,
           note: 'Updated description',
@@ -331,6 +339,30 @@ describe('Book Management API', () => {
       validateApiResponse(response, 403);
     });
 
+    it('should deny access for user without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+
+      const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`)
+        .send({
+          name: 'No Access Update'
+        });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`)
+        .send({
+          name: 'Superadmin No Access Update'
+        });
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
     it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
@@ -347,26 +379,51 @@ describe('Book Management API', () => {
     beforeEach(resetBeforeTest);
 
     it('should soft delete book as admin', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: admin in team 2 (book 2)
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1 (book 1)
 
-      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK2.id}`);
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('message');
       expect(response.body.message).toMatch(/deleted/i);
 
       // Verify book is soft deleted (should return 404)
-      const getResponse = await auth.get(`/api/books/${TEST_BOOKS.BOOK2.id}`);
+      const getResponse = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
       validateApiResponse(getResponse, 404);
     });
 
-    it('should deny access for non-admin user', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+    it('should deny collaborator from soft deleting book', async () => {
+      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1 (book 1)
 
-      // User 3 is collaborator in book 1 (team 1), not admin
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
+
+      validateApiResponse(response, 403); // Collaborators cannot soft delete, only admins can
+    });
+
+    it('should deny access for viewer (read-only user)', async () => {
+      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1 (read-only)
+
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
       validateApiResponse(response, 403);
+    });
+
+    it('should deny access for user without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should return 404 for non-existent book', async () => {
@@ -381,35 +438,54 @@ describe('Book Management API', () => {
   describe('POST /api/books/:id/restore', () => {
     beforeEach(async () => {
       await resetBeforeTest();
-      // Soft delete a book first
-      const auth = authenticatedRequest(collaboratorToken); // User 3: admin in team 2
-      await auth.delete(`/api/books/${TEST_BOOKS.BOOK2.id}`);
+      // Soft delete a book first using admin (who can soft delete)
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
     });
 
-    it('should restore soft-deleted book as superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+    it('should restore soft-deleted book as team admin', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
-      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
       validateApiResponse(response, 200);
       validateBookObject(response.body);
-      expect(response.body.id).toBe(TEST_BOOKS.BOOK2.id);
+      expect(response.body.id).toBe(TEST_BOOKS.BOOK1.id);
 
-      // Verify book is accessible again
-      const getResponse = await auth.get(`/api/books/${TEST_BOOKS.BOOK2.id}`);
+      // Verify book is accessible again by the team admin
+      const getResponse = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
       validateApiResponse(getResponse, 200);
     });
 
-    it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
+    it('should deny access for non-admin team member', async () => {
+      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
 
-      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
       validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access for user without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+
+      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access for superadmin without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use admin in team 1
 
       const response = await auth.post('/api/books/99999/restore');
 
@@ -418,11 +494,11 @@ describe('Book Management API', () => {
 
     it('should return 400 for already active book', async () => {
       // First restore the book
-      const auth = authenticatedRequest(superadminToken);
-      await auth.post(`/api/books/${TEST_BOOKS.BOOK2.id}/restore`);
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
       // Try to restore again
-      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
       validateApiResponse(response, 400);
     });
@@ -434,11 +510,11 @@ describe('Book Management API', () => {
     beforeEach(async () => {
       await resetBeforeTest();
       // Create a fresh book with no dependent data for deletion testing
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
       const createResponse = await auth.post('/api/books')
         .send({
           name: 'Deletable Book',
-          teamId: 1, // Team 1
+          teamId: 1, // Team 1 where user 2 is admin
           note: 'Book for deletion testing'
         });
 
@@ -449,22 +525,22 @@ describe('Book Management API', () => {
     });
 
     it('should cascade delete book with existing data', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
-      // Soft delete book 2 first (it has accounts)
-      await auth.delete(`/api/books/${TEST_BOOKS.BOOK2.id}`);
+      // Soft delete book 1 first (it has accounts)
+      await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
-      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK2.id}/permanent`);
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}/permanent`);
 
       validateApiResponse(response, 204);
 
       // Verify the book is completely deleted (should get 404)
-      const checkResponse = await auth.post(`/api/books/${TEST_BOOKS.BOOK2.id}/restore`);
+      const checkResponse = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
       validateApiResponse(checkResponse, 404);
     });
 
-    it('should permanently delete empty book as superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+    it('should permanently delete empty book as team admin', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
 
@@ -475,19 +551,32 @@ describe('Book Management API', () => {
       validateApiResponse(restoreResponse, 404);
     });
 
-    it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const superAuth = authenticatedRequest(superadminToken);
+    it('should deny access for non-admin team member', async () => {
+      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
 
-      // Use the deletable book that was already created and soft-deleted in beforeAll
-      // adminToken doesn't have access to this book, so this should fail with 403
+      const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}/permanent`);
+
+      validateApiResponse(response, 403);
+    });
+
+    it('should deny access for user without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+
+      const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
+
+      validateApiResponse(response, 403);
+    });
+
+    it('should deny access for superadmin without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
       const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
 
       validateApiResponse(response, 403);
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // Use team admin in team 1
 
       const response = await auth.delete('/api/books/99999/permanent');
 
@@ -495,7 +584,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 400 for active book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       // Try to permanently delete an active book
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}/permanent`);
