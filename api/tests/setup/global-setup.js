@@ -113,6 +113,30 @@ module.exports = async () => {
     const [users] = await connection.execute('SELECT id, username, superadmin FROM user');
     console.log(`Inserted ${users.length} users:`, users);
 
+    // Check if teams were inserted
+    const [teams] = await connection.execute('SELECT id, name FROM team');
+    console.log(`Inserted ${teams.length} teams:`, teams);
+
+    // Check if team_user assignments were inserted
+    const [teamUsers] = await connection.execute('SELECT team_id, user_id, role FROM team_user');
+    console.log(`Inserted ${teamUsers.length} team-user assignments:`, teamUsers);
+
+    // Check if books were inserted
+    const [books] = await connection.execute('SELECT id, name, currency_symbol, team_id FROM book');
+    console.log(`Inserted ${books.length} books:`, books);
+
+    // Check if accounts were inserted
+    const [accounts] = await connection.execute('SELECT id, name, type, book_id FROM account');
+    console.log(`Inserted ${accounts.length} accounts:`, accounts);
+
+    // Check if categories were inserted
+    const [categories] = await connection.execute('SELECT id, name, type, book_id FROM category');
+    console.log(`Inserted ${categories.length} categories:`, categories);
+
+    // Check if transactions were inserted
+    const [transactions] = await connection.execute('SELECT id, description, amount, account_id, category_id FROM transaction');
+    console.log(`Inserted ${transactions.length} transactions:`, transactions);
+
     console.log('✅ Test database setup complete');
 
   } catch (error) {
