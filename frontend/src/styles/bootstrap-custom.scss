@@ -106,12 +106,16 @@ $charge: $gnome-yellow-5; // Charge color credit card type
   }
 
 }
+// Improve the next 4 classes of bg to improve color contrast and readability
 .bg-payment {
   background-color: $payment !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($payment, 0.18);
   @extend .text-white;
   /*
     - Payments would be  *Lavender* because  purple
-     helps to spiritual development and works
+      helps to spiritual development and works
       against home and work stress. 
       When we pay our debts we calm our stress 
       and feel a little bit more stable.
@@ -120,34 +124,45 @@ $charge: $gnome-yellow-5; // Charge color credit card type
 
 .bg-income {
   background-color: $income !important;
-    @extend .text-white;
-    /*
-      - Income: *Green* We are using green to attract more transactions like this, 
-      abundance, money and spiritual growth, 
-      help us heal the emotions and Brings luck in business endeavors 
-    */
-
-}
-.bg-expense {
-  background-color: $expense !important;
-    @extend .text-white;
-    /*
-   Expenses is *blue* because it brings tranquility to the soul, 
-   banishes anger and invite us to meditation 
-   on our consume habits
-    */
-
-}
-.bg-charge {
-  background-color: $charge !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($income, 0.18);
   @extend .text-white;
   /*
-  With each charge and the ablility to have visibility on it
-  we want to promote learning nd awareness of our money habits, sparks intuition 
-  *should I keep using my credit for charges like this one?*
-  That is the reason why we use *yellow* for Charges
+    - Income: *Green* We are using green to attract more transactions like this, 
+      abundance, money and spiritual growth, 
+      help us heal the emotions and Brings luck in business endeavors 
   */
 }
+
+.bg-expense {
+  background-color: $expense !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($expense, 0.18);
+  @extend .text-white;
+  /*
+    Expenses is *blue* because it brings tranquility to the soul, 
+    banishes anger and invite us to meditation 
+    on our consume habits
+  */
+}
+
+.bg-charge {
+  background-color: $charge !important;
+  color: $gnome-dark-4 !important; // Use dark text for yellow for better contrast
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($charge, 0.18);
+  font-weight: 500;
+  /*
+    With each charge and the ablility to have visibility on it
+    we want to promote learning nd awareness of our money habits, sparks intuition 
+    *should I keep using my credit for charges like this one?*
+    That is the reason why we use *yellow* for Charges
+  */
+}
+/* -------------------------------------------------------------------------- */
+/* Text Color Variations for Transaction Types                                 */
 
 // Text color variations for light/dark mode
 .text-payment {
