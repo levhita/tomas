@@ -54,11 +54,11 @@ CREATE TABLE
 CREATE TABLE
   `book` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `team_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `currency_symbol` VARCHAR(10) NOT NULL DEFAULT '$',
     `week_start` ENUM ('sunday', 'monday') NOT NULL DEFAULT 'monday',
-    `team_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -82,9 +82,9 @@ CREATE TABLE
 CREATE TABLE
   `total` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `account_id` INT UNSIGNED NOT NULL,
     `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
     `date` DATE NOT NULL,
-    `account_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
@@ -94,12 +94,12 @@ CREATE TABLE
 CREATE TABLE
   `category` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `parent_category_id` INT UNSIGNED DEFAULT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
-    `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`book_id`) REFERENCES `book` (`id`) ON DELETE CASCADE
@@ -109,13 +109,13 @@ CREATE TABLE
 CREATE TABLE
   `transaction` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `account_id` INT UNSIGNED NOT NULL,
+    `category_id` INT UNSIGNED NULL,
     `description` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
     `amount` DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
     `date` DATE NOT NULL,
     `exercised` BOOLEAN DEFAULT FALSE,
-    `account_id` INT UNSIGNED NOT NULL,
-    `category_id` INT UNSIGNED NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE,
