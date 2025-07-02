@@ -21,6 +21,7 @@ describe('Accounts Management API', () => {
   let adminToken;          // User with admin role in team 1
   let viewerToken;         // User with viewer role in team 1  
   let collaboratorToken;   // User with collaborator role in team 1
+  let noaccessToken;       // User with no team access for permission-denied scenarios
   let testBookId = 1; // From test data
 
   beforeAll(async () => {
@@ -30,6 +31,7 @@ describe('Accounts Management API', () => {
     adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
     viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
     collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
+    noaccessToken = tokens.noaccess;     // User 5: no team access
   });
 
   describe('GET /api/accounts', () => {
@@ -61,8 +63,8 @@ describe('Accounts Management API', () => {
     });
 
     it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const accessibleBookId = 1; // Book exists but superadmin has no team access
+      const auth = authenticatedRequest(noaccessToken);
+      const accessibleBookId = 1; // Book exists but noaccess user has no team access
 
       const response = await auth.get('/api/accounts')
         .query({ book_id: accessibleBookId });
@@ -106,13 +108,33 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(adminToken); // Use admin token instead of superadmin
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.get('/api/accounts/99999');
 
       validateApiResponse(response, 404);
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toMatch(/account not found/i);
+    });
+
+    it('should deny access to account without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const testAccountId = 1; // From test data - belongs to book 1
+
+      const response = await auth.get(`/api/accounts/${testAccountId}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access to account without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const testAccountId = 1; // From test data - belongs to book 1
+
+      const response = await auth.get(`/api/accounts/${testAccountId}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
     });
 
     it('should allow access to account in book with permission', async () => {
@@ -188,11 +210,31 @@ describe('Accounts Management API', () => {
     });
 
     it('should return 404 for non-existent account', async () => {
-      const auth = authenticatedRequest(adminToken); // Use admin token
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.get('/api/accounts/99999/balance');
 
       validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access to account balance without permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const testAccountId = 1; // From test data - belongs to book 1
+
+      const response = await auth.get(`/api/accounts/${testAccountId}/balance`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access to account balance without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const testAccountId = 1; // From test data - belongs to book 1
+
+      const response = await auth.get(`/api/accounts/${testAccountId}/balance`);
+
+      validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
     });
 
@@ -297,6 +339,34 @@ describe('Accounts Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
+    it('should deny access for users without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const accountData = {
+        name: 'No Access Account',
+        book_id: testBookId
+      };
+
+      const response = await auth.post('/api/accounts')
+        .send(accountData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const accountData = {
+        name: 'Superadmin No Access Account',
+        book_id: testBookId
+      };
+
+      const response = await auth.post('/api/accounts')
+        .send(accountData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
     it('should deny access without authentication', async () => {
       const accountData = {
         name: 'Test Account',
@@ -358,6 +428,32 @@ describe('Accounts Management API', () => {
       const auth = authenticatedRequest(viewerToken);
       const updateData = {
         name: 'Unauthorized Update'
+      };
+
+      const response = await auth.put('/api/accounts/1')
+        .send(updateData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access for users without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+      const updateData = {
+        name: 'No Access Update'
+      };
+
+      const response = await auth.put('/api/accounts/1')
+        .send(updateData);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const updateData = {
+        name: 'Superadmin No Access Update'
       };
 
       const response = await auth.put('/api/accounts/1')
@@ -439,6 +535,24 @@ describe('Accounts Management API', () => {
       const testAccountId = createResponse.body.id;
 
       const response = await auth.delete(`/api/accounts/${testAccountId}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access for users without team permission', async () => {
+      const auth = authenticatedRequest(noaccessToken);
+
+      const response = await auth.delete('/api/accounts/1');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      const response = await auth.delete('/api/accounts/1');
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
