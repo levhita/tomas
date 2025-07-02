@@ -83,6 +83,29 @@ $income: darken($gnome-green-5, 15%); // Income color debit card type
 $expense: $gnome-blue-5; // Expense color debit card type 
 $charge: $gnome-yellow-5; // Charge color credit card type
 
+// Modify the next bg classes to lighten the green, purple and blue
+// on dark mode and change the text color to a dark
+// Lighten the green, purple, blue, and yellow backgrounds for dark mode
+// and use dark text for contrast, following Bootstrap's recommended contrast ratios
+[data-bs-theme="dark"] {
+  .bg-payment {
+    background-color: lighten($gnome-purple-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-income {
+    background-color: lighten($gnome-green-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-expense {
+    background-color: lighten($gnome-blue-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-charge {
+    background-color: lighten($gnome-yellow-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+
+}
 .bg-payment {
   background-color: $payment !important;
   @extend .text-white;
@@ -125,18 +148,33 @@ $charge: $gnome-yellow-5; // Charge color credit card type
   That is the reason why we use *yellow* for Charges
   */
 }
+
+// Text color variations for light/dark mode
 .text-payment {
   color: $payment !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-purple-2, 10%) !important;
+  }
 }
 .text-charge {
   color: $charge !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-yellow-2, 10%) !important;
+  }
 }
 .text-expense {
   color: $expense !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-blue-2, 10%) !important;
+  }
 }
 .text-income {
   color: $income !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-green-2, 10%) !important;
+  }
 }
+
 
 // Background colors
 // $body-bg: $gnome-light-1;

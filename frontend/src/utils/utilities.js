@@ -59,6 +59,7 @@ export function colorByType(type, scope) {
 
   if(scope === 'text') {
     // Return text color class
+    
     switch (type.toLowerCase()) {
       case 'income':
         return 'text-income';
