@@ -94,6 +94,7 @@ $charge: $gnome-yellow-5; // Charge color credit card type
       and feel a little bit more stable.
   */
 }
+
 .bg-income {
   background-color: $income !important;
     @extend .text-white;
@@ -123,8 +124,18 @@ $charge: $gnome-yellow-5; // Charge color credit card type
   *should I keep using my credit for charges like this one?*
   That is the reason why we use *yellow* for Charges
   */
-  
-
+}
+.text-payment {
+  color: $payment !important;
+}
+.text-charge {
+  color: $charge !important;
+}
+.text-expense {
+  color: $expense !important;
+}
+.text-income {
+  color: $income !important;
 }
 
 // Background colors

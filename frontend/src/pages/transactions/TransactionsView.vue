@@ -109,7 +109,7 @@
                   <input class="form-check-input" type="checkbox" aria-label="Select row" />
                 </td>
                 <td class="text-light-emphasis text-start">{{ transaction.description }}</td>
-                <td class="text-end text-info fw-semibold">{{ formatCurrency(transaction.amount, workspaceCurrencySymbol) }}</td>
+                <td class="text-end fw-semibold" :class="colorByType(formatTransactionType(transaction), 'text')">{{ formatCurrency(transaction.amount, workspaceCurrencySymbol) }}</td>
                 <td class="text-light-emphasis text-start">{{ formatAccounts(transaction.account_id)}}</td>
                 <td class="text-start">
                   <span class="badge bg-info text-white">{{ transaction.category_name}}</span>

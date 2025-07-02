@@ -40,8 +40,8 @@ export function formatTransactionType({account_id, amount}) {
     } 
 }
 
-export function colorByType(type) {
-  switch (type.toLowerCase()) {
+function colorByTypeBackground(type) {
+switch (type.toLowerCase()) {
     case 'income':
       return 'bg-income';
     case 'payment':
@@ -53,4 +53,26 @@ export function colorByType(type) {
     default:
       return '';
   }
+
+}
+export function colorByType(type, scope) {
+
+  if(scope === 'text') {
+    // Return text color class
+    switch (type.toLowerCase()) {
+      case 'income':
+        return 'text-income';
+      case 'payment':
+        return 'text-payment';
+      case 'expense':
+        return 'text-expense';
+      case 'charge':
+        return 'text-charge';
+      default:
+        return '';
+    }
+  } else {
+    return colorByTypeBackground(type);
+  }
+  
 }
