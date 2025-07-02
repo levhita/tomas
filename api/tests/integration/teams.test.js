@@ -35,6 +35,11 @@ describe('Teams Management API', () => {
     noaccessToken = tokens.noaccess;     // User 5: no team access
   });
 
+  afterAll(async () => {
+    // Reset database after all teams tests to ensure clean state for subsequent test suites
+    await resetDatabase();
+  });
+
   // Reset database only before tests that modify data or create conflicts
   const resetBeforeTest = async () => {
     await resetDatabase();

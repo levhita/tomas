@@ -91,13 +91,10 @@ module.exports = async () => {
       const statement = allStatements[i];
       try {
         await connection.execute(statement);
+        
         if (statement.toLowerCase().startsWith('create table') ||
           statement.toLowerCase().startsWith('drop table')) {
           console.log(`✓ Executed: ${statement.substring(0, 50)}...`);
-        }
-        // Special logging for book table creation
-        if (statement.toLowerCase().includes('create table') && statement.toLowerCase().includes('book')) {
-          console.log(`🔍 Book table creation statement executed successfully`);
         }
       } catch (error) {
         // Log but don't fail on non-critical errors

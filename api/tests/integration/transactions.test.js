@@ -35,66 +35,9 @@ describe('Transactions Management API', () => {
 
   describe('GET /api/transactions', () => {
     it('should return transactions for account with read access', async () => {
-      // DEBUG: Comprehensive debugging for CI failure analysis
-      console.log(`🔍 Starting GET /api/transactions test with accountId: ${testAccountId}`);
-      
-      const db = require('../../src/db');
-      
-      // Check if the account exists
-      const [accounts] = await db.execute('SELECT * FROM account WHERE id = ?', [testAccountId]);
-      console.log(`📊 Account ${testAccountId} lookup:`, accounts);
-      
-      if (accounts.length === 0) {
-        console.error(`💥 Account ${testAccountId} does not exist!`);
-      } else {
-        const account = accounts[0];
-        console.log(`✅ Account found: ID=${account.id}, name="${account.name}", book_id=${account.book_id}`);
-        
-        // Check if the book exists and get its team
-        const [books] = await db.execute('SELECT * FROM book WHERE id = ?', [account.book_id]);
-        console.log(`📚 Book ${account.book_id} lookup:`, books);
-        
-        if (books.length === 0) {
-          console.error(`💥 Book ${account.book_id} does not exist!`);
-        } else {
-          const book = books[0];
-          console.log(`✅ Book found: ID=${book.id}, name="${book.name}", team_id=${book.team_id}, deleted_at=${book.deleted_at}`);
-          
-          // Check if the team exists
-          const [teams] = await db.execute('SELECT * FROM team WHERE id = ?', [book.team_id]);
-          console.log(`👥 Team ${book.team_id} lookup:`, teams);
-          
-          if (teams.length === 0) {
-            console.error(`💥 Team ${book.team_id} does not exist!`);
-          } else {
-            const team = teams[0];
-            console.log(`✅ Team found: ID=${team.id}, name="${team.name}", deleted_at=${team.deleted_at}`);
-            
-            // Check admin user's role in this team
-            const adminUserId = 2; // From test_seeds.sql
-            const [userRoles] = await db.execute('SELECT * FROM team_user WHERE team_id = ? AND user_id = ?', [team.id, adminUserId]);
-            console.log(`🔑 Admin user ${adminUserId} role in team ${team.id}:`, userRoles);
-            
-            if (userRoles.length === 0) {
-              console.error(`💥 Admin user ${adminUserId} has no role in team ${team.id}!`);
-            } else {
-              console.log(`✅ Admin user has role: ${userRoles[0].role}`);
-            }
-          }
-        }
-        
-        // Check if there are any transactions for this account
-        const [transactions] = await db.execute('SELECT * FROM transaction WHERE account_id = ?', [testAccountId]);
-        console.log(`💳 Transactions for account ${testAccountId}:`, transactions.length > 0 ? transactions : 'No transactions found');
-      }
-      
-      // Now make the actual API call
-      console.log(`🌐 Making API call: GET /api/transactions?accountId=${testAccountId}`);
       const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/transactions')
         .query({ accountId: testAccountId });
-
-      console.log(`📡 API Response: status=${response.status}, body=`, response.body);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
