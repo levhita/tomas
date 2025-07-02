@@ -1,3 +1,4 @@
+
 /**
  * Currency Utilities
  * 
@@ -22,4 +23,20 @@ export function formatCurrency(amount, currencySymbol = '$', locale = undefined)
     currency: 'USD', // Using USD as base, will replace the symbol
     currencyDisplay: 'narrowSymbol'
   }).format(amount).replace('$', currencySymbol);
+}
+
+export function formatTransactionType({account_id, amount}) {
+  // type accountid 1 = debit_card
+  // type accountid 2 = credit_card
+
+ 
+  switch(account_id) {
+    case 1: // debit_card
+      return amount > 0 ? 'Income' : 'Expense';
+      break;
+    case 2: // credit_card
+      return amount < 0 ? 'Payment' : 'Charge';
+    default:
+      return transaction.description || 'Unknown'; 
+    } 
 }
