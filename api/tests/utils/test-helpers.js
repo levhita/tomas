@@ -45,25 +45,25 @@ const TEST_USERS = {
 };
 
 /**
- * Test workspace data
+ * Test book data
  */
 const TEST_WORKSPACES = {
   WORKSPACE1: {
     id: 1,
-    name: 'Test Workspace 1',
-    note: 'Main testing workspace',
+    name: 'Test Book 1',
+    note: 'Main testing book',
     currency_symbol: '$'
   },
   WORKSPACE2: {
     id: 2,
-    name: 'Test Workspace 2',
-    note: 'Secondary testing workspace',
+    name: 'Test Book 2',
+    note: 'Secondary testing book',
     currency_symbol: '€'
   },
   SEARCH_WORKSPACE: {
     id: 3,
-    name: 'Search Test Workspace',
-    note: 'Workspace for search testing',
+    name: 'Search Test Book',
+    note: 'Book for search testing',
     currency_symbol: '£'
   }
 };
@@ -183,11 +183,11 @@ async function resetDatabase() {
     const tables = [
       'transaction',    // references account, category
       'total',          // references account
-      'category',       // references category (self), workspace  
-      'account',        // references workspace
-      'workspace_user', // references workspace, user
-      'workspace',      // referenced by account, category, workspace_user
-      'user'           // referenced by workspace_user
+      'category',       // references category (self), book  
+      'account',        // references book
+      'book_user', // references book, user
+      'book',      // referenced by account, category, book_user
+      'user'           // referenced by book_user
     ];
 
     // Delete in dependency order
@@ -246,16 +246,16 @@ async function createTestUser(userData, token) {
 }
 
 /**
- * Create a test workspace
- * @param {Object} workspaceData - Workspace data
+ * Create a test book
+ * @param {Object} bookData - Book data
  * @param {string} token - Admin token
- * @returns {Promise<Object>} Created workspace
+ * @returns {Promise<Object>} Created book
  */
-async function createTestWorkspace(workspaceData, token) {
+async function createTestBook(bookData, token) {
   const response = await request(app)
-    .post('/api/workspaces')
+    .post('/api/books')
     .set('Authorization', `Bearer ${token}`)
-    .send(workspaceData);
+    .send(bookData);
 
   return response.body;
 }
@@ -291,19 +291,19 @@ function validateUserObject(user) {
 }
 
 /**
- * Validate workspace object structure
- * @param {Object} workspace - Workspace object
+ * Validate book object structure
+ * @param {Object} book - Book object
  */
-function validateWorkspaceObject(workspace) {
-  expect(workspace).toHaveProperty('id');
-  expect(workspace).toHaveProperty('name');
-  expect(workspace).toHaveProperty('note');
-  expect(workspace).toHaveProperty('currency_symbol');
-  expect(workspace).toHaveProperty('created_at');
+function validateBookObject(book) {
+  expect(book).toHaveProperty('id');
+  expect(book).toHaveProperty('name');
+  expect(book).toHaveProperty('note');
+  expect(book).toHaveProperty('currency_symbol');
+  expect(book).toHaveProperty('created_at');
 
-  expect(typeof workspace.id).toBe('number');
-  expect(typeof workspace.name).toBe('string');
-  expect(typeof workspace.currency_symbol).toBe('string');
+  expect(typeof book.id).toBe('number');
+  expect(typeof book.name).toBe('string');
+  expect(typeof book.currency_symbol).toBe('string');
 }
 
 /**
@@ -314,7 +314,7 @@ function generateRandomData() {
   return {
     username: `testuser_${timestamp}`,
     password: 'password123',
-    workspaceName: `Test Workspace ${timestamp}`,
+    bookName: `Test Book ${timestamp}`,
     accountName: `Test Account ${timestamp}`,
     categoryName: `Test Category ${timestamp}`
   };
@@ -330,10 +330,10 @@ module.exports = {
   authenticatedRequest,
   resetDatabase,
   createTestUser,
-  createTestWorkspace,
+  createTestBook,
   validateApiResponse,
   validateUserObject,
-  validateWorkspaceObject,
+  validateBookObject,
   generateRandomData,
   app,
   db

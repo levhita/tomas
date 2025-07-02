@@ -24,14 +24,14 @@ VALUES
     true
   );
 
--- Create workspaces --
+-- Create books --
 INSERT INTO
-  `workspace` (id, name, note, currency_symbol, week_start)
+  `book` (id, name, note, currency_symbol, week_start)
 VALUES
   (
     1,
-    "Default Workspace",
-    "Default workspace for demo purposes",
+    "Default Book",
+    "Default book for demo purposes",
     "$",
     "monday"
   ),
@@ -64,28 +64,28 @@ VALUES
     "sunday"
   );
 
--- Add users to workspaces with roles --
+-- Add users to books with roles --
 INSERT INTO
-  `workspace_user` (workspace_id, user_id, role)
+  `book_user` (book_id, user_id, role)
 VALUES
-  -- Admin user has admin access to all workspaces
+  -- Admin user has admin access to all books
   (1, 1, 'admin'),
   (2, 1, 'admin'),
   (3, 1, 'admin'),
   (4, 1, 'admin'),
   (5, 1, 'admin'),
   -- Regular user has mixed roles
-  (1, 2, 'collaborator'), -- Can edit in Default workspace
+  (1, 2, 'collaborator'), -- Can edit in Default book
   (2, 2, 'viewer'), -- Can only view European Business
   (3, 2, 'admin'), -- Has admin rights in UK Investments
-  -- Viewer user has view-only access to some workspaces
+  -- Viewer user has view-only access to some books
   (1, 3, 'viewer'),
   (4, 3, 'viewer'),
   (5, 3, 'viewer');
 
 -- Categories --
 INSERT INTO
-  category (id, name, type, workspace_id)
+  category (id, name, type, book_id)
 VALUES
   (1, "Housing", "expense", 1),
   (2, "Transportation", "expense", 1),
@@ -112,7 +112,7 @@ VALUES
 
 -- Sub Categories --
 INSERT INTO
-  category (name, parent_category_id, type, workspace_id)
+  category (name, parent_category_id, type, book_id)
 VALUES
   -- Housing --
   ("Mortgage", 1, "expense", 1),
@@ -207,9 +207,9 @@ VALUES
   ("Vacations", 15, "expense", 1),
   ("Subscriptions", 15, "expense", 1);
 
--- Accounts with workspace_id --
+-- Accounts with book_id --
 INSERT INTO
-  account (id, name, type, workspace_id)
+  account (id, name, type, book_id)
 VALUES
   (1, "Debit Card", "debit", 1),
   (2, "Credit Card", "credit", 1),

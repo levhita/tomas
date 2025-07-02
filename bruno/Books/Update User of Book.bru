@@ -1,11 +1,11 @@
 meta {
-  name: Update User of Workspace
+  name: Update User of Book
   type: http
   seq: 9
 }
 
 put {
-  url: {{server_url}}/workspaces/:id/users/:userId
+  url: {{server_url}}/books/:id/users/:userId
   body: json
   auth: inherit
 }

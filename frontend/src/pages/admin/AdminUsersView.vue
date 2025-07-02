@@ -74,7 +74,7 @@
                     <tr>
                       <th>User</th>
                       <th>Role</th>
-                      <th>Workspaces</th>
+                      <th>Books</th>
                       <th>Status</th>
                       <th>Created</th>
                       <th>Actions</th>
@@ -102,21 +102,21 @@
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ user.workspace_count || 0 }}
-                            workspace{{ (user.workspace_count || 0) !== 1 ? 's' : '' }}</span>
-                          <small class="text-muted" v-if="user.workspace_count > 0">
-                            <span v-if="user.admin_workspaces > 0" class="me-2">
-                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_workspaces }} admin
+                          <span class="fw-semibold">{{ user.book_count || 0 }}
+                            book{{ (user.book_count || 0) !== 1 ? 's' : '' }}</span>
+                          <small class="text-muted" v-if="user.book_count > 0">
+                            <span v-if="user.admin_books > 0" class="me-2">
+                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_books }} admin
                             </span>
-                            <span v-if="user.collaborator_workspaces > 0" class="me-2">
-                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_workspaces }} edit
+                            <span v-if="user.collaborator_books > 0" class="me-2">
+                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_books }} edit
                             </span>
-                            <span v-if="user.viewer_workspaces > 0">
-                              <i class="bi bi-eye text-info"></i> {{ user.viewer_workspaces }} view
+                            <span v-if="user.viewer_books > 0">
+                              <i class="bi bi-eye text-info"></i> {{ user.viewer_books }} view
                             </span>
                           </small>
                           <small class="text-muted" v-else>
-                            No workspace access
+                            No book access
                           </small>
                         </div>
                       </td>
@@ -332,7 +332,7 @@ async function deleteUser(user) {
         `This action cannot be undone and will permanently remove:<br>` +
         `• The user account<br>` +
         `• All associated data<br>` +
-        `• Access to all workspaces`,
+        `• Access to all books`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       confirmButtonVariant: 'danger'

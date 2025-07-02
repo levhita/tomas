@@ -24,16 +24,16 @@ export const useAccountsStore = defineStore('accounts', () => {
   });
 
   // Actions
-  async function fetchAccounts(workspaceId) {
+  async function fetchAccounts(bookId) {
     try {
-      // Check if workspaceId is provided
-      if (!workspaceId) {
-        console.error('fetchAccounts: workspaceId is required');
-        throw new Error('Workspace ID is required to fetch accounts');
+      // Check if bookId is provided
+      if (!bookId) {
+        console.error('fetchAccounts: bookId is required');
+        throw new Error('Book ID is required to fetch accounts');
       }
 
-      // Fetch accounts for the specified workspace
-      const response = await fetchWithAuth(`/api/accounts?workspace_id=${workspaceId}`);
+      // Fetch accounts for the specified book
+      const response = await fetchWithAuth(`/api/accounts?book_id=${bookId}`);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -51,9 +51,9 @@ export const useAccountsStore = defineStore('accounts', () => {
 
   async function addAccount(account) {
     try {
-      // Make sure account has a workspace_id
-      if (!account.workspace_id) {
-        throw new Error('workspace_id is required when creating an account');
+      // Make sure account has a book_id
+      if (!account.book_id) {
+        throw new Error('book_id is required when creating an account');
       }
 
       const response = await fetchWithAuth('/api/accounts', {

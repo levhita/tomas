@@ -34,7 +34,7 @@
   </div>
 
   <!-- Account management modal -->
-  <AccountModal v-if="canManageAccounts" v-model="showAccountModal" :account="accountToEdit" :workspaceId="workspaceId"
+  <AccountModal v-if="canManageAccounts" v-model="showAccountModal" :account="accountToEdit" :bookId="bookId"
     :isLoading="accountsStore.isLoading" @save="handleSaveAccount" />
 </template>
 
@@ -42,7 +42,7 @@
 import { ref, computed } from 'vue'
 import AccountModal from '../modals/AccountModal.vue'
 import { useAccountsStore } from '../../stores/accounts'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
@@ -52,9 +52,9 @@ const props = defineProps({
   modelValue: Number,
 
   /**
-   * The ID of the workspace the accounts belong to
+   * The ID of the book the accounts belong to
    */
-  workspaceId: Number,
+  bookId: Number,
 
   /**
    * Whether to show account editing controls (edit buttons and create account option)
@@ -70,13 +70,13 @@ const emit = defineEmits(['update:modelValue'])
 
 // Account store and account management state
 const accountsStore = useAccountsStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 const { showToast } = useToast()
 const showAccountModal = ref(false)
 const accountToEdit = ref(null)
 
 // Check if user has permission to manage accounts directly from the store
-const canManageAccounts = computed(() => workspacesStore.hasAdminPermission)
+const canManageAccounts = computed(() => booksStore.hasAdminPermission)
 
 // Computed property to get the current account
 const currentAccount = computed(() => {

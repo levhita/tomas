@@ -28,7 +28,7 @@ const transactionsRouter = require('./routes/transactions');
 const categoriesRouter = require('./routes/categories');
 const accountsRouter = require('./routes/accounts');
 const healthRouter = require('./routes/health');
-const workspacesRouter = require('./routes/workspaces');
+const booksRouter = require('./routes/books');
 
 // Initialize Express application
 const app = express();
@@ -80,7 +80,7 @@ app.use('/api', authenticateToken);
  * - /api/categories: Transaction categorization (categoriesRouter)
  * - /api/accounts: Financial accounts management (accountsRouter)
  * - /api/health: System health monitoring (healthRouter)
- * - /api/workspaces: Multi-tenant workspace management (workspacesRouter)
+ * - /api/books: Multi-tenant book management (booksRouter)
  */
 app.use('/api', indexRouter);
 app.use('/api/users', usersRouter);
@@ -88,7 +88,7 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/accounts', accountsRouter);
 app.use('/api/health', healthRouter);
-app.use('/api/workspaces', workspacesRouter);
+app.use('/api/books', booksRouter);
 
 /**
  * Static File Serving

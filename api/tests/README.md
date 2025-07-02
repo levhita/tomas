@@ -15,12 +15,12 @@ tests/
 │   └── test-setup.js       # Per-test file setup
 ├── integration/            # API endpoint integration tests
 │   ├── users.test.js       # User management endpoints
-│   ├── user-workspaces.test.js # User workspace management
-│   ├── workspaces.test.js  # Workspace management endpoints
+│   ├── user-books.test.js # User book management
+│   ├── books.test.js  # Book management endpoints
 │   └── health.test.js      # Health check endpoint
 ├── unit/                   # Unit tests for individual modules
 │   ├── auth.test.js        # Authentication middleware
-│   └── workspace-utils.test.js # Workspace utility functions
+│   └── book-utils.test.js # Book utility functions
 └── utils/                  # Test utilities and helpers
     └── test-helpers.js     # Common test functions and data
 ```
@@ -187,18 +187,18 @@ const TEST_USERS = {
 };
 ```
 
-### Test Workspaces
-Predefined workspaces with different configurations:
+### Test Books
+Predefined books with different configurations:
 
 ```javascript
 const TEST_WORKSPACES = {
   WORKSPACE1: {
     id: 1,
-    name: 'Test Workspace 1',
-    description: 'Main testing workspace',
+    name: 'Test Book 1',
+    description: 'Main testing book',
     currency_symbol: '$'
   },
-  // ... additional test workspaces
+  // ... additional test books
 };
 ```
 
@@ -305,7 +305,7 @@ open coverage/lcov-report/index.html
 - **Index Routes** (`src/routes/index.js`) - Currently ~40% coverage
 
 **Enhancement Opportunities (Priority 2):**
-- **Workspace Routes** - Missing advanced features and edge cases
+- **Book Routes** - Missing advanced features and edge cases
 - **Account Routes** - Missing complex balance calculations
 - **Transaction Routes** - Missing bulk operations and complex scenarios
 
@@ -466,7 +466,7 @@ npm run test:watch -- --coverage --watchAll=false
 - [ ] **Create missing integration tests**
   - [ ] Categories API tests
   - [ ] Index route tests
-  - [ ] Enhanced workspace tests
+  - [ ] Enhanced book tests
   
 - [ ] **Add missing unit tests**
   - [ ] Utility function tests

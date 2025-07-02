@@ -154,7 +154,7 @@ import CategorySelect from '../inputs/CategorySelect.vue'
 import CurrencyInput from '../inputs/CurrencyInput.vue'
 import { useAccountsStore } from '../../stores/accounts'
 import { useConfirm } from '../../composables/useConfirm'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 import moment from 'moment'
 
 const { confirm } = useConfirm()
@@ -178,10 +178,10 @@ const transactionType = ref('expense')
 const modalElement = ref(null)
 
 const accountsStore = useAccountsStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 
 // Permission check
-const hasWritePermission = computed(() => workspacesStore.hasWritePermission)
+const hasWritePermission = computed(() => booksStore.hasWritePermission)
 
 const isDebitAccount = computed(() => {
   const account = accountsStore.getAccountById(transaction.value.account_id)

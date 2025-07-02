@@ -5,11 +5,11 @@ meta {
 }
 
 get {
-  url: {{server_url}}/categories?workspace_id={{workspaceId}}
+  url: {{server_url}}/categories?book_id={{bookId}}
   body: none
   auth: inherit
 }
 
 params:query {
-  workspace_id: {{workspaceId}}
+  book_id: {{bookId}}
 }

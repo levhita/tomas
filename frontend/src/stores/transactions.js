@@ -13,7 +13,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     })
   })
 
-  // Reset state method to clear transactions when switching workspaces
+  // Reset state method to clear transactions when switching books
   function resetState() {
     transactions.value = [];
   }

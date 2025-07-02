@@ -20,7 +20,7 @@ erDiagram
     }
     
     WORKSPACE_USER {
-        int workspace_id PK,FK
+        int book_id PK,FK
         int user_id PK,FK
         enum role
         timestamp created_at
@@ -32,7 +32,7 @@ erDiagram
         text note
         enum type
         timestamp created_at
-        int workspace_id FK
+        int book_id FK
     }
     
     TOTAL {
@@ -50,7 +50,7 @@ erDiagram
         enum type
         int parent_category_id FK
         timestamp created_at
-        int workspace_id FK
+        int book_id FK
     }
     
     TRANSACTION {

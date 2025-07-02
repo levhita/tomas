@@ -18,19 +18,19 @@ export const useUsersStore = defineStore('users', () => {
     const superAdmins = users.value.filter(user => user.superadmin).length;
     const regularUsers = total - superAdmins;
 
-    // Workspace statistics
-    const totalWorkspaceAccess = users.value.reduce((sum, user) => sum + (user.workspace_count || 0), 0);
-    const usersWithWorkspaceAccess = users.value.filter(user => (user.workspace_count || 0) > 0).length;
-    const usersWithoutWorkspaceAccess = total - usersWithWorkspaceAccess;
+    // Book statistics
+    const totalBookAccess = users.value.reduce((sum, user) => sum + (user.book_count || 0), 0);
+    const usersWithBookAccess = users.value.filter(user => (user.book_count || 0) > 0).length;
+    const usersWithoutBookAccess = total - usersWithBookAccess;
 
     return {
       total,
       superAdmins,
       regularUsers,
-      totalWorkspaceAccess,
-      usersWithWorkspaceAccess,
-      usersWithoutWorkspaceAccess,
-      averageWorkspacesPerUser: total > 0 ? (totalWorkspaceAccess / total).toFixed(1) : 0
+      totalBookAccess,
+      usersWithBookAccess,
+      usersWithoutBookAccess,
+      averageBooksPerUser: total > 0 ? (totalBookAccess / total).toFixed(1) : 0
     };
   });
 
@@ -337,12 +337,12 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   /**
-   * Search workspaces by name or ID - Super admin only
-   * @param {string} query - Search query (workspace name or ID)
+   * Search books by name or ID - Super admin only
+   * @param {string} query - Search query (book name or ID)
    * @param {number} limit - Maximum results to return (default: 10)
-   * @returns {Promise<Array>} List of matching workspaces
+   * @returns {Promise<Array>} List of matching books
    */
-  async function searchWorkspaces(query, limit = 10) {
+  async function searchBooks(query, limit = 10) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -357,7 +357,7 @@ export const useUsersStore = defineStore('users', () => {
         limit: limit.toString()
       });
 
-      const response = await fetch(`/api/workspaces/search?${params}`, {
+      const response = await fetch(`/api/books/search?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -367,29 +367,29 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to search workspaces');
+        throw new Error(error.error || 'Failed to search books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Search workspaces error:', error);
+      console.error('Search books error:', error);
       throw error;
     }
   }
 
   /**
-   * Fetch all workspaces - Super admin only
-   * @deprecated Use searchWorkspaces instead for better performance
-   * @returns {Promise<Array>} List of all workspaces
+   * Fetch all books - Super admin only
+   * @deprecated Use searchBooks instead for better performance
+   * @returns {Promise<Array>} List of all books
    */
-  async function fetchAllWorkspaces() {
+  async function fetchAllBooks() {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch('/api/workspaces/all', {
+      const response = await fetch('/api/books/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -399,29 +399,29 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch all workspaces');
+        throw new Error(error.error || 'Failed to fetch all books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Fetch all workspaces error:', error);
+      console.error('Fetch all books error:', error);
       throw error;
     }
   }
 
   /**
-   * Get workspace access for a specific user - Super admin only
+   * Get book access for a specific user - Super admin only
    * @param {number} userId - User ID
-   * @returns {Promise<Array>} List of workspaces the user has access to
+   * @returns {Promise<Array>} List of books the user has access to
    */
-  async function getUserWorkspaces(userId) {
+  async function getUserBooks(userId) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces`, {
+      const response = await fetch(`/api/users/${userId}/books`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -431,66 +431,66 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch user workspaces');
+        throw new Error(error.error || 'Failed to fetch user books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Get user workspaces error:', error);
+      console.error('Get user books error:', error);
       throw error;
     }
   }
 
   /**
-   * Add user to a workspace - Super admin only
+   * Add user to a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
+   * @param {number} bookId - Book ID
    * @param {string} role - Role to assign (admin, collaborator, viewer)
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @returns {Promise<Array>} Updated list of user's books
    */
-  async function addUserToWorkspace(userId, workspaceId, role) {
+  async function addUserToBook(userId, bookId, role) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces`, {
+      const response = await fetch(`/api/users/${userId}/books`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token.value}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ workspaceId, role }),
+        body: JSON.stringify({ bookId, role }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to add user to workspace');
+        throw new Error(error.error || 'Failed to add user to book');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Add user to workspace error:', error);
+      console.error('Add user to book error:', error);
       throw error;
     }
   }
 
   /**
-   * Update user's role in a workspace - Super admin only
+   * Update user's role in a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
+   * @param {number} bookId - Book ID
    * @param {string} role - New role (admin, collaborator, viewer)
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @returns {Promise<Array>} Updated list of user's books
    */
-  async function updateUserWorkspaceRole(userId, workspaceId, role) {
+  async function updateUserBookRole(userId, bookId, role) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces/${workspaceId}`, {
+      const response = await fetch(`/api/users/${userId}/books/${bookId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -501,30 +501,30 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update user workspace role');
+        throw new Error(error.error || 'Failed to update user book role');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Update user workspace role error:', error);
+      console.error('Update user book role error:', error);
       throw error;
     }
   }
 
   /**
-   * Remove user from a workspace - Super admin only
+   * Remove user from a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @param {number} bookId - Book ID
+   * @returns {Promise<Array>} Updated list of user's books
    */
-  async function removeUserFromWorkspace(userId, workspaceId) {
+  async function removeUserFromBook(userId, bookId) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces/${workspaceId}`, {
+      const response = await fetch(`/api/users/${userId}/books/${bookId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -534,13 +534,13 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to remove user from workspace');
+        throw new Error(error.error || 'Failed to remove user from book');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Remove user from workspace error:', error);
+      console.error('Remove user from book error:', error);
       throw error;
     }
   }
@@ -648,12 +648,12 @@ export const useUsersStore = defineStore('users', () => {
     enableUser,
     disableUser,
     getUserById,
-    // Workspace management
-    searchWorkspaces,
-    fetchAllWorkspaces,
-    getUserWorkspaces,
-    addUserToWorkspace,
-    updateUserWorkspaceRole,
-    removeUserFromWorkspace
+    // Book management
+    searchBooks,
+    fetchAllBooks,
+    getUserBooks,
+    addUserToBook,
+    updateUserBookRole,
+    removeUserFromBook
   };
 });

@@ -1,11 +1,11 @@
 meta {
-  name: Add User to Workspace
+  name: Add User to Book
   type: http
   seq: 8
 }
 
 post {
-  url: {{server_url}}/workspaces/:id/users
+  url: {{server_url}}/books/:id/users
   body: json
   auth: inherit
 }

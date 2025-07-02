@@ -19,7 +19,7 @@ const {
 describe('Transactions Management API', () => {
   let superadminToken;
   let testUserToken;
-  let testWorkspaceId = 1; // From test data
+  let testBookId = 1; // From test data
   let testAccountId = 1; // From test data
   let testCategoryId = 1; // From test data
 
@@ -90,12 +90,12 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny access to account without permission', async () => {
-      // Account 3 is in workspace 2, testuser1 is admin of workspace 2
+      // Account 3 is in book 2, testuser1 is admin of book 2
       const auth = authenticatedRequest(testUserToken);
       const response = await auth.get('/api/transactions')
-        .query({ accountId: 1 }); // Account 1 is in workspace 1, testuser1 is collaborator
+        .query({ accountId: 1 }); // Account 1 is in book 1, testuser1 is collaborator
 
-      validateApiResponse(response, 200); // Should work as testuser1 is collaborator in workspace 1
+      validateApiResponse(response, 200); // Should work as testuser1 is collaborator in book 1
     });
 
     it('should deny access without authentication', async () => {
@@ -131,7 +131,7 @@ describe('Transactions Management API', () => {
       expect(response.body.error).toContain('Transaction not found');
     });
 
-    it('should allow access to transaction in workspace with permission', async () => {
+    it('should allow access to transaction in book with permission', async () => {
       const auth = authenticatedRequest(testUserToken);
       const response = await auth.get('/api/transactions/1');
 
@@ -258,21 +258,21 @@ describe('Transactions Management API', () => {
       expect(response.body.error).toContain('Account not found');
     });
 
-    it('should reject category from different workspace', async () => {
+    it('should reject category from different book', async () => {
       const auth = authenticatedRequest(superadminToken);
       const transactionData = {
-        description: 'Cross-workspace category transaction',
+        description: 'Cross-book category transaction',
         amount: -25.00,
         date: '2024-12-17',
-        account_id: testAccountId, // Account in workspace 1
-        category_id: 3 // Category 3 is in workspace 2
+        account_id: testAccountId, // Account in book 1
+        category_id: 3 // Category 3 is in book 2
       };
 
       const response = await auth.post('/api/transactions')
         .send(transactionData);
 
       validateApiResponse(response, 400);
-      expect(response.body.error).toContain('Category must belong to the same workspace');
+      expect(response.body.error).toContain('Category must belong to the same book');
     });
 
     it('should allow collaborator to create transaction', async () => {

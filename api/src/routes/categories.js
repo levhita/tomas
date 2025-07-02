@@ -1,53 +1,53 @@
 /**
  * Categories API Router
  * Handles all category-related operations including:
- * - Listing categories for a workspace
+ * - Listing categories for a book
  * - Retrieving single category details
  * - Creating, updating and deleting categories
  * - Managing hierarchical category structure with parent-child relationships
  * 
  * Permission model:
- * - READ operations: Any workspace member (admin, collaborator, viewer)
- * - WRITE operations: Workspace editors (admin, collaborator)
+ * - READ operations: Any book member (admin, collaborator, viewer)
+ * - WRITE operations: Book editors (admin, collaborator)
  * 
  * Hierarchy constraints:
  * - Categories can only be nested two levels deep (parent-child)
  * - A category with children cannot become a child of another category
- * - Categories can only reference parents in the same workspace
+ * - Categories can only reference parents in the same book
  */
 
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite } = require('../utils/workspace');
+const { canRead, canWrite } = require('../utils/book');
 
 /**
  * GET /categories
- * List all categories for a workspace in alphabetical order by name
+ * List all categories for a book in alphabetical order by name
  * 
- * @query {number} workspace_id - Required workspace ID
- * @permission Read access to workspace (admin, collaborator, viewer)
+ * @query {number} book_id - Required book ID
+ * @permission Read access to book (admin, collaborator, viewer)
  * @returns {Array} List of categories ordered alphabetically by name
  */
 router.get('/', async (req, res) => {
-  const workspaceId = req.query.workspace_id;
+  const bookId = req.query.book_id;
 
-  if (!workspaceId) {
-    return res.status(400).json({ error: 'workspace_id is required' });
+  if (!bookId) {
+    return res.status(400).json({ error: 'book_id is required' });
   }
 
   try {
-    // Verify user has read access to the workspace
-    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    // Verify user has read access to the book
+    const { allowed, message } = await canRead(bookId, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
 
     const [categories] = await db.query(`
       SELECT * FROM category 
-      WHERE workspace_id = ?
+      WHERE book_id = ?
       ORDER BY name COLLATE utf8mb4_unicode_ci ASC
-    `, [workspaceId]);
+    `, [bookId]);
 
     res.status(200).json(categories);
   } catch (err) {
@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
  * Get details for a single category
  * 
  * @param {number} id - Category ID
- * @permission Read access to the category's workspace
+ * @permission Read access to the category's book
  * @returns {Object} Category details
  */
 router.get('/:id', async (req, res) => {
@@ -75,9 +75,9 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    // Check if user has read access to the workspace this category belongs to
-    const workspaceId = categories[0].workspace_id;
-    const { allowed, message } = await canRead(workspaceId, req.user.id);
+    // Check if user has read access to the book this category belongs to
+    const bookId = categories[0].book_id;
+    const { allowed, message } = await canRead(bookId, req.user.id);
 
     if (!allowed) {
       return res.status(403).json({ error: message });
@@ -97,25 +97,25 @@ router.get('/:id', async (req, res) => {
  * @body {string} name - Required category name
  * @body {string} note - Optional category description
  * @body {number} parent_category_id - Optional parent category ID for hierarchical categories
- * @body {number} workspace_id - Required workspace ID
+ * @body {number} book_id - Required book ID
  * @body {string} type - Category type (expense or income), defaults to expense. Ignored if parent_category_id is provided.
- * @permission Write access to the workspace (admin, collaborator)
+ * @permission Write access to the book (admin, collaborator)
  * @returns {Object} Newly created category
  * 
  * Hierarchy constraints:
  * - If parent_category_id is provided, that category must not have a parent itself
- * - Parent category must belong to the same workspace
+ * - Parent category must belong to the same book
  * - Child categories automatically inherit parent type (type parameter is ignored)
  */
 router.post('/', async (req, res) => {
-  let { name, note = null, parent_category_id = null, workspace_id, type = 'expense' } = req.body;
+  let { name, note = null, parent_category_id = null, book_id, type = 'expense' } = req.body;
 
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  if (!workspace_id) {
-    return res.status(400).json({ error: 'workspace_id is required' });
+  if (!book_id) {
+    return res.status(400).json({ error: 'book_id is required' });
   }
 
   // Validate name length (VARCHAR(255) limit)
@@ -129,13 +129,13 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Verify user has write access to the workspace
-    const { allowed, message } = await canWrite(workspace_id, req.user.id);
+    // Verify user has write access to the book
+    const { allowed, message } = await canWrite(book_id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
 
-    // If parent category is specified, verify it belongs to the same workspace
+    // If parent category is specified, verify it belongs to the same book
     // and enforce the two-level hierarchy limit
     if (parent_category_id) {
       const [parentCategories] = await db.query(`
@@ -150,9 +150,9 @@ router.post('/', async (req, res) => {
         return res.status(404).json({ error: 'Parent category not found' });
       }
 
-      // Ensure parent belongs to the same workspace
-      if (parentCategories[0].workspace_id !== parseInt(workspace_id)) {
-        return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
+      // Ensure parent belongs to the same book
+      if (parentCategories[0].book_id !== parseInt(book_id)) {
+        return res.status(400).json({ error: 'Parent category must belong to the same book' });
       }
 
       // Enforce two-level nesting limit - if parent already has a parent, reject
@@ -168,9 +168,9 @@ router.post('/', async (req, res) => {
 
     // Create the new category
     const [result] = await db.query(`
-      INSERT INTO category (name, note, type, parent_category_id, workspace_id)
+      INSERT INTO category (name, note, type, parent_category_id, book_id)
       VALUES (?, ?, ?, ?, ?)
-    `, [name, note, type, parent_category_id, workspace_id]);
+    `, [name, note, type, parent_category_id, book_id]);
 
     // Fetch the created category with all fields
     const [categories] = await db.query(`
@@ -194,13 +194,13 @@ router.post('/', async (req, res) => {
  * @body {string} note - Category description
  * @body {string} type - Category type (expense or income)
  * @body {number} parent_category_id - Parent category ID for hierarchical categories
- * @permission Write access to the category's workspace (admin, collaborator)
+ * @permission Write access to the category's book (admin, collaborator)
  * @returns {Object} Updated category
  * 
  * Hierarchy constraints:
  * - A category cannot be its own parent
  * - A category with children cannot become a child of another category
- * - Parent category must belong to the same workspace
+ * - Parent category must belong to the same book
  * - If parent_category_id is provided, that category must not have a parent itself
  * - Child categories must have the same type as their parent
  * - When a parent category type changes, all child categories inherit the new type
@@ -210,7 +210,7 @@ router.put('/:id', async (req, res) => {
   let { name, note, type, parent_category_id } = req.body;
 
   try {
-    // First fetch the category to check workspace access
+    // First fetch the category to check book access
     const [categories] = await db.query(`
       SELECT * FROM category WHERE id = ?
     `, [req.params.id]);
@@ -219,12 +219,12 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    const workspaceId = categories[0].workspace_id;
+    const bookId = categories[0].book_id;
     const categoryId = parseInt(req.params.id);
     const currentCategory = categories[0];
 
-    // Verify user has write access to the workspace
-    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+    // Verify user has write access to the book
+    const { allowed, message } = await canWrite(bookId, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -260,9 +260,9 @@ router.put('/:id', async (req, res) => {
           return res.status(404).json({ error: 'Parent category not found' });
         }
 
-        // Ensure parent belongs to the same workspace
-        if (parentCategories[0].workspace_id !== workspaceId) {
-          return res.status(400).json({ error: 'Parent category must belong to the same workspace' });
+        // Ensure parent belongs to the same book
+        if (parentCategories[0].book_id !== bookId) {
+          return res.status(400).json({ error: 'Parent category must belong to the same book' });
         }
 
         // Enforce two-level nesting limit - if parent already has a parent, reject
@@ -399,7 +399,7 @@ router.put('/:id', async (req, res) => {
  * Delete a category
  * 
  * @param {number} id - Category ID to delete
- * @permission Write access to the category's workspace (admin, collaborator)
+ * @permission Write access to the category's book (admin, collaborator)
  * @returns {null} 204 No Content on success
  * @throws {Error} 428 Precondition Required if category has transactions
  * 
@@ -407,7 +407,7 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    // First fetch the category to check workspace access
+    // First fetch the category to check book access
     const [categories] = await db.query(`
       SELECT * FROM category WHERE id = ?
     `, [req.params.id]);
@@ -416,10 +416,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    const workspaceId = categories[0].workspace_id;
+    const bookId = categories[0].book_id;
 
-    // Verify user has write access to the workspace
-    const { allowed, message } = await canWrite(workspaceId, req.user.id);
+    // Verify user has write access to the book
+    const { allowed, message } = await canWrite(bookId, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }

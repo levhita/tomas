@@ -1,18 +1,18 @@
 meta {
-  name: Create Workspace
+  name: Create Book
   type: http
   seq: 3
 }
 
 post {
-  url: {{server_url}}/workspaces
+  url: {{server_url}}/books
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "name": "A Workspace",
+    "name": "A Book",
     "description": "Some Description"
   }
 }

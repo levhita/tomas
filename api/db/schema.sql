@@ -1,5 +1,5 @@
 -- Clean Up --
-DROP TABLE IF EXISTS `workspace_user`;
+DROP TABLE IF EXISTS `book_user`;
 
 DROP TABLE IF EXISTS `transaction`;
 
@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS `total`;
 
 DROP TABLE IF EXISTS `account`;
 
-DROP TABLE IF EXISTS `workspace`;
+DROP TABLE IF EXISTS `book`;
 
 DROP TABLE IF EXISTS `user`;
 
@@ -26,9 +26,9 @@ CREATE TABLE
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
 
--- Workspaces --
+-- Books --
 CREATE TABLE
-  `workspace` (
+  `book` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
@@ -39,15 +39,15 @@ CREATE TABLE
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB;
 
--- Workspace Users --
+-- Book Users --
 CREATE TABLE
-  `workspace_user` (
-    `workspace_id` INT UNSIGNED NOT NULL,
+  `book_user` (
+    `book_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
     `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`workspace_id`, `user_id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
+    PRIMARY KEY (`book_id`, `user_id`),
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`),
     FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
   ) ENGINE = InnoDB;
 
@@ -59,9 +59,9 @@ CREATE TABLE
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
   ) ENGINE = InnoDB;
 
 -- Totals --
@@ -85,10 +85,10 @@ CREATE TABLE
     `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
     `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
   ) ENGINE = InnoDB;
 
 -- Transactions --

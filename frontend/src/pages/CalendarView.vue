@@ -1,18 +1,18 @@
 <template>
-  <WorkspaceLayout>
-    <!-- Loading state when workspace is not yet loaded -->
-    <div v-if="!isWorkspaceLoaded" class="workspace-loading container text-center p-5">
+  <BookLayout>
+    <!-- Loading state when book is not yet loaded -->
+    <div v-if="!isBookLoaded" class="book-loading container text-center p-5">
       <div class="spinner-border text-primary mb-3" role="status">
-        <span class="visually-hidden">Loading workspace...</span>
+        <span class="visually-hidden">Loading book...</span>
       </div>
-      <h4>Loading workspace data...</h4>
+      <h4>Loading book data...</h4>
     </div>
 
-    <!-- Main content when workspace is loaded -->
+    <!-- Main content when book is loaded -->
     <template v-else>
       <DateAccountSelector ref="dateAccountSelector" v-model:accountId="accountId" v-model:selectedDate="selectedDate"
-        v-model:rangeType="rangeType" :workspace-name="workspacesStore.currentWorkspace.name"
-        :workspace-id="workspacesStore.currentWorkspace.id" />
+        v-model:rangeType="rangeType" :book-name="booksStore.currentBook.name"
+        :book-id="booksStore.currentBook.id" />
 
       <div class="row w-100 ps-2">
         <div class="col-4 overflow-scroll calendar-sidebar p-2">
@@ -30,7 +30,7 @@
         :focus-on="modalFocusTarget" @save="saveTransaction" @delete="deleteTransaction"
         @duplicate="duplicateTransaction" />
     </template>
-  </WorkspaceLayout>
+  </BookLayout>
 </template>
 
 <script setup>
@@ -43,9 +43,9 @@ import DateAccountSelector from '../components/inputs/DateAccountSelector.vue'
 import { useTransactionsStore } from '../stores/transactions'
 import { useAccountsStore } from '../stores/accounts'
 import { useCategoriesStore } from '../stores/categories'
-import { useWorkspacesStore } from '../stores/workspaces'
+import { useBooksStore } from '../stores/books'
 import TransactionModal from '../components/modals/TransactionModal.vue'
-import WorkspaceLayout from '../layouts/WorkspaceLayout.vue'
+import BookLayout from '../layouts/BookLayout.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -53,10 +53,10 @@ const route = useRoute()
 const categoriesStore = useCategoriesStore()
 const accountsStore = useAccountsStore()
 const transactionsStore = useTransactionsStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 
-// Add a computed property to check if workspace is loaded
-const isWorkspaceLoaded = computed(() => !!workspacesStore.currentWorkspace)
+// Add a computed property to check if book is loaded
+const isBookLoaded = computed(() => !!booksStore.currentBook)
 
 const selectedDate = ref(moment().format('YYYY-MM-DD'))
 const dateAccountSelector = ref(null)
@@ -75,7 +75,7 @@ const modalFocusTarget = ref('description')
 
 function showTransactionModal({ transaction, editing, focusOn = 'description' }) {
   // If trying to edit but no permission, either show readonly or prevent
-  if (editing && !workspacesStore.hasWritePermission) {
+  if (editing && !booksStore.hasWritePermission) {
     // We can either show as readonly or return without showing
     editing = false; // Convert to readonly view
   }
@@ -121,40 +121,40 @@ async function duplicateTransaction(transaction) {
   }
 }
 
-// Simplified validation function that uses the enhanced workspace store
-async function validateAndSetWorkspace() {
-  // Get workspaceId from query parameter
-  const workspaceId = route.query.workspaceId;
+// Simplified validation function that uses the enhanced book store
+async function validateAndSetBook() {
+  // Get bookId from query parameter
+  const bookId = route.query.bookId;
 
-  // If workspaceId is missing, redirect to workspace selection
-  if (!workspaceId) {
+  // If bookId is missing, redirect to book selection
+  if (!bookId) {
     router.replace({
-      name: 'workspaces',
-      query: { error: 'missing-workspace' }
+      name: 'books',
+      query: { error: 'missing-book' }
     });
     return false;
   }
 
-  // Use the enhanced workspace store to validate and load everything
-  const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
+  // Use the enhanced book store to validate and load everything
+  const result = await booksStore.validateAndLoadBook(bookId);
 
   // Handle validation result
   if (!result.success) {
     router.replace({
-      name: 'workspaces',
+      name: 'books',
       query: { error: result.error }
     });
     return false;
   }
 
-  // Load accounts for the workspace
+  // Load accounts for the book
   try {
-    await accountsStore.fetchAccounts(workspaceId);
+    await accountsStore.fetchAccounts(bookId);
   } catch (error) {
     console.error('Error loading accounts:', error);
   }
 
-  // Success - workspace and all dependent data are loaded
+  // Success - book and all dependent data are loaded
   return true;
 }
 
@@ -171,11 +171,11 @@ watch(
 
 // Update onMounted to use the simplified approach
 onMounted(async () => {
-  // Validate and set workspace - this now loads all dependent data
-  const isWorkspaceValid = await validateAndSetWorkspace();
+  // Validate and set book - this now loads all dependent data
+  const isBookValid = await validateAndSetBook();
 
-  // Only set initial account if workspace is valid
-  if (isWorkspaceValid && accountsStore.accountsByName.length > 0) {
+  // Only set initial account if book is valid
+  if (isBookValid && accountsStore.accountsByName.length > 0) {
     accountId.value = accountsStore.accountsByName[0].id;
   }
 });

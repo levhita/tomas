@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import WorkspacesView from '../pages/WorkspacesView.vue'
+import BooksView from '../pages/BooksView.vue'
 import CalendarView from '../pages/CalendarView.vue'
 import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
@@ -16,12 +16,12 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/workspaces'
+    redirect: '/books'
   },
   {
-    path: '/workspaces',
-    component: WorkspacesView,
-    name: 'workspaces'
+    path: '/books',
+    component: BooksView,
+    name: 'books'
   },
   {
     path: '/calendar',
@@ -99,7 +99,7 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
   } else if (requiresSuperAdmin && !usersStore.isSuperAdmin) {
     // Redirect non-superadmins away from admin routes
-    next('/workspaces')
+    next('/books')
   } else {
     next()
   }

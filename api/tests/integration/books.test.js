@@ -1,7 +1,7 @@
 /**
- * Workspace Management API Tests
+ * Book Management API Tests
  * 
- * Tests all workspace-related endpoints including CRUD operations,
+ * Tests all book-related endpoints including CRUD operations,
  * user management, and search functionality.
  */
 
@@ -14,13 +14,13 @@ const {
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
-  validateWorkspaceObject,
+  validateBookObject,
   generateRandomData,
   createTestUser,
   app
 } = require('../utils/test-helpers');
 
-describe('Workspace Management API', () => {
+describe('Book Management API', () => {
   let superadminToken;
   let testUserToken;
   let adminUserToken;
@@ -32,7 +32,7 @@ describe('Workspace Management API', () => {
     superadminToken = tokens.superadmin;
     testUserToken = tokens.testuser1;
     regularUserToken = tokens.regularuser;
-    // testuser1 is admin of workspace 2
+    // testuser1 is admin of book 2
     adminUserToken = testUserToken;
   });
 
@@ -47,26 +47,26 @@ describe('Workspace Management API', () => {
     adminUserToken = testUserToken;
   };
 
-  describe('GET /api/workspaces', () => {
-    it('should return user workspaces for authenticated user', async () => {
+  describe('GET /api/books', () => {
+    it('should return user books for authenticated user', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/workspaces');
+      const response = await auth.get('/api/books');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
 
-      // Check workspace structure
-      const workspace = response.body[0];
-      validateWorkspaceObject(workspace);
-      expect(workspace).toHaveProperty('role');
-      expect(['viewer', 'collaborator', 'admin']).toContain(workspace.role);
+      // Check book structure
+      const book = response.body[0];
+      validateBookObject(book);
+      expect(book).toHaveProperty('role');
+      expect(['viewer', 'collaborator', 'admin']).toContain(book.role);
     });
 
-    it('should return empty array for user with no workspaces', async () => {
+    it('should return empty array for user with no books', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // Create a new user with no workspace access
+      // Create a new user with no book access
       const userData = generateRandomData();
       const newUser = await createTestUser({
         username: userData.username,
@@ -81,7 +81,7 @@ describe('Workspace Management API', () => {
       });
 
       const newUserAuth = authenticatedRequest(newUserToken);
-      const response = await newUserAuth.get('/api/workspaces');
+      const response = await newUserAuth.get('/api/books');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -89,36 +89,36 @@ describe('Workspace Management API', () => {
     });
 
     it('should deny access without authentication', async () => {
-      const response = await request(app).get('/api/workspaces');
+      const response = await request(app).get('/api/books');
 
       validateApiResponse(response, 401);
     });
   });
 
-  describe('GET /api/workspaces/all', () => {
-    it('should return all workspaces for superadmin', async () => {
+  describe('GET /api/books/all', () => {
+    it('should return all books for superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/all');
+      const response = await auth.get('/api/books/all');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
 
-      // Check that all test workspaces are included
-      const workspaceIds = response.body.map(w => w.id);
-      expect(workspaceIds).toContain(TEST_WORKSPACES.WORKSPACE1.id);
-      expect(workspaceIds).toContain(TEST_WORKSPACES.WORKSPACE2.id);
-      expect(workspaceIds).toContain(TEST_WORKSPACES.SEARCH_WORKSPACE.id);
+      // Check that all test books are included
+      const bookIds = response.body.map(w => w.id);
+      expect(bookIds).toContain(TEST_WORKSPACES.WORKSPACE1.id);
+      expect(bookIds).toContain(TEST_WORKSPACES.WORKSPACE2.id);
+      expect(bookIds).toContain(TEST_WORKSPACES.SEARCH_WORKSPACE.id);
 
       // Verify structure
-      response.body.forEach(workspace => {
-        validateWorkspaceObject(workspace);
+      response.body.forEach(book => {
+        validateBookObject(book);
       });
     });
 
     it('should deny access for non-superadmin', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/workspaces/all');
+      const response = await auth.get('/api/books/all');
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
@@ -126,39 +126,39 @@ describe('Workspace Management API', () => {
     });
   });
 
-  describe('GET /api/workspaces/search', () => {
-    it('should search workspaces by name for superadmin', async () => {
+  describe('GET /api/books/search', () => {
+    it('should search books by name for superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/search?q=Test&limit=10');
+      const response = await auth.get('/api/books/search?q=Test&limit=10');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
 
       // Verify all results contain "Test" in name
-      response.body.forEach(workspace => {
-        validateWorkspaceObject(workspace);
-        expect(workspace.name.toLowerCase()).toContain('test');
+      response.body.forEach(book => {
+        validateBookObject(book);
+        expect(book.name.toLowerCase()).toContain('test');
       });
     });
 
-    it('should search workspaces by ID for superadmin', async () => {
+    it('should search books by ID for superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get(`/api/workspaces/search?q=${TEST_WORKSPACES.WORKSPACE1.id}&limit=10`);
+      const response = await auth.get(`/api/books/search?q=${TEST_WORKSPACES.WORKSPACE1.id}&limit=10`);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
 
       if (response.body.length > 0) {
-        const workspace = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE1.id);
-        expect(workspace).toBeDefined();
-        validateWorkspaceObject(workspace);
+        const book = response.body.find(w => w.id === TEST_WORKSPACES.WORKSPACE1.id);
+        expect(book).toBeDefined();
+        validateBookObject(book);
       }
     });
 
     it('should limit search results', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/search?q=Workspace&limit=2');
+      const response = await auth.get('/api/books/search?q=Book&limit=2');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -167,7 +167,7 @@ describe('Workspace Management API', () => {
 
     it('should return empty array for no matches', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/search?q=NonExistentWorkspace&limit=10');
+      const response = await auth.get('/api/books/search?q=NonExistentBook&limit=10');
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -176,7 +176,7 @@ describe('Workspace Management API', () => {
 
     it('should require search query parameter', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/search');
+      const response = await auth.get('/api/books/search');
 
       validateApiResponse(response, 400);
       expect(response.body).toHaveProperty('error');
@@ -184,74 +184,74 @@ describe('Workspace Management API', () => {
 
     it('should deny access for non-superadmin', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/workspaces/search?q=Test&limit=10');
+      const response = await auth.get('/api/books/search?q=Test&limit=10');
 
       validateApiResponse(response, 403);
     });
   });
 
-  describe('GET /api/workspaces/:id', () => {
-    it('should return workspace for user with access', async () => {
+  describe('GET /api/books/:id', () => {
+    it('should return book for user with access', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`);
+      const response = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}`);
 
       validateApiResponse(response, 200);
-      validateWorkspaceObject(response.body);
+      validateBookObject(response.body);
       expect(response.body.id).toBe(TEST_WORKSPACES.WORKSPACE1.id);
       expect(response.body.name).toBe(TEST_WORKSPACES.WORKSPACE1.name);
     });
 
-    it('should deny access to workspace user has no access to', async () => {
+    it('should deny access to book user has no access to', async () => {
       const auth = authenticatedRequest(testUserToken);
-      // testuser1 has no access to workspace 4
-      const response = await auth.get('/api/workspaces/4');
+      // testuser1 has no access to book 4
+      const response = await auth.get('/api/books/4');
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/workspaces/99999');
+      const response = await auth.get('/api/books/99999');
 
       validateApiResponse(response, 404);
     });
   });
 
-  describe('POST /api/workspaces', () => {
+  describe('POST /api/books', () => {
     beforeEach(resetBeforeTest);
 
-    it('should create new workspace', async () => {
+    it('should create new book', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const workspaceData = generateRandomData();
+      const bookData = generateRandomData();
 
-      const response = await auth.post('/api/workspaces')
+      const response = await auth.post('/api/books')
         .send({
-          name: workspaceData.workspaceName,
-          note: 'Test workspace description',
+          name: bookData.bookName,
+          note: 'Test book description',
           currency_symbol: '€',
           week_start: 'sunday'
         });
 
       validateApiResponse(response, 201);
-      validateWorkspaceObject(response.body);
-      expect(response.body.name).toBe(workspaceData.workspaceName);
-      expect(response.body.note).toBe('Test workspace description');
+      validateBookObject(response.body);
+      expect(response.body.name).toBe(bookData.bookName);
+      expect(response.body.note).toBe('Test book description');
       expect(response.body.currency_symbol).toBe('€');
       expect(response.body.week_start).toBe('sunday');
     });
 
-    it('should create workspace with minimal data', async () => {
+    it('should create book with minimal data', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const workspaceData = generateRandomData();
+      const bookData = generateRandomData();
 
-      const response = await auth.post('/api/workspaces')
+      const response = await auth.post('/api/books')
         .send({
-          name: workspaceData.workspaceName
+          name: bookData.bookName
         });
 
       validateApiResponse(response, 201);
-      validateWorkspaceObject(response.body);
-      expect(response.body.name).toBe(workspaceData.workspaceName);
+      validateBookObject(response.body);
+      expect(response.body.name).toBe(bookData.bookName);
       expect(response.body.currency_symbol).toBe('$'); // default
       expect(response.body.week_start).toBe('monday'); // default
     });
@@ -259,7 +259,7 @@ describe('Workspace Management API', () => {
     it('should reject missing required fields', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      const response = await auth.post('/api/workspaces')
+      const response = await auth.post('/api/books')
         .send({
           note: 'Missing name'
         });
@@ -270,23 +270,23 @@ describe('Workspace Management API', () => {
 
     it('should deny access without authentication', async () => {
       const response = await request(app)
-        .post('/api/workspaces')
+        .post('/api/books')
         .send({
-          name: 'Test Workspace'
+          name: 'Test Book'
         });
 
       validateApiResponse(response, 401);
     });
   });
 
-  describe('PUT /api/workspaces/:id', () => {
+  describe('PUT /api/books/:id', () => {
     beforeEach(resetBeforeTest);
 
-    it('should update workspace as admin', async () => {
+    it('should update book as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const newName = `Updated ${Date.now()}`;
 
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`)
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`)
         .send({
           name: newName,
           note: 'Updated description',
@@ -295,7 +295,7 @@ describe('Workspace Management API', () => {
         });
 
       validateApiResponse(response, 200);
-      validateWorkspaceObject(response.body);
+      validateBookObject(response.body);
       expect(response.body.name).toBe(newName);
       expect(response.body.note).toBe('Updated description');
       expect(response.body.currency_symbol).toBe('¥');
@@ -305,8 +305,8 @@ describe('Workspace Management API', () => {
     it('should deny access for non-admin user', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      // testuser1 is collaborator in workspace 1, not admin
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`)
+      // testuser1 is collaborator in book 1, not admin
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}`)
         .send({
           name: 'Hacked Name'
         });
@@ -314,10 +314,10 @@ describe('Workspace Management API', () => {
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.put('/api/workspaces/99999')
+      const response = await auth.put('/api/books/99999')
         .send({
           name: 'Updated'
         });
@@ -326,134 +326,134 @@ describe('Workspace Management API', () => {
     });
   });
 
-  describe('DELETE /api/workspaces/:id', () => {
+  describe('DELETE /api/books/:id', () => {
     beforeEach(resetBeforeTest);
 
-    it('should soft delete workspace as admin', async () => {
+    it('should soft delete book as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`);
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('message');
       expect(response.body.message).toMatch(/deleted/i);
 
-      // Verify workspace is soft deleted (should return 404)
-      const getResponse = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
+      // Verify book is soft deleted (should return 404)
+      const getResponse = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`);
       validateApiResponse(getResponse, 404);
     });
 
     it('should deny access for non-admin user', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      // testuser1 is collaborator in workspace 1, not admin
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}`);
+      // testuser1 is collaborator in book 1, not admin
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}`);
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.delete('/api/workspaces/99999');
+      const response = await auth.delete('/api/books/99999');
 
       validateApiResponse(response, 404);
     });
   });
 
-  describe('POST /api/workspaces/:id/restore', () => {
+  describe('POST /api/books/:id/restore', () => {
     beforeEach(async () => {
       await resetBeforeTest();
-      // Soft delete a workspace first
+      // Soft delete a book first
       const auth = authenticatedRequest(adminUserToken);
-      await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
+      await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`);
     });
 
-    it('should restore soft-deleted workspace as superadmin', async () => {
+    it('should restore soft-deleted book as superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
 
       validateApiResponse(response, 200);
-      validateWorkspaceObject(response.body);
+      validateBookObject(response.body);
       expect(response.body.id).toBe(TEST_WORKSPACES.WORKSPACE2.id);
 
-      // Verify workspace is accessible again
-      const getResponse = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
+      // Verify book is accessible again
+      const getResponse = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`);
       validateApiResponse(getResponse, 200);
     });
 
     it('should deny access for non-superadmin', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.post('/api/workspaces/99999/restore');
+      const response = await auth.post('/api/books/99999/restore');
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 400 for already active workspace', async () => {
-      // First restore the workspace
+    it('should return 400 for already active book', async () => {
+      // First restore the book
       const auth = authenticatedRequest(superadminToken);
-      await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
 
       // Try to restore again
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
 
       validateApiResponse(response, 400);
     });
   });
 
-  describe('DELETE /api/workspaces/:id/permanent', () => {
-    let deletableWorkspaceId;
+  describe('DELETE /api/books/:id/permanent', () => {
+    let deletableBookId;
 
     beforeEach(async () => {
       await resetBeforeTest();
-      // Create a fresh workspace with no dependent data for deletion testing
+      // Create a fresh book with no dependent data for deletion testing
       const auth = authenticatedRequest(superadminToken);
-      const createResponse = await auth.post('/api/workspaces')
+      const createResponse = await auth.post('/api/books')
         .send({
-          name: 'Deletable Workspace',
-          note: 'Workspace for deletion testing'
+          name: 'Deletable Book',
+          note: 'Book for deletion testing'
         });
 
-      deletableWorkspaceId = createResponse.body.id;
+      deletableBookId = createResponse.body.id;
 
       // Soft delete it first
-      await auth.delete(`/api/workspaces/${deletableWorkspaceId}`);
+      await auth.delete(`/api/books/${deletableBookId}`);
     });
 
-    it('should cascade delete workspace with existing data', async () => {
+    it('should cascade delete book with existing data', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // Soft delete workspace 2 first (it has accounts)
-      await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}`);
+      // Soft delete book 2 first (it has accounts)
+      await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}`);
 
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/permanent`);
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/permanent`);
 
       validateApiResponse(response, 204);
 
-      // Verify the workspace is completely deleted (should get 404)
-      const checkResponse = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
+      // Verify the book is completely deleted (should get 404)
+      const checkResponse = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/restore`);
       validateApiResponse(checkResponse, 404);
     });
 
-    it('should permanently delete empty workspace as superadmin', async () => {
+    it('should permanently delete empty book as superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.delete(`/api/workspaces/${deletableWorkspaceId}/permanent`);
+      const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
 
       validateApiResponse(response, 204);
 
-      // Verify workspace cannot be restored
-      const restoreResponse = await auth.post(`/api/workspaces/${deletableWorkspaceId}/restore`);
+      // Verify book cannot be restored
+      const restoreResponse = await auth.post(`/api/books/${deletableBookId}/restore`);
       validateApiResponse(restoreResponse, 404);
     });
 
@@ -461,37 +461,37 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const superAuth = authenticatedRequest(superadminToken);
 
-      // Use the deletable workspace that was already created and soft-deleted in beforeAll
-      // testuser1 doesn't have access to this workspace, so this should fail with 403
-      const response = await auth.delete(`/api/workspaces/${deletableWorkspaceId}/permanent`);
+      // Use the deletable book that was already created and soft-deleted in beforeAll
+      // testuser1 doesn't have access to this book, so this should fail with 403
+      const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.delete('/api/workspaces/99999/permanent');
+      const response = await auth.delete('/api/books/99999/permanent');
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 400 for active workspace', async () => {
+    it('should return 400 for active book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // Try to permanently delete an active workspace
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/permanent`);
+      // Try to permanently delete an active book
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/permanent`);
 
       validateApiResponse(response, 400);
       expect(response.body.error).toMatch(/soft-deleted/i);
     });
   });
 
-  describe('GET /api/workspaces/:id/users', () => {
-    it('should return workspace users for admin', async () => {
+  describe('GET /api/books/:id/users', () => {
+    it('should return book users for admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
-      const response = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
+      const response = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -505,10 +505,10 @@ describe('Workspace Management API', () => {
       expect(['admin', 'collaborator', 'viewer']).toContain(user.role);
     });
 
-    it('should return workspace users for collaborator', async () => {
+    it('should return book users for collaborator', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      const response = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/users`);
+      const response = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/users`);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -517,38 +517,38 @@ describe('Workspace Management API', () => {
     it('should deny access for non-member', async () => {
       const auth = authenticatedRequest(regularUserToken);
 
-      // regularuser is not a member of workspace 1
-      const response = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/users`);
+      // regularuser is not a member of book 1
+      const response = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/users`);
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.get('/api/workspaces/99999/users');
+      const response = await auth.get('/api/books/99999/users');
 
       validateApiResponse(response, 404);
     });
   });
 
-  describe('POST /api/workspaces/:id/users', () => {
+  describe('POST /api/books/:id/users', () => {
     beforeEach(resetBeforeTest);
-    it('should add user to workspace as admin', async () => {
+    it('should add user to book as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const userData = {
         userId: TEST_USERS.REGULARUSER.id,
         role: 'viewer'
       };
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send(userData);
 
       validateApiResponse(response, 201);
       expect(Array.isArray(response.body)).toBe(true);
 
       // Verify user was added
-      const usersResponse = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
+      const usersResponse = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
       const addedUser = usersResponse.body.find(u => u.id === userData.userId);
       expect(addedUser).toBeDefined();
       expect(addedUser.role).toBe(userData.role);
@@ -570,7 +570,7 @@ describe('Workspace Management API', () => {
         const userId = createUserResponse.body.id;
         const userData = { userId: userId, role };
 
-        const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+        const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
           .send(userData);
 
         validateApiResponse(response, 201);
@@ -585,21 +585,21 @@ describe('Workspace Management API', () => {
         role: 'viewer'
       };
 
-      // testuser1 is collaborator in workspace 1, not admin
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/users`)
+      // testuser1 is collaborator in book 1, not admin
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/users`)
         .send(userData);
 
       validateApiResponse(response, 403);
     });
 
-    it('should return 409 for user already in workspace', async () => {
+    it('should return 409 for user already in book', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const userData = {
         userId: TEST_USERS.TESTUSER1.id, // Already a member
         role: 'viewer'
       };
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send(userData);
 
       validateApiResponse(response, 409);
@@ -613,20 +613,20 @@ describe('Workspace Management API', () => {
         role: 'viewer'
       };
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send(userData);
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
       const userData = {
         userId: TEST_USERS.REGULARUSER.id,
         role: 'viewer'
       };
 
-      const response = await auth.post('/api/workspaces/99999/users')
+      const response = await auth.post('/api/books/99999/users')
         .send(userData);
 
       validateApiResponse(response, 404);
@@ -639,7 +639,7 @@ describe('Workspace Management API', () => {
         role: 'invalid_role'
       };
 
-      const response = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send(userData);
 
       validateApiResponse(response, 400);
@@ -650,56 +650,56 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(adminUserToken);
 
       // Missing userId
-      const response1 = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response1 = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send({ role: 'viewer' });
 
       validateApiResponse(response1, 400);
 
       // Missing role
-      const response2 = await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      const response2 = await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send({ userId: TEST_USERS.REGULARUSER.id });
 
       validateApiResponse(response2, 400);
     });
 
-    it('should allow superadmin to add users to any workspace', async () => {
-      // Create a new workspace as testuser1 (superadmin won't be a member)
+    it('should allow superadmin to add users to any book', async () => {
+      // Create a new book as testuser1 (superadmin won't be a member)
       const testUserAuth = authenticatedRequest(testUserToken);
-      const createResponse = await testUserAuth.post('/api/workspaces')
+      const createResponse = await testUserAuth.post('/api/books')
         .send({
-          name: 'Test Workspace for Superadmin Access',
+          name: 'Test Book for Superadmin Access',
           note: 'Testing superadmin access'
         });
 
-      const newWorkspaceId = createResponse.body.id;
+      const newBookId = createResponse.body.id;
 
-      // Now superadmin should be able to add users to this workspace even though they're not a member
+      // Now superadmin should be able to add users to this book even though they're not a member
       const superAuth = authenticatedRequest(superadminToken);
       const userData = {
         userId: TEST_USERS.REGULARUSER.id,
         role: 'viewer'
       };
 
-      const response = await superAuth.post(`/api/workspaces/${newWorkspaceId}/users`)
+      const response = await superAuth.post(`/api/books/${newBookId}/users`)
         .send(userData);
 
       validateApiResponse(response, 201);
       expect(Array.isArray(response.body)).toBe(true);
 
       // Verify user was added
-      const usersResponse = await superAuth.get(`/api/workspaces/${newWorkspaceId}/users`);
+      const usersResponse = await superAuth.get(`/api/books/${newBookId}/users`);
       const addedUser = usersResponse.body.find(u => u.id === userData.userId);
       expect(addedUser).toBeDefined();
       expect(addedUser.role).toBe(userData.role);
     });
   });
 
-  describe('PUT /api/workspaces/:id/users/:userId', () => {
+  describe('PUT /api/books/:id/users/:userId', () => {
     beforeEach(async () => {
       await resetBeforeTest();
-      // Add regularuser to workspace2 as viewer
+      // Add regularuser to book2 as viewer
       const auth = authenticatedRequest(adminUserToken);
-      await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send({
           userId: TEST_USERS.REGULARUSER.id,
           role: 'viewer'
@@ -710,7 +710,7 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(adminUserToken);
       const updateData = { role: 'collaborator' };
 
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 200);
@@ -729,7 +729,7 @@ describe('Workspace Management API', () => {
       for (const role of roles) {
         const updateData = { role };
 
-        const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
+        const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
           .send(updateData);
 
         validateApiResponse(response, 200);
@@ -743,8 +743,8 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const updateData = { role: 'admin' };
 
-      // testuser1 is collaborator in workspace 1, not admin
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/users/${TEST_USERS.REGULARUSER.id}`)
+      // testuser1 is collaborator in book 1, not admin
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/users/${TEST_USERS.REGULARUSER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 403);
@@ -754,30 +754,30 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(adminUserToken);
       const updateData = { role: 'admin' };
 
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/99999`)
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/99999`)
         .send(updateData);
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
       const updateData = { role: 'admin' };
 
-      const response = await auth.put(`/api/workspaces/99999/users/${TEST_USERS.REGULARUSER.id}`)
+      const response = await auth.put(`/api/books/99999/users/${TEST_USERS.REGULARUSER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 404 for user not in workspace', async () => {
+    it('should return 404 for user not in book', async () => {
       const auth = authenticatedRequest(adminUserToken);
       const updateData = { role: 'admin' };
 
       // Remove regularuser first
-      await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
+      await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
 
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 404);
@@ -787,7 +787,7 @@ describe('Workspace Management API', () => {
       const auth = authenticatedRequest(adminUserToken);
       const updateData = { role: 'invalid_role' };
 
-      const response = await auth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
+      const response = await auth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 400);
@@ -797,12 +797,12 @@ describe('Workspace Management API', () => {
     it('should allow superadmin to demote last admin', async () => {
       const superAuth = authenticatedRequest(superadminToken);
 
-      // First remove superadmin from workspace2, leaving only testuser1 as admin
-      await superAuth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
+      // First remove superadmin from book2, leaving only testuser1 as admin
+      await superAuth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
 
-      // Now superadmin should be able to demote the last admin (testuser1) from workspace2
+      // Now superadmin should be able to demote the last admin (testuser1) from book2
       const updateData = { role: 'viewer' };
-      const response = await superAuth.put(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`)
+      const response = await superAuth.put(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`)
         .send(updateData);
 
       // This should succeed for superadmin even though it's demoting the last admin
@@ -816,27 +816,27 @@ describe('Workspace Management API', () => {
     });
   });
 
-  describe('DELETE /api/workspaces/:id/users/:userId', () => {
+  describe('DELETE /api/books/:id/users/:userId', () => {
     beforeEach(async () => {
       await resetBeforeTest();
-      // Add regularuser to workspace2 as viewer
+      // Add regularuser to book2 as viewer
       const auth = authenticatedRequest(adminUserToken);
-      await auth.post(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
+      await auth.post(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`)
         .send({
           userId: TEST_USERS.REGULARUSER.id,
           role: 'viewer'
         });
     });
 
-    it('should remove user from workspace as admin', async () => {
+    it('should remove user from book as admin', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
 
       validateApiResponse(response, 204);
 
       // Verify user was removed
-      const usersResponse = await auth.get(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
+      const usersResponse = await auth.get(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users`);
       const removedUser = usersResponse.body.find(u => u.id === TEST_USERS.REGULARUSER.id);
       expect(removedUser).toBeUndefined();
     });
@@ -844,8 +844,8 @@ describe('Workspace Management API', () => {
     it('should deny access for collaborator', async () => {
       const auth = authenticatedRequest(testUserToken);
 
-      // testuser1 is collaborator in workspace 1, not admin
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE1.id}/users/${TEST_USERS.REGULARUSER.id}`);
+      // testuser1 is collaborator in book 1, not admin
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE1.id}/users/${TEST_USERS.REGULARUSER.id}`);
 
       validateApiResponse(response, 403);
     });
@@ -853,27 +853,27 @@ describe('Workspace Management API', () => {
     it('should return 404 for non-existent user', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/99999`);
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/99999`);
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 404 for non-existent workspace', async () => {
+    it('should return 404 for non-existent book', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.delete(`/api/workspaces/99999/users/${TEST_USERS.REGULARUSER.id}`);
+      const response = await auth.delete(`/api/books/99999/users/${TEST_USERS.REGULARUSER.id}`);
 
       validateApiResponse(response, 404);
     });
 
-    it('should return 404 for user not in workspace', async () => {
+    it('should return 404 for user not in book', async () => {
       const auth = authenticatedRequest(adminUserToken);
 
       // Remove regularuser first
-      await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
+      await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
 
       // Try to remove again
-      const response = await auth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
+      const response = await auth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.REGULARUSER.id}`);
 
       validateApiResponse(response, 404);
     });
@@ -882,11 +882,11 @@ describe('Workspace Management API', () => {
       const superAuth = authenticatedRequest(superadminToken);
       const adminAuth = authenticatedRequest(adminUserToken);
 
-      // First remove superadmin from workspace2, leaving only testuser1 as admin
-      await superAuth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
+      // First remove superadmin from book2, leaving only testuser1 as admin
+      await superAuth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
 
-      // Now try to remove the last admin (testuser1) from workspace2 using testuser1's token
-      const response = await adminAuth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`);
+      // Now try to remove the last admin (testuser1) from book2 using testuser1's token
+      const response = await adminAuth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`);
 
       // This should be prevented with 409 Conflict for non-superadmin
       validateApiResponse(response, 409);
@@ -896,11 +896,11 @@ describe('Workspace Management API', () => {
     it('should allow superadmin to remove last admin', async () => {
       const superAuth = authenticatedRequest(superadminToken);
 
-      // First remove superadmin from workspace2, leaving only testuser1 as admin
-      await superAuth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
+      // First remove superadmin from book2, leaving only testuser1 as admin
+      await superAuth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.SUPERADMIN.id}`);
 
-      // Now superadmin should be able to remove the last admin (testuser1) from workspace2
-      const response = await superAuth.delete(`/api/workspaces/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`);
+      // Now superadmin should be able to remove the last admin (testuser1) from book2
+      const response = await superAuth.delete(`/api/books/${TEST_WORKSPACES.WORKSPACE2.id}/users/${TEST_USERS.TESTUSER1.id}`);
 
       // This should succeed for superadmin
       validateApiResponse(response, 204);

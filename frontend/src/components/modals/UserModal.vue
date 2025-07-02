@@ -87,45 +87,45 @@
               </div>
             </div>
 
-            <!-- Workspace Access Section (only for editing existing users) -->
+            <!-- Book Access Section (only for editing existing users) -->
             <div class="mb-3" v-if="isEditing">
               <h5 class="border-bottom pb-2 mb-3">
-                <i class="bi bi-folder2 me-2"></i>Workspace Access
+                <i class="bi bi-folder2 me-2"></i>Book Access
               </h5>
 
               <!-- Loading state -->
-              <div v-if="isLoadingWorkspaces" class="text-center py-3">
+              <div v-if="isLoadingBooks" class="text-center py-3">
                 <div class="spinner-border spinner-border-sm" role="status">
-                  <span class="visually-hidden">Loading workspaces...</span>
+                  <span class="visually-hidden">Loading books...</span>
                 </div>
-                <small class="text-muted ms-2">Loading workspace information...</small>
+                <small class="text-muted ms-2">Loading book information...</small>
               </div>
 
-              <!-- Current workspace access -->
-              <div v-else-if="userWorkspaces.length > 0">
-                <h6 class="text-muted mb-3">Current Access ({{ userWorkspaces.length }})</h6>
+              <!-- Current book access -->
+              <div v-else-if="userBooks.length > 0">
+                <h6 class="text-muted mb-3">Current Access ({{ userBooks.length }})</h6>
                 <div class="row g-2 mb-3">
-                  <div v-for="workspace in userWorkspaces" :key="workspace.id" class="col-12">
+                  <div v-for="book in userBooks" :key="book.id" class="col-12">
                     <div class="card card-body py-2">
                       <div class="d-flex justify-content-between align-items-center">
                         <div class="flex-grow-1">
-                          <div class="fw-semibold">{{ workspace.name }}</div>
-                          <small class="text-muted">{{ workspace.description || 'No description' }}</small>
+                          <div class="fw-semibold">{{ book.name }}</div>
+                          <small class="text-muted">{{ book.description || 'No description' }}</small>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                           <!-- Role selector -->
-                          <select class="form-select form-select-sm" :value="workspace.role"
-                            @change="updateWorkspaceRole(workspace.id, $event.target.value)"
-                            :disabled="isUpdatingWorkspace === workspace.id" style="min-width: 110px;">
+                          <select class="form-select form-select-sm" :value="book.role"
+                            @change="updateBookRole(book.id, $event.target.value)"
+                            :disabled="isUpdatingBook === book.id" style="min-width: 110px;">
                             <option value="viewer">Viewer</option>
                             <option value="collaborator">Collaborator</option>
                             <option value="admin">Admin</option>
                           </select>
                           <!-- Remove button -->
                           <button type="button" class="btn btn-sm btn-outline-danger"
-                            @click="removeFromWorkspace(workspace.id)" :disabled="isUpdatingWorkspace === workspace.id"
-                            title="Remove from workspace">
-                            <i class="bi bi-trash" v-if="isUpdatingWorkspace !== workspace.id"></i>
+                            @click="removeFromBook(book.id)" :disabled="isUpdatingBook === book.id"
+                            title="Remove from book">
+                            <i class="bi bi-trash" v-if="isUpdatingBook !== book.id"></i>
                             <div class="spinner-border spinner-border-sm" v-else role="status">
                               <span class="visually-hidden">Removing...</span>
                             </div>
@@ -137,78 +137,78 @@
                 </div>
               </div>
 
-              <!-- No workspace access -->
+              <!-- No book access -->
               <div v-else class="alert alert-info mb-3">
                 <i class="bi bi-info-circle me-2"></i>
-                This user doesn't have access to any workspaces.
+                This user doesn't have access to any books.
               </div>
 
-              <!-- Add to workspace section -->
+              <!-- Add to book section -->
               <div class="border-top pt-3">
-                <h6 class="text-muted mb-3">Add to Workspace</h6>
+                <h6 class="text-muted mb-3">Add to Book</h6>
                 <div class="row g-2">
                   <div class="col-12 col-md-6">
                     <div class="position-relative">
-                      <input type="text" class="form-control" v-model="workspaceSearchQuery"
-                        @input="onWorkspaceSearchInput" @focus="showWorkspaceResults = true"
-                        @blur="hideWorkspaceResults" placeholder="Search workspace by name or ID..."
-                        :disabled="isAddingToWorkspace" autocomplete="off">
+                      <input type="text" class="form-control" v-model="bookSearchQuery"
+                        @input="onBookSearchInput" @focus="showBookResults = true"
+                        @blur="hideBookResults" placeholder="Search book by name or ID..."
+                        :disabled="isAddingToBook" autocomplete="off">
 
                       <!-- Search results dropdown -->
-                      <div v-if="showWorkspaceResults && (workspaceSearchResults.length > 0 || isSearchingWorkspaces)"
+                      <div v-if="showBookResults && (bookSearchResults.length > 0 || isSearchingBooks)"
                         class="position-absolute w-100 bg-body border border-top-0 rounded-bottom shadow-sm"
                         style="z-index: 1050; max-height: 200px; overflow-y: auto;">
 
                         <!-- Loading state -->
-                        <div v-if="isSearchingWorkspaces" class="p-3 text-center">
+                        <div v-if="isSearchingBooks" class="p-3 text-center">
                           <div class="spinner-border spinner-border-sm" role="status">
                             <span class="visually-hidden">Searching...</span>
                           </div>
-                          <small class="text-muted ms-2">Searching workspaces...</small>
+                          <small class="text-muted ms-2">Searching books...</small>
                         </div>
 
                         <!-- Search results -->
                         <div v-else>
-                          <button v-for="workspace in workspaceSearchResults" :key="workspace.id" type="button"
+                          <button v-for="book in bookSearchResults" :key="book.id" type="button"
                             class="btn btn-link text-start w-100 border-0 rounded-0 p-3"
-                            @mousedown="selectWorkspaceFromSearch(workspace)" style="text-decoration: none;">
-                            <div class="fw-semibold">{{ workspace.name }}</div>
-                            <small class="text-muted">ID: {{ workspace.id }} •
-                              {{ workspace.description || 'No description' }}</small>
+                            @mousedown="selectBookFromSearch(book)" style="text-decoration: none;">
+                            <div class="fw-semibold">{{ book.name }}</div>
+                            <small class="text-muted">ID: {{ book.id }} •
+                              {{ book.description || 'No description' }}</small>
                           </button>
 
                           <!-- No results -->
-                          <div v-if="workspaceSearchResults.length === 0 && workspaceSearchQuery.trim()"
+                          <div v-if="bookSearchResults.length === 0 && bookSearchQuery.trim()"
                             class="p-3 text-center text-muted">
-                            <i class="bi bi-search me-2"></i>No workspaces found
+                            <i class="bi bi-search me-2"></i>No books found
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                   <div class="col-12 col-md-4">
-                    <select class="form-select" v-model="newWorkspaceRole" :disabled="isAddingToWorkspace">
+                    <select class="form-select" v-model="newBookRole" :disabled="isAddingToBook">
                       <option value="viewer">👁️ Viewer</option>
                       <option value="collaborator">✏️ Collaborator</option>
                       <option value="admin">🛡️ Admin</option>
                     </select>
                   </div>
                   <div class="col-12 col-md-2">
-                    <button type="button" class="btn btn-success w-100" @click="addToWorkspace"
-                      :disabled="!selectedWorkspaceForAdd || isAddingToWorkspace">
-                      <span v-if="isAddingToWorkspace" class="spinner-border spinner-border-sm me-2"
+                    <button type="button" class="btn btn-success w-100" @click="addToBook"
+                      :disabled="!selectedBookForAdd || isAddingToBook">
+                      <span v-if="isAddingToBook" class="spinner-border spinner-border-sm me-2"
                         role="status"></span>
                       <i class="bi bi-plus-circle-fill" v-else></i>
                     </button>
                   </div>
                 </div>
 
-                <!-- Selected workspace preview -->
-                <div v-if="selectedWorkspaceForAdd" class="mt-2">
+                <!-- Selected book preview -->
+                <div v-if="selectedBookForAdd" class="mt-2">
                   <small class="text-muted">Selected: </small>
-                  <span class="badge bg-primary">{{ selectedWorkspaceForAdd.name }}</span>
+                  <span class="badge bg-primary">{{ selectedBookForAdd.name }}</span>
                   <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2"
-                    @click="clearWorkspaceSelection" :disabled="isAddingToWorkspace">
+                    @click="clearBookSelection" :disabled="isAddingToBook">
                     <i class="bi bi-x-circle"></i>
                   </button>
                 </div>
@@ -296,19 +296,19 @@ const form = ref({
   changePassword: false
 })
 
-// Workspace management state
-const userWorkspaces = ref([])
-const isLoadingWorkspaces = ref(false)
-const isUpdatingWorkspace = ref(null)
-const isAddingToWorkspace = ref(false)
-const newWorkspaceRole = ref('viewer')
+// Book management state
+const userBooks = ref([])
+const isLoadingBooks = ref(false)
+const isUpdatingBook = ref(null)
+const isAddingToBook = ref(false)
+const newBookRole = ref('viewer')
 
-// Workspace search state
-const workspaceSearchQuery = ref('')
-const workspaceSearchResults = ref([])
-const isSearchingWorkspaces = ref(false)
-const showWorkspaceResults = ref(false)
-const selectedWorkspaceForAdd = ref(null)
+// Book search state
+const bookSearchQuery = ref('')
+const bookSearchResults = ref([])
+const isSearchingBooks = ref(false)
+const showBookResults = ref(false)
+const selectedBookForAdd = ref(null)
 const searchTimeout = ref(null)
 
 const errors = ref({})
@@ -418,164 +418,164 @@ function close() {
   emit('update:modelValue', false)
 }
 
-// Workspace management functions
-async function loadWorkspaceData() {
+// Book management functions
+async function loadBookData() {
   if (!props.user || !usersStore.isSuperAdmin) return
 
-  isLoadingWorkspaces.value = true
+  isLoadingBooks.value = true
   try {
-    // Only load user's current workspaces
-    const userWs = await usersStore.getUserWorkspaces(props.user.id)
-    userWorkspaces.value = userWs
+    // Only load user's current books
+    const userWs = await usersStore.getUserBooks(props.user.id)
+    userBooks.value = userWs
   } catch (error) {
-    console.error('Error loading workspace data:', error)
-    errorMessage.value = 'Failed to load workspace information'
+    console.error('Error loading book data:', error)
+    errorMessage.value = 'Failed to load book information'
   } finally {
-    isLoadingWorkspaces.value = false
+    isLoadingBooks.value = false
   }
 }
 
-// Workspace search functions
-function onWorkspaceSearchInput() {
+// Book search functions
+function onBookSearchInput() {
   // Clear previous timeout
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value)
   }
 
   // Clear previous selection when typing
-  selectedWorkspaceForAdd.value = null
+  selectedBookForAdd.value = null
 
   // Don't search for very short queries
-  if (workspaceSearchQuery.value.trim().length < 2) {
-    workspaceSearchResults.value = []
+  if (bookSearchQuery.value.trim().length < 2) {
+    bookSearchResults.value = []
     return
   }
 
   // Set a timeout to avoid too many API calls
   searchTimeout.value = setTimeout(async () => {
-    await searchWorkspaces()
+    await searchBooks()
   }, 300) // 300ms delay
 }
 
-async function searchWorkspaces() {
-  if (!workspaceSearchQuery.value.trim() || workspaceSearchQuery.value.trim().length < 2) {
-    workspaceSearchResults.value = []
+async function searchBooks() {
+  if (!bookSearchQuery.value.trim() || bookSearchQuery.value.trim().length < 2) {
+    bookSearchResults.value = []
     return
   }
 
-  isSearchingWorkspaces.value = true
+  isSearchingBooks.value = true
   try {
-    const results = await usersStore.searchWorkspaces(workspaceSearchQuery.value.trim(), 10)
+    const results = await usersStore.searchBooks(bookSearchQuery.value.trim(), 10)
 
-    // Filter out workspaces the user already has access to
-    const userWorkspaceIds = userWorkspaces.value.map(uw => uw.id)
-    workspaceSearchResults.value = results.filter(w => !userWorkspaceIds.includes(w.id))
+    // Filter out books the user already has access to
+    const userBookIds = userBooks.value.map(uw => uw.id)
+    bookSearchResults.value = results.filter(w => !userBookIds.includes(w.id))
   } catch (error) {
-    console.error('Error searching workspaces:', error)
-    workspaceSearchResults.value = []
+    console.error('Error searching books:', error)
+    bookSearchResults.value = []
   } finally {
-    isSearchingWorkspaces.value = false
+    isSearchingBooks.value = false
   }
 }
 
-function selectWorkspaceFromSearch(workspace) {
-  selectedWorkspaceForAdd.value = workspace
-  workspaceSearchQuery.value = workspace.name
-  showWorkspaceResults.value = false
-  workspaceSearchResults.value = []
+function selectBookFromSearch(book) {
+  selectedBookForAdd.value = book
+  bookSearchQuery.value = book.name
+  showBookResults.value = false
+  bookSearchResults.value = []
 }
 
-function clearWorkspaceSelection() {
-  selectedWorkspaceForAdd.value = null
-  workspaceSearchQuery.value = ''
-  workspaceSearchResults.value = []
+function clearBookSelection() {
+  selectedBookForAdd.value = null
+  bookSearchQuery.value = ''
+  bookSearchResults.value = []
 }
 
-function hideWorkspaceResults() {
+function hideBookResults() {
   // Delay hiding to allow click events to register
   setTimeout(() => {
-    showWorkspaceResults.value = false
+    showBookResults.value = false
   }, 200)
 }
 
-async function updateWorkspaceRole(workspaceId, newRole) {
+async function updateBookRole(bookId, newRole) {
   if (!props.user) return
 
-  isUpdatingWorkspace.value = workspaceId
+  isUpdatingBook.value = bookId
   try {
-    await usersStore.updateUserWorkspaceRole(props.user.id, workspaceId, newRole)
+    await usersStore.updateUserBookRole(props.user.id, bookId, newRole)
 
     // Update local state
-    const workspace = userWorkspaces.value.find(w => w.id === workspaceId)
-    if (workspace) {
-      workspace.role = newRole
+    const book = userBooks.value.find(w => w.id === bookId)
+    if (book) {
+      book.role = newRole
     }
 
-    successMessage.value = 'Workspace role updated successfully!'
+    successMessage.value = 'Book role updated successfully!'
     setTimeout(() => { successMessage.value = '' }, 3000)
   } catch (error) {
-    console.error('Error updating workspace role:', error)
-    errorMessage.value = error.message || 'Failed to update workspace role'
+    console.error('Error updating book role:', error)
+    errorMessage.value = error.message || 'Failed to update book role'
     setTimeout(() => { errorMessage.value = '' }, 5000)
   } finally {
-    isUpdatingWorkspace.value = null
+    isUpdatingBook.value = null
   }
 }
 
-async function removeFromWorkspace(workspaceId) {
+async function removeFromBook(bookId) {
   if (!props.user) return
 
   try {
     await confirm({
       title: 'Remove User',
-      message: 'Are you sure you want to remove this user from the workspace?',
+      message: 'Are you sure you want to remove this user from the book?',
       confirmText: 'Remove',
       cancelText: 'Cancel',
       confirmButtonVariant: 'danger'
     })
 
-    isUpdatingWorkspace.value = workspaceId
-    await usersStore.removeUserFromWorkspace(props.user.id, workspaceId)
+    isUpdatingBook.value = bookId
+    await usersStore.removeUserFromBook(props.user.id, bookId)
 
     // Remove from local state
-    userWorkspaces.value = userWorkspaces.value.filter(w => w.id !== workspaceId)
+    userBooks.value = userBooks.value.filter(w => w.id !== bookId)
 
-    successMessage.value = 'User removed from workspace successfully!'
+    successMessage.value = 'User removed from book successfully!'
     setTimeout(() => { successMessage.value = '' }, 3000)
   } catch (error) {
-    console.error('Error removing user from workspace:', error)
-    errorMessage.value = error.message || 'Failed to remove user from workspace'
+    console.error('Error removing user from book:', error)
+    errorMessage.value = error.message || 'Failed to remove user from book'
     setTimeout(() => { errorMessage.value = '' }, 5000)
   } finally {
-    isUpdatingWorkspace.value = null
+    isUpdatingBook.value = null
   }
 }
 
-async function addToWorkspace() {
-  if (!props.user || !selectedWorkspaceForAdd.value) return
+async function addToBook() {
+  if (!props.user || !selectedBookForAdd.value) return
 
-  isAddingToWorkspace.value = true
+  isAddingToBook.value = true
   try {
-    await usersStore.addUserToWorkspace(props.user.id, selectedWorkspaceForAdd.value.id, newWorkspaceRole.value)
+    await usersStore.addUserToBook(props.user.id, selectedBookForAdd.value.id, newBookRole.value)
 
     // Add to local state
-    userWorkspaces.value.push({
-      ...selectedWorkspaceForAdd.value,
-      role: newWorkspaceRole.value
+    userBooks.value.push({
+      ...selectedBookForAdd.value,
+      role: newBookRole.value
     })
 
     // Reset form
-    clearWorkspaceSelection()
-    newWorkspaceRole.value = 'viewer'
+    clearBookSelection()
+    newBookRole.value = 'viewer'
 
-    successMessage.value = 'User added to workspace successfully!'
+    successMessage.value = 'User added to book successfully!'
     setTimeout(() => { successMessage.value = '' }, 3000)
   } catch (error) {
-    console.error('Error adding user to workspace:', error)
-    errorMessage.value = error.message || 'Failed to add user to workspace'
+    console.error('Error adding user to book:', error)
+    errorMessage.value = error.message || 'Failed to add user to book'
     setTimeout(() => { errorMessage.value = '' }, 5000)
   } finally {
-    isAddingToWorkspace.value = false
+    isAddingToBook.value = false
   }
 }
 
@@ -594,8 +594,8 @@ watch(() => props.modelValue, (newVal) => {
         active: props.user.active !== false, // Ensure active is a boolean
         changePassword: false
       }
-      // Load workspace data for editing
-      loadWorkspaceData()
+      // Load book data for editing
+      loadBookData()
     } else {
       // Reset form for new user
       form.value = {
@@ -606,9 +606,9 @@ watch(() => props.modelValue, (newVal) => {
         active: true,
         changePassword: false
       }
-      // Reset workspace data
-      userWorkspaces.value = []
-      clearWorkspaceSelection()
+      // Reset book data
+      userBooks.value = []
+      clearBookSelection()
     }
     errors.value = {}
     errorMessage.value = ''
@@ -621,11 +621,11 @@ watch(() => props.modelValue, (newVal) => {
   } else {
     // Remove modal-open class from body when modal hides
     document.body.classList.remove('modal-open')
-    // Reset workspace form state
-    clearWorkspaceSelection()
-    newWorkspaceRole.value = 'viewer'
-    isUpdatingWorkspace.value = null
-    isAddingToWorkspace.value = false
+    // Reset book form state
+    clearBookSelection()
+    newBookRole.value = 'viewer'
+    isUpdatingBook.value = null
+    isAddingToBook.value = false
 
     // Clear search timeout
     if (searchTimeout.value) {
@@ -646,8 +646,8 @@ watch(() => props.user, () => {
       active: props.user.active !== false, // Ensure active is a boolean
       changePassword: false
     }
-    // Load workspace data when user changes
-    loadWorkspaceData()
+    // Load book data when user changes
+    loadBookData()
   }
 })
 

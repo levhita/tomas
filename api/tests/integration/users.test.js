@@ -2,7 +2,7 @@
  * User Management API Tests
  * 
  * Tests all user-related endpoints including authentication, CRUD operations,
- * and workspace management functionality.
+ * and book management functionality.
  */
 
 const request = require('supertest');
@@ -97,18 +97,18 @@ describe('User Management API', () => {
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
 
-      // Check first user structure and workspace stats
+      // Check first user structure and book stats
       const user = response.body[0];
       validateUserObject(user);
-      expect(user).toHaveProperty('workspace_count');
-      expect(user).toHaveProperty('admin_workspaces');
-      expect(user).toHaveProperty('collaborator_workspaces');
-      expect(user).toHaveProperty('viewer_workspaces');
+      expect(user).toHaveProperty('book_count');
+      expect(user).toHaveProperty('admin_books');
+      expect(user).toHaveProperty('collaborator_books');
+      expect(user).toHaveProperty('viewer_books');
 
-      expect(typeof user.workspace_count).toBe('number');
-      expect(typeof user.admin_workspaces).toBe('number');
-      expect(typeof user.collaborator_workspaces).toBe('number');
-      expect(typeof user.viewer_workspaces).toBe('number');
+      expect(typeof user.book_count).toBe('number');
+      expect(typeof user.admin_books).toBe('number');
+      expect(typeof user.collaborator_books).toBe('number');
+      expect(typeof user.viewer_books).toBe('number');
     });
 
     it('should deny access for non-superadmin', async () => {
@@ -504,7 +504,7 @@ describe('User Management API', () => {
     it('should delete user as superadmin', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      // First create a new user with no workspace relationships
+      // First create a new user with no book relationships
       const userData = generateRandomData();
       const createResponse = await auth.post('/api/users')
         .send({

@@ -1,0 +1,35 @@
+meta {
+  name: Search Books
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{server_url}}/books/search?q={{search_query}}&limit={{limit}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  search_query: Test
+  limit: 10
+}
+
+tests {
+  test("Status should be 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response should be an array", function () {
+    expect(res.getBody()).to.be.an('array');
+  });
+  
+  test("Each result should have book properties", function () {
+    const books = res.getBody();
+    if (books.length > 0) {
+      expect(books[0]).to.have.property('id');
+      expect(books[0]).to.have.property('name');
+      expect(books[0]).to.have.property('description');
+    }
+  });
+}

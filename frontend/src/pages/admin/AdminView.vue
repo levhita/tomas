@@ -145,7 +145,7 @@
  * of system statistics, quick access to admin functions, and status monitoring.
  * 
  * Features:
- * - System statistics dashboard with user and workspace counts
+ * - System statistics dashboard with user and book counts
  * - Quick navigation to admin functions
  * - System health status indicators
  * - Admin role verification and access control

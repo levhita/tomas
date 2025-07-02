@@ -48,7 +48,7 @@
  * - Responsive design compatible
  * 
  * Security:
- * - Automatically redirects non-admin users to workspaces
+ * - Automatically redirects non-admin users to books
  * - Integrates with authentication system
  * - Provides clear admin context indicators
  * 
@@ -100,10 +100,10 @@ watch(pageTitle, (newTitle) => {
 
 // Check admin authorization on mount
 onMounted(() => {
-  // If user is not authenticated or not a super admin, redirect to workspaces
+  // If user is not authenticated or not a super admin, redirect to books
   if (!isAuthorizedAdmin.value) {
     router.replace({
-      name: 'workspaces',
+      name: 'books',
       query: { error: 'unauthorized-admin' }
     })
   }
@@ -113,7 +113,7 @@ onMounted(() => {
 watch(isAuthorizedAdmin, (isAuthorized) => {
   if (!isAuthorized) {
     router.replace({
-      name: 'workspaces',
+      name: 'books',
       query: { error: 'unauthorized-admin' }
     })
   }

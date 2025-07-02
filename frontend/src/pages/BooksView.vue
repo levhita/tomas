@@ -2,50 +2,50 @@
   <GeneralLayout>
     <div class="home container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Workspaces</h1>
-        <button class="btn btn-primary" @click="showNewWorkspaceModal">
-          <i class="bi bi-plus-circle me-2"></i>New Workspace
+        <h1>Books</h1>
+        <button class="btn btn-primary" @click="showNewBookModal">
+          <i class="bi bi-plus-circle me-2"></i>New Book
         </button>
       </div>
 
-      <div v-if="workspacesStore.isLoading" class="text-center my-5">
+      <div v-if="booksStore.isLoading" class="text-center my-5">
         <div class="spinner-border" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
-      <div v-else-if="workspacesStore.error" class="alert alert-danger">
-        {{ workspacesStore.error }}
+      <div v-else-if="booksStore.error" class="alert alert-danger">
+        {{ booksStore.error }}
       </div>
 
-      <div v-else-if="workspacesStore.workspaces.length === 0" class="text-center my-5">
+      <div v-else-if="booksStore.books.length === 0" class="text-center my-5">
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
-          No workspaces found. Create your first workspace to get started.
+          No books found. Create your first book to get started.
         </div>
       </div>
 
       <div v-else class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        <div v-for="workspace in workspacesStore.workspacesByName" :key="workspace.id" class="col">
-          <div class="card h-100 workspace-card">
+        <div v-for="book in booksStore.booksByName" :key="book.id" class="col">
+          <div class="card h-100 book-card">
             <div class="card-body">
-              <h5 class="card-title">{{ workspace.name }}</h5>
+              <h5 class="card-title">{{ book.name }}</h5>
               <p class="card-text text-muted small">
-                Created {{ formatDate(workspace.created_at) }}
+                Created {{ formatDate(book.created_at) }}
               </p>
-              <p class="card-text" v-if="workspace.note">{{ workspace.note }}</p>
+              <p class="card-text" v-if="book.note">{{ book.note }}</p>
               <p class="card-text" v-else><em>No note</em></p>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-between">
-              <button class="btn btn-sm btn-primary" @click="selectWorkspace(workspace)">
+              <button class="btn btn-sm btn-primary" @click="selectBook(book)">
                 <i class="bi bi-folder2-open me-1"></i>Open
               </button>
               <div>
-                <button class="btn btn-sm btn-outline-secondary me-1" @click="editWorkspace(workspace)"
+                <button class="btn btn-sm btn-outline-secondary me-1" @click="editBook(book)"
                   aria-label="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" @click="confirmDeleteWorkspace(workspace)"
+                <button class="btn btn-sm btn-outline-danger" @click="confirmDeleteBook(book)"
                   aria-label="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
@@ -55,9 +55,9 @@
         </div>
       </div>
 
-      <!-- Workspace Modal Component -->
-      <WorkspaceModal v-model="showWorkspaceModal" :workspace="selectedWorkspace" :isLoading="workspacesStore.isLoading"
-        @save="handleSaveWorkspace" />
+      <!-- Book Modal Component -->
+      <BookModal v-model="showBookModal" :book="selectedBook" :isLoading="booksStore.isLoading"
+        @save="handleSaveBook" />
 
       <!-- Delete Confirmation Modal -->
       <div class="modal fade" id="deleteModal" tabindex="-1" ref="deleteModal">
@@ -68,14 +68,14 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              Are you sure you want to delete the workspace "{{ workspaceToDelete?.name }}"?
+              Are you sure you want to delete the book "{{ bookToDelete?.name }}"?
               This action cannot be undone.
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-danger" @click="deleteWorkspace"
-                :disabled="workspacesStore.isLoading">
-                {{ workspacesStore.isLoading ? 'Deleting...' : 'Delete' }}
+              <button type="button" class="btn btn-danger" @click="deleteBook"
+                :disabled="booksStore.isLoading">
+                {{ booksStore.isLoading ? 'Deleting...' : 'Delete' }}
               </button>
             </div>
           </div>
@@ -88,21 +88,21 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useWorkspacesStore } from '../stores/workspaces';
+import { useBooksStore } from '../stores/books';
 import { useToast } from '../composables/useToast';
 import { Modal } from 'bootstrap';
 import GeneralLayout from '../layouts/GeneralLayout.vue';
-import WorkspaceModal from '../components/modals/WorkspaceModal.vue';
+import BookModal from '../components/modals/BookModal.vue';
 
 const router = useRouter();
-const workspacesStore = useWorkspacesStore();
+const booksStore = useBooksStore();
 const { showToast } = useToast();
 
 // Component state
-const showWorkspaceModal = ref(false)
-const selectedWorkspace = ref(null)
+const showBookModal = ref(false)
+const selectedBook = ref(null)
 const deleteModal = ref(null);
-const workspaceToDelete = ref(null);
+const bookToDelete = ref(null);
 
 let bsDeleteModal = null;
 
@@ -110,11 +110,11 @@ onMounted(async () => {
   // Initialize bootstrap delete modal
   bsDeleteModal = new Modal(deleteModal.value);
 
-  // Fetch workspaces
+  // Fetch books
   try {
-    await workspacesStore.fetchWorkspaces();
+    await booksStore.fetchBooks();
   } catch (error) {
-    console.error('Failed to load workspaces', error);
+    console.error('Failed to load books', error);
   }
 });
 
@@ -124,66 +124,66 @@ function formatDate(dateString) {
   return date.toLocaleDateString();
 }
 
-function showNewWorkspaceModal() {
-  selectedWorkspace.value = null
-  showWorkspaceModal.value = true
+function showNewBookModal() {
+  selectedBook.value = null
+  showBookModal.value = true
 }
 
-function editWorkspace(workspace) {
-  selectedWorkspace.value = workspace
-  showWorkspaceModal.value = true
+function editBook(book) {
+  selectedBook.value = book
+  showBookModal.value = true
 }
 
-async function handleSaveWorkspace(workspaceData) {
+async function handleSaveBook(bookData) {
   try {
-    await workspacesStore.saveWorkspace(workspaceData)
-    showWorkspaceModal.value = false
+    await booksStore.saveBook(bookData)
+    showBookModal.value = false
 
     showToast({
       title: 'Success',
-      message: `Workspace ${workspaceData.id ? 'updated' : 'created'} successfully!`,
+      message: `Book ${bookData.id ? 'updated' : 'created'} successfully!`,
       variant: 'success'
     })
   } catch (error) {
     showToast({
       title: 'Error',
-      message: `Error saving workspace: ${error.message}`,
+      message: `Error saving book: ${error.message}`,
       variant: 'danger'
     })
   }
 }
 
-function confirmDeleteWorkspace(workspace) {
-  workspaceToDelete.value = workspace;
+function confirmDeleteBook(book) {
+  bookToDelete.value = book;
   bsDeleteModal.show();
 }
 
-async function deleteWorkspace() {
-  if (!workspaceToDelete.value) return;
+async function deleteBook() {
+  if (!bookToDelete.value) return;
 
   try {
-    await workspacesStore.deleteWorkspace(workspaceToDelete.value.id);
+    await booksStore.deleteBook(bookToDelete.value.id);
     bsDeleteModal.hide();
 
     showToast({
       title: 'Success',
-      message: 'Workspace deleted successfully!',
+      message: 'Book deleted successfully!',
       variant: 'success'
     })
   } catch (error) {
     showToast({
       title: 'Error',
-      message: `Error deleting workspace: ${error.message}`,
+      message: `Error deleting book: ${error.message}`,
       variant: 'danger'
     })
   }
 }
 
-function selectWorkspace(workspace) {
+function selectBook(book) {
   router.push({
     path: '/calendar',
     query: {
-      workspaceId: workspace.id,
+      bookId: book.id,
     },
     replace: false
   });

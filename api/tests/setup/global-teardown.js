@@ -29,11 +29,11 @@ module.exports = async () => {
     const tables = [
       'transaction',    // references account, category
       'total',          // references account
-      'category',       // references category (self), workspace  
-      'account',        // references workspace
-      'workspace_user', // references workspace, user
-      'workspace',      // referenced by account, category, workspace_user
-      'user'           // referenced by workspace_user
+      'category',       // references category (self), book  
+      'account',        // references book
+      'book_user', // references book, user
+      'book',      // referenced by account, category, book_user
+      'user'           // referenced by book_user
     ];
 
     for (const table of tables) {

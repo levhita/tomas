@@ -25,9 +25,9 @@ describe('Categories Management API', () => {
   });
 
   describe('GET /api/categories', () => {
-    it('should return categories for workspace with read access', async () => {
+    it('should return categories for book with read access', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/categories?workspace_id=1');
+      const response = await auth.get('/api/categories?book_id=1');
 
       validateApiResponse(response, 200);
       expect(response.body).toBeInstanceOf(Array);
@@ -38,12 +38,12 @@ describe('Categories Management API', () => {
         const category = response.body[0];
         expect(category).toHaveProperty('id');
         expect(category).toHaveProperty('name');
-        expect(category).toHaveProperty('workspace_id');
-        expect(category.workspace_id).toBe(1);
+        expect(category).toHaveProperty('book_id');
+        expect(category.book_id).toBe(1);
       }
     });
 
-    it('should deny access without workspace_id parameter', async () => {
+    it('should deny access without book_id parameter', async () => {
       const auth = authenticatedRequest(testUserToken);
       const response = await auth.get('/api/categories');
 
@@ -51,9 +51,9 @@ describe('Categories Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should deny access to workspace without permission', async () => {
+    it('should deny access to book without permission', async () => {
       const auth = authenticatedRequest(testUserToken);
-      const response = await auth.get('/api/categories?workspace_id=999');
+      const response = await auth.get('/api/categories?book_id=999');
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
@@ -61,7 +61,7 @@ describe('Categories Management API', () => {
 
     it('should deny access without authentication', async () => {
       const response = await request(app)
-        .get('/api/categories?workspace_id=1');
+        .get('/api/categories?book_id=1');
 
       validateApiResponse(response, 401);
       expect(response.body).toHaveProperty('error', 'Access token required');
@@ -76,7 +76,7 @@ describe('Categories Management API', () => {
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', 1);
       expect(response.body).toHaveProperty('name');
-      expect(response.body).toHaveProperty('workspace_id');
+      expect(response.body).toHaveProperty('book_id');
     });
 
     it('should return 404 for non-existent category', async () => {
@@ -87,7 +87,7 @@ describe('Categories Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should allow access to category in workspace with permission', async () => {
+    it('should allow access to category in book with permission', async () => {
       const auth = authenticatedRequest(testUserToken);
       const response = await auth.get('/api/categories/2');
 
@@ -109,7 +109,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category',
-        workspace_id: 1,
+        book_id: 1,
         type: 'expense',
         note: 'Test category for expenses'
       };
@@ -119,7 +119,7 @@ describe('Categories Management API', () => {
       validateApiResponse(response, 201);
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('name', categoryData.name);
-      expect(response.body).toHaveProperty('workspace_id', categoryData.workspace_id);
+      expect(response.body).toHaveProperty('book_id', categoryData.book_id);
       expect(response.body).toHaveProperty('type', categoryData.type);
     });
 
@@ -127,14 +127,14 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Minimal Category',
-        workspace_id: 1
+        book_id: 1
       };
 
       const response = await auth.post('/api/categories').send(categoryData);
 
       validateApiResponse(response, 201);
       expect(response.body).toHaveProperty('name', categoryData.name);
-      expect(response.body).toHaveProperty('workspace_id', categoryData.workspace_id);
+      expect(response.body).toHaveProperty('book_id', categoryData.book_id);
       expect(response.body).toHaveProperty('type', 'expense'); // Default type
     });
 
@@ -142,7 +142,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Income Category',
-        workspace_id: 1,
+        book_id: 1,
         type: 'income'
       };
 
@@ -155,7 +155,7 @@ describe('Categories Management API', () => {
     it('should reject missing name', async () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
-        workspace_id: 1
+        book_id: 1
       };
 
       const response = await auth.post('/api/categories').send(categoryData);
@@ -164,7 +164,7 @@ describe('Categories Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should reject missing workspace_id', async () => {
+    it('should reject missing book_id', async () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category'
@@ -180,7 +180,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Test Category',
-        workspace_id: 1,
+        book_id: 1,
         type: 'invalid_type'
       };
 
@@ -194,20 +194,20 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const categoryData = {
         name: 'Collaborator Test Category',
-        workspace_id: 1
+        book_id: 1
       };
 
       const response = await auth.post('/api/categories').send(categoryData);
 
       validateApiResponse(response, 201);
       expect(response.body).toHaveProperty('name', categoryData.name);
-      expect(response.body).toHaveProperty('workspace_id', categoryData.workspace_id);
+      expect(response.body).toHaveProperty('book_id', categoryData.book_id);
     });
 
     it('should deny access without authentication', async () => {
       const categoryData = {
         name: 'Test Category',
-        workspace_id: 1
+        book_id: 1
       };
 
       const response = await request(app)
@@ -225,7 +225,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const createData = {
         name: 'Category to Update',
-        workspace_id: 1
+        book_id: 1
       };
       const createResponse = await auth.post('/api/categories').send(createData);
       const categoryId = createResponse.body.id;
@@ -281,7 +281,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const createData = {
         name: 'Category to Delete',
-        workspace_id: 1
+        book_id: 1
       };
       const createResponse = await auth.post('/api/categories').send(createData);
       const categoryId = createResponse.body.id;
@@ -318,7 +318,7 @@ describe('Categories Management API', () => {
       const auth = authenticatedRequest(testUserToken);
       const createData = {
         name: 'Category to Delete by Collaborator',
-        workspace_id: 1
+        book_id: 1
       };
       const createResponse = await auth.post('/api/categories').send(createData);
       const categoryId = createResponse.body.id;
@@ -350,7 +350,7 @@ describe('Categories Management API', () => {
         // First create a parent category
         const parentData = {
           name: 'Parent Category',
-          workspace_id: 1,
+          book_id: 1,
           type: 'expense'
         };
         const parentResponse = await auth.post('/api/categories').send(parentData);
@@ -360,7 +360,7 @@ describe('Categories Management API', () => {
         // Now create a child category
         const childData = {
           name: 'Child Category',
-          workspace_id: 1,
+          book_id: 1,
           parent_category_id: parentId
         };
         const response = await auth.post('/api/categories').send(childData);
@@ -374,17 +374,17 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(testUserToken);
 
         // Create grandparent
-        const grandparentData = { name: 'Grandparent', workspace_id: 1, type: 'expense' };
+        const grandparentData = { name: 'Grandparent', book_id: 1, type: 'expense' };
         const grandparentResponse = await auth.post('/api/categories').send(grandparentData);
         const grandparentId = grandparentResponse.body.id;
 
         // Create parent as child of grandparent
-        const parentData = { name: 'Parent', workspace_id: 1, parent_category_id: grandparentId };
+        const parentData = { name: 'Parent', book_id: 1, parent_category_id: grandparentId };
         const parentResponse = await auth.post('/api/categories').send(parentData);
         const parentId = parentResponse.body.id;
 
         // Try to create child as child of parent (should fail - three levels)
-        const childData = { name: 'Child', workspace_id: 1, parent_category_id: parentId };
+        const childData = { name: 'Child', book_id: 1, parent_category_id: parentId };
         const response = await auth.post('/api/categories').send(childData);
 
         validateApiResponse(response, 400);
@@ -392,27 +392,27 @@ describe('Categories Management API', () => {
         expect(response.body.error).toContain('two levels deep');
       });
 
-      it('should enforce parent-child workspace consistency', async () => {
+      it('should enforce parent-child book consistency', async () => {
         const auth = authenticatedRequest(testUserToken);
 
-        // Try to create category with parent from different workspace
+        // Try to create category with parent from different book
         const categoryData = {
-          name: 'Cross-workspace Child',
-          workspace_id: 2,
-          parent_category_id: 1 // Category 1 is in workspace 1
+          name: 'Cross-book Child',
+          book_id: 2,
+          parent_category_id: 1 // Category 1 is in book 1
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
         validateApiResponse(response, 400);
         expect(response.body).toHaveProperty('error');
-        expect(response.body.error).toContain('same workspace');
+        expect(response.body.error).toContain('same book');
       });
 
       it('should handle non-existent parent category', async () => {
         const auth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Orphaned Category',
-          workspace_id: 1,
+          book_id: 1,
           parent_category_id: 99999
         };
         const response = await auth.post('/api/categories').send(categoryData);
@@ -427,7 +427,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Default Type Category',
-          workspace_id: 1
+          book_id: 1
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
@@ -439,14 +439,14 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(testUserToken);
 
         // Create income parent
-        const parentData = { name: 'Income Parent', workspace_id: 1, type: 'income' };
+        const parentData = { name: 'Income Parent', book_id: 1, type: 'income' };
         const parentResponse = await auth.post('/api/categories').send(parentData);
         const parentId = parentResponse.body.id;
 
         // Create child with different type specified (should be ignored)
         const childData = {
           name: 'Child Category',
-          workspace_id: 1,
+          book_id: 1,
           parent_category_id: parentId,
           type: 'expense' // This should be ignored
         };
@@ -457,16 +457,16 @@ describe('Categories Management API', () => {
       });
     });
 
-    describe('Workspace Permission Variations', () => {
+    describe('Book Permission Variations', () => {
       it('should allow collaborator to create categories', async () => {
-        // First, we need to add testuser1 as collaborator to workspace 2
+        // First, we need to add testuser1 as collaborator to book 2
         const adminAuth = authenticatedRequest(superadminToken);
 
-        // Remove user from workspace 2 first (in case they're already there)
-        await adminAuth.delete('/api/workspaces/2/users/2').catch(() => { }); // Ignore error if not found
+        // Remove user from book 2 first (in case they're already there)
+        await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Ignore error if not found
 
-        // Add user as collaborator to workspace 2
-        await adminAuth.post('/api/workspaces/2/users').send({
+        // Add user as collaborator to book 2
+        await adminAuth.post('/api/books/2/users').send({
           userId: 2,
           role: 'collaborator'
         });
@@ -474,7 +474,7 @@ describe('Categories Management API', () => {
         const collabAuth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Collaborator Category',
-          workspace_id: 2
+          book_id: 2
         };
         const response = await collabAuth.post('/api/categories').send(categoryData);
 
@@ -485,11 +485,11 @@ describe('Categories Management API', () => {
       it('should deny viewer access to create categories', async () => {
         const adminAuth = authenticatedRequest(superadminToken);
 
-        // Remove user from workspace 2 first (in case they're already there)
-        await adminAuth.delete('/api/workspaces/2/users/2').catch(() => { }); // Ignore error if not found
+        // Remove user from book 2 first (in case they're already there)
+        await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Ignore error if not found
 
-        // Add user as viewer to workspace 2
-        await adminAuth.post('/api/workspaces/2/users').send({
+        // Add user as viewer to book 2
+        await adminAuth.post('/api/books/2/users').send({
           userId: 2,
           role: 'viewer'
         });
@@ -497,7 +497,7 @@ describe('Categories Management API', () => {
         const viewerAuth = authenticatedRequest(testUserToken);
         const categoryData = {
           name: 'Viewer Category',
-          workspace_id: 2
+          book_id: 2
         };
         const response = await viewerAuth.post('/api/categories').send(categoryData);
 
@@ -505,28 +505,28 @@ describe('Categories Management API', () => {
         expect(response.body).toHaveProperty('error');
       });
 
-      it('should deny superadmin access to workspaces they are not a member of', async () => {
-        // Test that superadmin cannot access workspace 5 (where they are not a member)
+      it('should deny superadmin access to books they are not a member of', async () => {
+        // Test that superadmin cannot access book 5 (where they are not a member)
         const superadminAuth = authenticatedRequest(superadminToken);
 
-        // Try to get categories from workspace 5
-        const getResponse = await superadminAuth.get('/api/categories?workspace_id=5');
+        // Try to get categories from book 5
+        const getResponse = await superadminAuth.get('/api/categories?book_id=5');
         validateApiResponse(getResponse, 403);
         expect(getResponse.body).toHaveProperty('error');
 
-        // Try to create a category in workspace 5
+        // Try to create a category in book 5
         const createResponse = await superadminAuth.post('/api/categories').send({
           name: 'Superadmin Unauthorized Category',
-          workspace_id: 5
+          book_id: 5
         });
         validateApiResponse(createResponse, 403);
         expect(createResponse.body).toHaveProperty('error');
       });
 
-      it('should deny superadmin update access to categories in workspaces they are not a member of', async () => {
-        // First, get a category from workspace 5 using a valid user (testuser1 who is admin of workspace 5)
+      it('should deny superadmin update access to categories in books they are not a member of', async () => {
+        // First, get a category from book 5 using a valid user (testuser1 who is admin of book 5)
         const validUserAuth = authenticatedRequest(testUserToken);
-        const getResponse = await validUserAuth.get('/api/categories?workspace_id=5');
+        const getResponse = await validUserAuth.get('/api/categories?book_id=5');
         validateApiResponse(getResponse, 200);
 
         if (getResponse.body.length > 0) {
@@ -542,10 +542,10 @@ describe('Categories Management API', () => {
         }
       });
 
-      it('should deny superadmin delete access to categories in workspaces they are not a member of', async () => {
-        // First, get a category from workspace 5 using a valid user (testuser1 who is admin of workspace 5)
+      it('should deny superadmin delete access to categories in books they are not a member of', async () => {
+        // First, get a category from book 5 using a valid user (testuser1 who is admin of book 5)
         const validUserAuth = authenticatedRequest(testUserToken);
-        const getResponse = await validUserAuth.get('/api/categories?workspace_id=5');
+        const getResponse = await validUserAuth.get('/api/categories?book_id=5');
         validateApiResponse(getResponse, 200);
 
         if (getResponse.body.length > 0) {
@@ -565,7 +565,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(superadminToken);
 
         // Create a category to update
-        const createData = { name: 'Updateable Category', workspace_id: 1, type: 'expense' };
+        const createData = { name: 'Updateable Category', book_id: 1, type: 'expense' };
         const createResponse = await auth.post('/api/categories').send(createData);
         const categoryId = createResponse.body.id;
 
@@ -587,7 +587,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(superadminToken);
 
         // Create a category
-        const createData = { name: 'Partial Update Category', workspace_id: 1, note: 'Original note' };
+        const createData = { name: 'Partial Update Category', book_id: 1, note: 'Original note' };
         const createResponse = await auth.post('/api/categories').send(createData);
         const categoryId = createResponse.body.id;
 
@@ -604,7 +604,7 @@ describe('Categories Management API', () => {
     describe('Category Filtering and Querying', () => {
       it('should return categories ordered alphabetically by name', async () => {
         const auth = authenticatedRequest(testUserToken);
-        const response = await auth.get('/api/categories?workspace_id=1');
+        const response = await auth.get('/api/categories?book_id=1');
 
         validateApiResponse(response, 200);
         expect(response.body).toBeInstanceOf(Array);
@@ -619,20 +619,20 @@ describe('Categories Management API', () => {
           response.body.forEach(category => {
             expect(category).toHaveProperty('id');
             expect(category).toHaveProperty('name');
-            expect(category).toHaveProperty('workspace_id', 1);
+            expect(category).toHaveProperty('book_id', 1);
           });
         }
       });
 
-      it('should return empty array for workspace with no categories', async () => {
+      it('should return empty array for book with no categories', async () => {
         const auth = authenticatedRequest(superadminToken);
 
-        // Create a new workspace first
-        const workspaceData = { name: 'Empty Workspace', currency_symbol: '$' };
-        const workspaceResponse = await auth.post('/api/workspaces').send(workspaceData);
-        const workspaceId = workspaceResponse.body.id;
+        // Create a new book first
+        const bookData = { name: 'Empty Book', currency_symbol: '$' };
+        const bookResponse = await auth.post('/api/books').send(bookData);
+        const bookId = bookResponse.body.id;
 
-        const response = await auth.get(`/api/categories?workspace_id=${workspaceId}`);
+        const response = await auth.get(`/api/categories?book_id=${bookId}`);
 
         validateApiResponse(response, 200);
         expect(response.body).toEqual([]);
@@ -644,7 +644,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(superadminToken);
         const categoryData = {
           name: '',
-          workspace_id: 1
+          book_id: 1
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
@@ -656,7 +656,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(superadminToken);
         const categoryData = {
           name: null,
-          workspace_id: 1
+          book_id: 1
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
@@ -668,7 +668,7 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(superadminToken);
         const categoryData = {
           name: 'a'.repeat(300), // Very long name
-          workspace_id: 1
+          book_id: 1
         };
         const response = await auth.post('/api/categories').send(categoryData);
 
@@ -680,16 +680,16 @@ describe('Categories Management API', () => {
     describe('Error Handling', () => {
       it('should handle database connection errors gracefully', async () => {
         // This test would require mocking the database, which we're avoiding
-        // But we can test invalid workspace IDs which might cause DB errors
+        // But we can test invalid book IDs which might cause DB errors
         const auth = authenticatedRequest(superadminToken);
-        const response = await auth.get('/api/categories?workspace_id=99999');
+        const response = await auth.get('/api/categories?book_id=99999');
 
         validateApiResponse(response, 403); // Should be permission denied, not crash
       });
 
-      it('should handle malformed workspace_id parameter', async () => {
+      it('should handle malformed book_id parameter', async () => {
         const auth = authenticatedRequest(testUserToken);
-        const response = await auth.get('/api/categories?workspace_id=invalid');
+        const response = await auth.get('/api/categories?book_id=invalid');
 
         expect([400, 403]).toContain(response.status);
       });
@@ -703,7 +703,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Test Category for Empty Update',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -739,7 +739,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Parent Category for Type Change',
             type: 'expense',
-            workspace_id: 1
+            book_id: 1
           });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
@@ -749,7 +749,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Child Category for Type Change',
             parent_category_id: parentId,
-            workspace_id: 1
+            book_id: 1
           });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
@@ -775,7 +775,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Test Category for DB Error',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -797,7 +797,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Test Category for Long Name',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -820,7 +820,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Test Category for Invalid Type',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -842,7 +842,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Category to Delete Successfully',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -864,7 +864,7 @@ describe('Categories Management API', () => {
         const createCategoryResponse = await auth.post('/api/categories')
           .send({
             name: 'Category with Transaction',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createCategoryResponse.status).toBe(201);
         const categoryId = createCategoryResponse.body.id;
@@ -877,7 +877,7 @@ describe('Categories Management API', () => {
             date: '2024-01-01',
             account_id: 1,
             category_id: categoryId,
-            workspace_id: 1
+            book_id: 1
           });
         expect(createTransactionResponse.status).toBe(201);
 
@@ -890,9 +890,9 @@ describe('Categories Management API', () => {
       it('should handle database connection errors in get categories', async () => {
         const auth = authenticatedRequest(testUserToken);
 
-        // Mock a database error by using an invalid workspace_id format that could cause DB issues
+        // Mock a database error by using an invalid book_id format that could cause DB issues
         // This tests the catch block in the GET /categories endpoint
-        const response = await auth.get('/api/categories?workspace_id=1');
+        const response = await auth.get('/api/categories?book_id=1');
 
         // This should work normally, but we're testing that the endpoint has proper error handling
         validateApiResponse(response, 200);
@@ -917,7 +917,7 @@ describe('Categories Management API', () => {
         const response = await auth.post('/api/categories')
           .send({
             name: 'Test DB Error Handling',
-            workspace_id: 1
+            book_id: 1
           });
 
         // This should work normally, demonstrating error handling exists
@@ -943,7 +943,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Parent for Type Inheritance Test',
             type: 'expense',
-            workspace_id: 1
+            book_id: 1
           });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
@@ -953,7 +953,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Child for Type Inheritance Test',
             parent_category_id: parentId,
-            workspace_id: 1
+            book_id: 1
           });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
@@ -975,7 +975,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Parent for Moving Test',
             type: 'income',
-            workspace_id: 1
+            book_id: 1
           });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
@@ -985,7 +985,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Child for Moving Test',
             parent_category_id: parentId,
-            workspace_id: 1
+            book_id: 1
           });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
@@ -1009,7 +1009,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Category for Note Update',
             note: 'Original note',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -1032,7 +1032,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'New Parent Category',
             type: 'income',
-            workspace_id: 1
+            book_id: 1
           });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
@@ -1042,7 +1042,7 @@ describe('Categories Management API', () => {
           .send({
             name: 'Root Category for Parent Update',
             type: 'expense',
-            workspace_id: 1
+            book_id: 1
           });
         expect(rootResponse.status).toBe(201);
         const rootId = rootResponse.body.id;
@@ -1064,7 +1064,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Category for DB Error Test',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -1087,7 +1087,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Category for Delete Error Test',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
@@ -1108,7 +1108,7 @@ describe('Categories Management API', () => {
         const createResponse = await auth.post('/api/categories')
           .send({
             name: 'Category for Create Error Test',
-            workspace_id: 1
+            book_id: 1
           });
         expect(createResponse.status).toBe(201);
         expect(createResponse.body.name).toBe('Category for Create Error Test');
@@ -1124,7 +1124,7 @@ describe('Categories Management API', () => {
         // Create a root category
         const rootResponse = await auth.post('/api/categories').send({
           name: 'Root Category for Parent Tests',
-          workspace_id: 1,
+          book_id: 1,
           type: 'expense'
         });
         rootCategoryId = rootResponse.body.id;
@@ -1132,7 +1132,7 @@ describe('Categories Management API', () => {
         // Create a parent category
         const parentResponse = await auth.post('/api/categories').send({
           name: 'Parent Category for Tests',
-          workspace_id: 1,
+          book_id: 1,
           type: 'income'
         });
         parentCategoryId = parentResponse.body.id;
@@ -1140,7 +1140,7 @@ describe('Categories Management API', () => {
         // Create a child category
         const childResponse = await auth.post('/api/categories').send({
           name: 'Child Category for Tests',
-          workspace_id: 1,
+          book_id: 1,
           parent_category_id: parentCategoryId
         });
         childCategoryId = childResponse.body.id;
@@ -1284,7 +1284,7 @@ describe('Categories Management API', () => {
           // Create another category to try as grandchild
           const grandchildResponse = await auth.post('/api/categories').send({
             name: 'Grandchild Test',
-            workspace_id: 1
+            book_id: 1
           });
           const grandchildId = grandchildResponse.body.id;
 
@@ -1299,26 +1299,26 @@ describe('Categories Management API', () => {
           expect(response.body.error).toBe('Categories can only be nested two levels deep. The selected parent already has a parent.');
         });
 
-        it('should reject parent from different workspace', async () => {
+        it('should reject parent from different book', async () => {
           const auth = authenticatedRequest(testUserToken);
           const adminAuth = authenticatedRequest(superadminToken);
 
-          // Ensure testuser1 has admin access to workspace 2 for this test
+          // Ensure testuser1 has admin access to book 2 for this test
           // (previous tests might have changed the role)
-          await adminAuth.delete('/api/workspaces/2/users/2').catch(() => { }); // Remove if exists
-          await adminAuth.post('/api/workspaces/2/users').send({
+          await adminAuth.delete('/api/books/2/users/2').catch(() => { }); // Remove if exists
+          await adminAuth.post('/api/books/2/users').send({
             userId: 2,
             role: 'admin'
           });
 
-          // Create category in workspace 2
+          // Create category in book 2
           const ws2Response = await auth.post('/api/categories').send({
             name: 'Category in WS2',
-            workspace_id: 2
+            book_id: 2
           });
           const ws2CategoryId = ws2Response.body.id;
 
-          // Try to set it as parent of category in workspace 1
+          // Try to set it as parent of category in book 1
           const updateData = {
             parent_category_id: ws2CategoryId
           };
@@ -1326,7 +1326,7 @@ describe('Categories Management API', () => {
           const response = await auth.put(`/api/categories/${rootCategoryId}`).send(updateData);
 
           validateApiResponse(response, 400);
-          expect(response.body.error).toBe('Parent category must belong to the same workspace');
+          expect(response.body.error).toBe('Parent category must belong to the same book');
         });
 
         it('should reject non-existent parent category', async () => {
@@ -1371,7 +1371,7 @@ describe('Categories Management API', () => {
           // Create second parent with different type
           const parent2Response = await auth.post('/api/categories').send({
             name: 'Second Parent',
-            workspace_id: 1,
+            book_id: 1,
             type: 'expense'
           });
           const parent2Id = parent2Response.body.id;

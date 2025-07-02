@@ -107,10 +107,10 @@ router.post('/login', async (req, res) => {
 
 /**
  * GET /users
- * Get list of all users with workspace statistics
+ * Get list of all users with book statistics
  * 
  * @permission SuperAdmin only
- * @returns {Array} List of all users (excluding password data) with workspace counts
+ * @returns {Array} List of all users (excluding password data) with book counts
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {
@@ -121,27 +121,27 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         u.superadmin, 
         u.active,
         u.created_at,
-        COUNT(DISTINCT wu.workspace_id) as workspace_count,
-        COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.workspace_id END) as admin_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'collaborator' THEN wu.workspace_id END) as collaborator_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'viewer' THEN wu.workspace_id END) as viewer_workspaces
+        COUNT(DISTINCT wu.book_id) as book_count,
+        COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.book_id END) as admin_books,
+        COUNT(DISTINCT CASE WHEN wu.role = 'collaborator' THEN wu.book_id END) as collaborator_books,
+        COUNT(DISTINCT CASE WHEN wu.role = 'viewer' THEN wu.book_id END) as viewer_books
       FROM user u
-      LEFT JOIN workspace_user wu ON u.id = wu.user_id 
-      LEFT JOIN workspace w ON wu.workspace_id = w.id AND w.deleted_at IS NULL
+      LEFT JOIN book_user wu ON u.id = wu.user_id 
+      LEFT JOIN book w ON wu.book_id = w.id AND w.deleted_at IS NULL
       GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
     `);
 
     res.status(200).json(users.map(user => {
-      // Convert admin and active flags from 0/1 to boolean and workspace counts to numbers
+      // Convert admin and active flags from 0/1 to boolean and book counts to numbers
       return {
         ...user,
         superadmin: user.superadmin === 1,
         active: user.active === 1,
-        workspace_count: parseInt(user.workspace_count) || 0,
-        admin_workspaces: parseInt(user.admin_workspaces) || 0,
-        collaborator_workspaces: parseInt(user.collaborator_workspaces) || 0,
-        viewer_workspaces: parseInt(user.viewer_workspaces) || 0
+        book_count: parseInt(user.book_count) || 0,
+        admin_books: parseInt(user.admin_books) || 0,
+        collaborator_books: parseInt(user.collaborator_books) || 0,
+        viewer_books: parseInt(user.viewer_books) || 0
       };
     }));
   } catch (err) {
@@ -497,7 +497,7 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
     // Handle foreign key constraint violations (user is referenced elsewhere)
     if (err.code === 'ER_ROW_IS_REFERENCED_2') {
       return res.status(409).json({
-        error: 'Cannot delete user that is a member of workspaces'
+        error: 'Cannot delete user that is a member of books'
       });
     }
     console.error('Database error:', err);
@@ -508,14 +508,14 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users/:id/workspaces
- * Get workspace access for a specific user
+ * GET /users/:id/books
+ * Get book access for a specific user
  * 
  * @param {number} id - User ID
  * @permission Super admin only
- * @returns {Array} List of workspaces the user has access to with their roles
+ * @returns {Array} List of books the user has access to with their roles
  */
-router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
+router.get('/:id/books', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -531,8 +531,8 @@ router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       });
     }
 
-    // Get user's workspace access
-    const [workspaces] = await db.query(`
+    // Get user's book access
+    const [books] = await db.query(`
       SELECT 
         w.id, 
         w.name, 
@@ -540,39 +540,39 @@ router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
         wu.role,
         w.created_at,
         w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
+      FROM book w
+      INNER JOIN book_user wu ON w.id = wu.book_id
       WHERE wu.user_id = ? AND w.deleted_at IS NULL
       ORDER BY w.name ASC
     `, [id]);
 
-    res.status(200).json(workspaces);
+    res.status(200).json(books);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to fetch user workspaces'
+      error: 'Failed to fetch user books'
     });
   }
 });
 
 /**
- * POST /users/:id/workspaces
- * Add user to a workspace with specified role
+ * POST /users/:id/books
+ * Add user to a book with specified role
  * 
  * @param {number} id - User ID
- * @body {number} workspaceId - Workspace ID to add user to
+ * @body {number} bookId - Book ID to add user to
  * @body {string} role - Role to assign (admin, collaborator, viewer)
  * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
+ * @returns {Array} Updated list of user's books
  */
-router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
+router.post('/:id/books', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { workspaceId, role } = req.body;
+    const { bookId, role } = req.body;
 
-    if (!workspaceId || !role) {
+    if (!bookId || !role) {
       return res.status(400).json({
-        error: 'Workspace ID and role are required'
+        error: 'Book ID and role are required'
       });
     }
 
@@ -594,38 +594,38 @@ router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       });
     }
 
-    // Check if workspace exists
-    const [existingWorkspaces] = await db.query(
-      'SELECT id FROM workspace WHERE id = ? AND deleted_at IS NULL',
-      [workspaceId]
+    // Check if book exists
+    const [existingBooks] = await db.query(
+      'SELECT id FROM book WHERE id = ? AND deleted_at IS NULL',
+      [bookId]
     );
 
-    if (existingWorkspaces.length === 0) {
+    if (existingBooks.length === 0) {
       return res.status(404).json({
-        error: 'Workspace not found'
+        error: 'Book not found'
       });
     }
 
-    // Check if user is already in workspace
+    // Check if user is already in book
     const [existing] = await db.query(
-      'SELECT 1 FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
+      'SELECT 1 FROM book_user WHERE book_id = ? AND user_id = ?',
+      [bookId, id]
     );
 
     if (existing.length > 0) {
       return res.status(409).json({
-        error: 'User already has access to this workspace'
+        error: 'User already has access to this book'
       });
     }
 
-    // Add user to workspace
+    // Add user to book
     await db.query(
-      'INSERT INTO workspace_user (workspace_id, user_id, role) VALUES (?, ?, ?)',
-      [workspaceId, id, role]
+      'INSERT INTO book_user (book_id, user_id, role) VALUES (?, ?, ?)',
+      [bookId, id, role]
     );
 
     // Return updated list
-    const [workspaces] = await db.query(`
+    const [books] = await db.query(`
       SELECT 
         w.id, 
         w.name, 
@@ -633,34 +633,34 @@ router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
         wu.role,
         w.created_at,
         w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
+      FROM book w
+      INNER JOIN book_user wu ON w.id = wu.book_id
       WHERE wu.user_id = ? AND w.deleted_at IS NULL
       ORDER BY w.name ASC
     `, [id]);
 
-    res.status(201).json(workspaces);
+    res.status(201).json(books);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to add user to workspace'
+      error: 'Failed to add user to book'
     });
   }
 });
 
 /**
- * PUT /users/:id/workspaces/:workspaceId
- * Update user's role in a workspace
+ * PUT /users/:id/books/:bookId
+ * Update user's role in a book
  * 
  * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
+ * @param {number} bookId - Book ID
  * @body {string} role - New role (admin, collaborator, viewer)
  * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
+ * @returns {Array} Updated list of user's books
  */
-router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
+router.put('/:id/books/:bookId', requireSuperAdmin, async (req, res) => {
   try {
-    const { id, workspaceId } = req.params;
+    const { id, bookId } = req.params;
     const { role } = req.body;
 
     if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
@@ -669,20 +669,20 @@ router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) =
       });
     }
 
-    // Update user's role in workspace
+    // Update user's role in book
     const [result] = await db.query(
-      'UPDATE workspace_user SET role = ? WHERE workspace_id = ? AND user_id = ?',
-      [role, workspaceId, id]
+      'UPDATE book_user SET role = ? WHERE book_id = ? AND user_id = ?',
+      [role, bookId, id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
-        error: 'User workspace access not found'
+        error: 'User book access not found'
       });
     }
 
     // Return updated list
-    const [workspaces] = await db.query(`
+    const [books] = await db.query(`
       SELECT 
         w.id, 
         w.name, 
@@ -690,67 +690,67 @@ router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) =
         wu.role,
         w.created_at,
         w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
+      FROM book w
+      INNER JOIN book_user wu ON w.id = wu.book_id
       WHERE wu.user_id = ? AND w.deleted_at IS NULL
       ORDER BY w.name ASC
     `, [id]);
 
-    res.status(200).json(workspaces);
+    res.status(200).json(books);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to update user workspace role'
+      error: 'Failed to update user book role'
     });
   }
 });
 
 /**
- * DELETE /users/:id/workspaces/:workspaceId
- * Remove user from a workspace
+ * DELETE /users/:id/books/:bookId
+ * Remove user from a book
  * 
  * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
+ * @param {number} bookId - Book ID
  * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
+ * @returns {Array} Updated list of user's books
  */
-router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
+router.delete('/:id/books/:bookId', requireSuperAdmin, async (req, res) => {
   try {
-    const { id, workspaceId } = req.params;
+    const { id, bookId } = req.params;
 
-    // Check if this would remove the last admin from the workspace
+    // Check if this would remove the last admin from the book
     const [adminCount] = await db.query(`
       SELECT COUNT(*) as count 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND role = 'admin'
-    `, [workspaceId]);
+      FROM book_user 
+      WHERE book_id = ? AND role = 'admin'
+    `, [bookId]);
 
     const [currentRole] = await db.query(`
       SELECT role 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [workspaceId, id]);
+      FROM book_user 
+      WHERE book_id = ? AND user_id = ?
+    `, [bookId, id]);
 
     if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
       return res.status(400).json({
-        error: 'Cannot remove the last admin from the workspace'
+        error: 'Cannot remove the last admin from the book'
       });
     }
 
-    // Remove user from workspace
+    // Remove user from book
     const [result] = await db.query(
-      'DELETE FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
+      'DELETE FROM book_user WHERE book_id = ? AND user_id = ?',
+      [bookId, id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
-        error: 'User workspace access not found'
+        error: 'User book access not found'
       });
     }
 
     // Return updated list
-    const [workspaces] = await db.query(`
+    const [books] = await db.query(`
       SELECT 
         w.id, 
         w.name, 
@@ -758,17 +758,17 @@ router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res
         wu.role,
         w.created_at,
         w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
+      FROM book w
+      INNER JOIN book_user wu ON w.id = wu.book_id
       WHERE wu.user_id = ? AND w.deleted_at IS NULL
       ORDER BY w.name ASC
     `, [id]);
 
-    res.status(200).json(workspaces);
+    res.status(200).json(books);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({
-      error: 'Failed to remove user from workspace'
+      error: 'Failed to remove user from book'
     });
   }
 });

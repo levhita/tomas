@@ -5,7 +5,7 @@ SET
   FOREIGN_KEY_CHECKS = 0;
 
 -- Clean Up --
-DROP TABLE IF EXISTS `workspace_user`;
+DROP TABLE IF EXISTS `book_user`;
 
 DROP TABLE IF EXISTS `transaction`;
 
@@ -15,7 +15,7 @@ DROP TABLE IF EXISTS `total`;
 
 DROP TABLE IF EXISTS `account`;
 
-DROP TABLE IF EXISTS `workspace`;
+DROP TABLE IF EXISTS `book`;
 
 DROP TABLE IF EXISTS `user`;
 
@@ -36,9 +36,9 @@ CREATE TABLE
     UNIQUE KEY `unique_username` (`username`)
   ) ENGINE = InnoDB;
 
--- Workspaces --
+-- Books --
 CREATE TABLE
-  `workspace` (
+  `book` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `note` TEXT NULL,
@@ -49,15 +49,15 @@ CREATE TABLE
     PRIMARY KEY (`id`)
   ) ENGINE = InnoDB;
 
--- Workspace Users --
+-- Book Users --
 CREATE TABLE
-  `workspace_user` (
-    `workspace_id` INT UNSIGNED NOT NULL,
+  `book_user` (
+    `book_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
     `role` ENUM ('viewer', 'collaborator', 'admin') NOT NULL DEFAULT 'viewer',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`workspace_id`, `user_id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`),
+    PRIMARY KEY (`book_id`, `user_id`),
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`),
     FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
   ) ENGINE = InnoDB;
 
@@ -69,9 +69,9 @@ CREATE TABLE
     `note` TEXT NULL,
     `type` ENUM ('debit', 'credit') NOT NULL DEFAULT 'debit',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
   ) ENGINE = InnoDB;
 
 -- Categories --
@@ -83,10 +83,10 @@ CREATE TABLE
     `type` ENUM ('expense', 'income') NOT NULL DEFAULT 'expense',
     `parent_category_id` INT UNSIGNED DEFAULT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `workspace_id` INT UNSIGNED NOT NULL,
+    `book_id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`id`),
     FOREIGN KEY (`parent_category_id`) REFERENCES `category` (`id`),
-    FOREIGN KEY (`workspace_id`) REFERENCES `workspace` (`id`)
+    FOREIGN KEY (`book_id`) REFERENCES `book` (`id`)
   ) ENGINE = InnoDB;
 
 -- Transactions --
@@ -158,60 +158,50 @@ VALUES
     TRUE
   );
 
--- Test Workspaces
+-- Test Books
 INSERT INTO
-  `workspace` (`id`, `name`, `note`, `currency_symbol`)
+  `book` (`id`, `name`, `note`, `currency_symbol`)
 VALUES
-  (
-    1,
-    'Test Workspace 1',
-    'Main testing workspace',
-    '$'
-  ),
-  (
-    2,
-    'Test Workspace 2',
-    'Secondary testing workspace',
-    '€'
-  ),
+  (1, 'Test Book 1', 'Main testing book', '$'),
+  (2, 'Test Book 2', 'Secondary testing book', '€'),
   (
     3,
-    'Search Test Workspace',
-    'Workspace for search testing',
+    'Search Test Book',
+    'Book for search testing',
     '£'
   ),
   (
     4,
-    'Inactive Workspace',
-    'Workspace for deletion testing',
+    'Inactive Book',
+    'Book for deletion testing',
     '$'
   ),
   (
     5,
-    'No Superadmin Workspace',
-    'Workspace where superadmin has no access',
+    'No Superadmin Book',
+    'Book where superadmin has no access',
     '¥'
   );
 
--- Test Workspace Users
+-- Test Book Users
 INSERT INTO
-  `workspace_user` (`workspace_id`, `user_id`, `role`)
+  `book_user` (`book_id`, `user_id`, `role`)
 VALUES
-  (1, 1, 'admin'), -- superadmin is admin of workspace 1
-  (1, 2, 'collaborator'), -- testuser1 is collaborator of workspace 1
-  (1, 3, 'viewer'), -- testuser2 is viewer of workspace 1
-  (2, 1, 'admin'), -- superadmin is admin of workspace 2
-  (2, 2, 'admin'), -- testuser1 is admin of workspace 2
-  (3, 1, 'admin'), -- superadmin is admin of workspace 3
-  (4, 1, 'admin'), -- superadmin is admin of workspace 4
-  (5, 2, 'admin'), -- testuser1 is admin of workspace 5 (superadmin is NOT a member)
+  (1, 1, 'admin'), -- superadmin is admin of book 1
+  (1, 2, 'collaborator'), -- testuser1 is collaborator of book 1
+  (1, 3, 'viewer'), -- testuser2 is viewer of book 1
+  (2, 1, 'admin'), -- superadmin is admin of book 2
+  (2, 2, 'admin'), -- testuser1 is admin of book 2
+  (3, 1, 'admin'), -- superadmin is admin of book 3
+  (4, 1, 'admin'), -- superadmin is admin of book 4
+  (5, 2, 'admin'), -- testuser1 is admin of book 5 (superadmin is NOT a member)
   (5, 4, 'collaborator');
 
--- regularuser is collaborator of workspace 5
--- superadmin is admin of workspace 4
+-- regularuser is collaborator of book 5
+-- superadmin is admin of book 4
 -- Test Accounts
 INSERT INTO
-  `account` (`id`, `name`, `note`, `type`, `workspace_id`)
+  `account` (`id`, `name`, `note`, `type`, `book_id`)
 VALUES
   (
     1,
@@ -230,21 +220,21 @@ VALUES
   (
     3,
     'Savings Account',
-    'Savings account in workspace 2',
+    'Savings account in book 2',
     'debit',
     2
   ),
   (
     4,
-    'Workspace 5 Account',
-    'Account in workspace without superadmin',
+    'Book 5 Account',
+    'Account in book without superadmin',
     'debit',
     5
   );
 
 -- Test Categories
 INSERT INTO
-  `category` (`name`, `note`, `type`, `workspace_id`)
+  `category` (`name`, `note`, `type`, `book_id`)
 VALUES
   (
     'Food & Dining',
@@ -265,8 +255,8 @@ VALUES
     2
   ),
   (
-    'Workspace 5 Category',
-    'Category in workspace without superadmin',
+    'Book 5 Category',
+    'Category in book without superadmin',
     'expense',
     5
   );
@@ -320,8 +310,8 @@ VALUES
     3
   ),
   (
-    'Workspace 5 transaction',
-    'Transaction in workspace without superadmin access',
+    'Book 5 transaction',
+    'Transaction in book without superadmin access',
     -30.00,
     '2024-12-05',
     TRUE,

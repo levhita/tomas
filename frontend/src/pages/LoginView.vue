@@ -81,7 +81,7 @@ async function handleLogin() {
     error.value = ''
 
     await usersStore.login(username.value, password.value)
-    router.push('/workspaces')
+    router.push('/books')
   } catch (err) {
     error.value = err.message || 'Login failed'
   } finally {

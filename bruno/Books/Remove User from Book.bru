@@ -1,11 +1,11 @@
 meta {
-  name: Remove User from Workspace
+  name: Remove User from Book
   type: http
   seq: 10
 }
 
 delete {
-  url: {{server_url}}/workspaces/:id/users/:userid
+  url: {{server_url}}/books/:id/users/:userid
   body: none
   auth: inherit
 }

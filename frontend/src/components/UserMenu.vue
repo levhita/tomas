@@ -14,7 +14,7 @@
       <li>
         <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
           <i :class="['bi', getRoleIcon]"></i>
-          {{ workspaceRole }}
+          {{ bookRole }}
 
         </span>
       </li>
@@ -58,17 +58,17 @@
  * 
  * Features:
  * - Shows current username with a person icon
- * - Displays user role (Super Administrator or User) or workspace role (Admin, Collaborator, Viewer)
+ * - Displays user role (Super Administrator or User) or book role (Admin, Collaborator, Viewer)
  * - Provides logout functionality
  * - Bootstrap dropdown styling with right-alignment
  * - Accessible dropdown with proper ARIA attributes
  * 
  * Props:
- * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer) or system (superadmin, user)
+ * @prop {String} bookRole - The user's role in the current book (admin, collaborator, viewer) or system (superadmin, user)
  * 
  * Usage:
- * <UserMenu workspaceRole="user" />
- * <UserMenu workspaceRole="admin" />
+ * <UserMenu bookRole="user" />
+ * <UserMenu bookRole="admin" />
  * 
  * Dependencies:
  * - Vue Router (for navigation after logout)
@@ -94,7 +94,7 @@ import UserProfileModal from './modals/UserProfileModal.vue'
 
 // Props
 const props = defineProps({
-  workspaceRole: {
+  bookRole: {
     type: String,
     default: 'user',
     validator: (value) => ['superadmin', 'admin', 'collaborator', 'viewer', 'user'].includes(value)
@@ -110,19 +110,19 @@ const usersStore = useUsersStore()
 // Profile modal state
 const showProfileModal = ref(false)
 
-// Computed properties for workspace role formatting
+// Computed properties for book role formatting
 import { computed } from 'vue'
 
-// Format the workspace role with proper capitalization
-const formatWorkspaceRole = computed(() => {
-  if (!props.workspaceRole) return '';
-  return props.workspaceRole.charAt(0).toUpperCase() + props.workspaceRole.slice(1);
+// Format the book role with proper capitalization
+const formatBookRole = computed(() => {
+  if (!props.bookRole) return '';
+  return props.bookRole.charAt(0).toUpperCase() + props.bookRole.slice(1);
 })
 
 // Get the appropriate Bootstrap badge class based on the role
 const getRoleBadgeClass = computed(() => {
-  switch (props.workspaceRole) {
-    // Workspace roles
+  switch (props.bookRole) {
+    // Book roles
     case 'admin':
       return 'text-danger';
     case 'collaborator':
@@ -139,8 +139,8 @@ const getRoleBadgeClass = computed(() => {
 
 // Get the appropriate Bootstrap icon representing the access level
 const getRoleIcon = computed(() => {
-  switch (props.workspaceRole) {
-    // Workspace roles
+  switch (props.bookRole) {
+    // Book roles
     case 'admin':
       return 'bi-shield-fill-check'; // Gear icon for admin (configuration powers)
     case 'collaborator':

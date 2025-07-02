@@ -62,16 +62,16 @@ export const useCategoriesStore = defineStore('categories', () => {
   }
 
   // Actions
-  async function fetchCategories(workspaceId) {
+  async function fetchCategories(bookId) {
     try {
-      // Check if workspaceId is provided
-      if (!workspaceId) {
-        console.error('fetchCategories: workspaceId is required');
-        throw new Error('Workspace ID is required to fetch categories');
+      // Check if bookId is provided
+      if (!bookId) {
+        console.error('fetchCategories: bookId is required');
+        throw new Error('Book ID is required to fetch categories');
       }
 
-      // Fetch categories for the specified workspace
-      const response = await fetchWithAuth(`/api/categories?workspace_id=${workspaceId}`);
+      // Fetch categories for the specified book
+      const response = await fetchWithAuth(`/api/categories?book_id=${bookId}`);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -89,9 +89,9 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   async function addCategory(category) {
     try {
-      // Make sure category has a workspace_id
-      if (!category.workspace_id) {
-        throw new Error('workspace_id is required when creating a category');
+      // Make sure category has a book_id
+      if (!category.book_id) {
+        throw new Error('book_id is required when creating a category');
       }
 
       const response = await fetchWithAuth('/api/categories', {
