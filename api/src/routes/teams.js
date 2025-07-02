@@ -107,19 +107,53 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
  * Get all teams (admin only)
  * 
  * @permission Super admin only
- * @returns {Array} List of all teams
+ * @query {boolean} deleted - If 'true', return only soft-deleted teams (recycle bin). Default: 'false'
+ * @returns {Array} List of all teams with user counts
  * @deprecated Use /teams/search instead for better performance
  */
 router.get('/all', requireSuperAdmin, async (req, res) => {
   try {
+    const showDeleted = req.query.deleted === 'true';
+    
+    // Get teams with filter for soft-deleted/active based on the parameter
     const [teams] = await db.query(`
       SELECT id, name, created_at, deleted_at
       FROM team 
-      WHERE deleted_at IS NULL
+      WHERE ${showDeleted ? 'deleted_at IS NOT NULL' : 'deleted_at IS NULL'}
       ORDER BY name ASC
     `);
+    
+    // For each team, get the counts separately to avoid duplication issues
+    const teamsWithCounts = await Promise.all(teams.map(async (team) => {
+      // Get user counts
+      const [userCounts] = await db.query(`
+        SELECT 
+          COUNT(DISTINCT user_id) as user_count,
+          SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin_count,
+          SUM(CASE WHEN role = 'collaborator' THEN 1 ELSE 0 END) as collaborator_count,
+          SUM(CASE WHEN role = 'viewer' THEN 1 ELSE 0 END) as viewer_count
+        FROM team_user
+        WHERE team_id = ?
+      `, [team.id]);
+      
+      // Get book count
+      const [bookCounts] = await db.query(`
+        SELECT COUNT(*) as book_count
+        FROM book
+        WHERE team_id = ? AND deleted_at IS NULL
+      `, [team.id]);
+      
+      return {
+        ...team,
+        user_count: userCounts[0].user_count || 0,
+        admin_count: userCounts[0].admin_count || 0,
+        collaborator_count: userCounts[0].collaborator_count || 0,
+        viewer_count: userCounts[0].viewer_count || 0,
+        book_count: bookCounts[0].book_count || 0
+      };
+    }));
 
-    res.status(200).json(teams);
+    res.status(200).json(teamsWithCounts);
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch all teams' });

@@ -5,6 +5,9 @@ import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
 import AdminUsersView from '../pages/admin/AdminUsersView.vue'
+import AdminUserEditView from '../pages/admin/AdminUserEditView.vue'
+import AdminTeamsView from '../pages/admin/AdminTeamsView.vue'
+import AdminTeamEditView from '../pages/admin/AdminTeamEditView.vue'
 import TransactionsView from '../pages/transactions/TransactionsView.vue'
 
 
@@ -46,6 +49,51 @@ const routes = [
     path: '/admin/users',
     component: AdminUsersView,
     name: 'admin-users',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/users/create',
+    component: AdminUserEditView,
+    name: 'admin-users-create',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/users/:id/edit',
+    component: AdminUserEditView,
+    name: 'admin-users-edit',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams',
+    component: AdminTeamsView,
+    name: 'admin-teams',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams/create',
+    component: AdminTeamEditView,
+    name: 'admin-teams-create',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: true
+    }
+  },
+  {
+    path: '/admin/teams/:id/edit',
+    component: AdminTeamEditView,
+    name: 'admin-teams-edit',
     meta: {
       requiresAuth: true,
       requiresSuperAdmin: true

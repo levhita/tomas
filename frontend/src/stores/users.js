@@ -437,6 +437,15 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   /**
+   * Fetch a user by ID - Super admin only (alias for getUserById for consistency)
+   * @param {number} userId - User ID to fetch
+   * @returns {Promise<Object>} User data
+   */
+  async function fetchUserById(userId) {
+    return getUserById(userId);
+  }
+
+  /**
    * Search books by name or ID - Super admin only
    * @param {string} query - Search query (book name or ID)
    * @param {number} limit - Maximum results to return (default: 10)
@@ -582,7 +591,7 @@ export const useUsersStore = defineStore('users', () => {
    * @param {number} userId - User ID
    * @param {number} bookId - Book ID
    * @param {string} role - New role (admin, collaborator, viewer)
-   * @returns {Promise<Array>} Updated list of user's books
+   * @returns {Promise<Array} Updated list of user's books
    */
   async function updateUserBookRole(userId, bookId, role) {
     if (!isSuperAdmin.value) {
@@ -829,6 +838,7 @@ export const useUsersStore = defineStore('users', () => {
     enableUser,
     disableUser,
     getUserById,
+    fetchUserById,
     // Book management
     searchBooks,
     fetchAllBooks,

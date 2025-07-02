@@ -130,7 +130,7 @@ describe('Teams Management API', () => {
   });
 
   describe('GET /api/teams/all', () => {
-    it('should return all teams for superadmin', async () => {
+    it('should return only active teams for superadmin by default', async () => {
       const auth = authenticatedRequest(superadminToken);
       const response = await auth.get('/api/teams/all');
 
@@ -148,7 +148,33 @@ describe('Teams Management API', () => {
         expect(team).toHaveProperty('id');
         expect(team).toHaveProperty('name');
         expect(team).toHaveProperty('created_at');
+        expect(team.deleted_at).toBeNull(); // No deleted teams should be included
       });
+    });
+
+    it('should return only soft-deleted teams when deleted=true parameter is provided', async () => {
+      // First, soft-delete a team
+      const auth = authenticatedRequest(superadminToken);
+      await auth.delete('/api/teams/1'); // Soft-delete team 1
+      
+      // Now request only deleted teams
+      const response = await auth.get('/api/teams/all?deleted=true');
+      
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+      
+      // All returned teams should be soft-deleted
+      response.body.forEach(team => {
+        expect(team.deleted_at).not.toBeNull();
+      });
+      
+      // Verify team 1 is in the results
+      const deletedTeamIds = response.body.map(t => t.id);
+      expect(deletedTeamIds).toContain(1);
+      
+      // Restore the team for other tests
+      await auth.post('/api/teams/1/restore');
     });
 
     it('should deny access for non-superadmin', async () => {
@@ -799,12 +825,19 @@ describe('Teams Management API', () => {
         expect(deletedTeam.deleted_at).not.toBeNull();
       });
 
-      it('should exclude soft-deleted teams in /all endpoint', async () => {
+      it('should include soft-deleted teams in /all endpoint with deleted=true parameter', async () => {
         const auth = authenticatedRequest(superadminToken);
 
-        const response = await auth.get('/api/teams/all');
+        // First check that the deleted team isn't in the default response
+        const defaultResponse = await auth.get('/api/teams/all');
+        const deletedTeamInDefault = defaultResponse.body.find(t => t.id === 1);
+        expect(deletedTeamInDefault).toBeUndefined();
+        
+        // Now check it's in the deleted=true response
+        const response = await auth.get('/api/teams/all?deleted=true');
         const deletedTeam = response.body.find(t => t.id === 1);
-        expect(deletedTeam).toBeUndefined();
+        expect(deletedTeam).toBeDefined();
+        expect(deletedTeam.deleted_at).not.toBeNull();
       });
     });
   });

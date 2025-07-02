@@ -50,6 +50,13 @@
             </RouterLink>
           </li>
 
+          <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active" to="/admin/teams">
+              <i class="bi bi-people-fill me-1"></i>
+              Teams
+            </RouterLink>
+          </li>
+
           <!-- Add more admin navigation items as needed -->
         </ul>
 

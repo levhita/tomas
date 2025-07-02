@@ -5,10 +5,21 @@
         <div class="col-12">
           <!-- Page Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <button class="btn btn-primary" @click="showCreateUserModal">
+            <div>
+              <h1 class="mb-0">User Management</h1>
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item">
+                    <RouterLink to="/admin">Admin</RouterLink>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Users</li>
+                </ol>
+              </nav>
+            </div>
+            <RouterLink to="/admin/users/create" class="btn btn-primary">
               <i class="bi bi-person-plus me-1"></i>
               Add User
-            </button>
+            </RouterLink>
           </div>
 
           <!-- Search and Filters -->
@@ -155,9 +166,6 @@
         </div>
       </div>
     </div>
-
-    <!-- User Modal -->
-    <UserModal v-model="showUserModal" :user="selectedUser" @save="handleUserSaved" />
   </AdminLayout>
 </template>
 
@@ -184,13 +192,14 @@
  */
 
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
-import UserModal from '../../components/modals/UserModal.vue'
 import { useUsersStore } from '../../stores/users'
 import { useConfirm } from '../../composables/useConfirm'
 import { useToast } from '../../composables/useToast'
 
 const usersStore = useUsersStore()
+const router = useRouter()
 const { confirm } = useConfirm()
 const { showToast } = useToast()
 
@@ -198,8 +207,6 @@ const { showToast } = useToast()
 const searchQuery = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
-const showUserModal = ref(false)
-const selectedUser = ref(null)
 
 // Computed properties
 const filteredUsers = computed(() => {
@@ -255,20 +262,8 @@ function formatDate(dateString) {
 }
 
 // User management functions
-function showCreateUserModal() {
-  selectedUser.value = null
-  showUserModal.value = true
-}
-
 function editUser(user) {
-  selectedUser.value = user
-  showUserModal.value = true
-}
-
-function handleUserSaved() {
-  // Refresh the users list to show updated data
-  // The store will already be updated, but this ensures we have the latest data
-  loadUsers()
+  router.push(`/admin/users/${user.id}/edit`)
 }
 
 async function toggleUserStatus(user) {
