@@ -76,6 +76,15 @@ router.beforeEach(async (to, from, next) => {
 
   const isPublicRoute = to.meta.public
   const requiresSuperAdmin = to.meta.requiresSuperAdmin
+  const isSuperadminRoute = to.meta.requiresSuperAdmin
+
+  if (isSuperadminRoute) {
+    console.log('Navigating to superadmin route:', to.path)
+    console.log('User authenticated:', usersStore.isAuthenticated)
+    console.log('User is superadmin:', usersStore.isSuperAdmin)
+    console.log('User has selected team:', usersStore.hasSelectedTeam)
+    console.log('Current user:', usersStore.currentUser)
+  }
 
   // If not authenticated and there's a token in localStorage, try to initialize
   if (!usersStore.isAuthenticated && !isPublicRoute && localStorage.getItem('token')) {
@@ -99,7 +108,13 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
   } else if (requiresSuperAdmin && !usersStore.isSuperAdmin) {
     // Redirect non-superadmins away from admin routes
+    console.log('Redirecting non-superadmin away from admin route')
     next('/books')
+  } else if (!isPublicRoute && usersStore.isAuthenticated && !usersStore.hasSelectedTeam && !requiresSuperAdmin) {
+    // If authenticated but no team selected, redirect to login to show team selection
+    // ONLY for non-admin routes (admin routes don't require team selection)
+    console.log('Redirecting to login for team selection (non-admin route)')
+    next('/login')
   } else {
     next()
   }

@@ -10,18 +10,40 @@
 
     <!-- Dropdown menu content -->
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-      <!-- User role display (read-only) -->
-      <li>
+      <!-- Current team display -->
+      <li v-if="usersStore.currentTeam">
+        <span class="dropdown-item-text">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <i class="bi bi-people-fill me-2 text-primary"></i>
+              <strong>{{ usersStore.currentTeam.name }}</strong>
+            </div>
+            <span :class="['badge', getRoleBadgeClass]">
+              {{ formatRole(usersStore.currentTeam.role) }}
+            </span>
+          </div>
+        </span>
+      </li>
+
+      <!-- User role display (for users without teams or superadmins) -->
+      <li v-else>
         <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
           <i :class="['bi', getRoleIcon]"></i>
           {{ bookRole }}
-
         </span>
       </li>
 
       <!-- Visual separator -->
       <li>
         <hr class="dropdown-divider">
+      </li>
+
+      <!-- Switch team action (only show if user has team access) -->
+      <li v-if="usersStore.currentTeam">
+        <a href="#" class="dropdown-item" @click.prevent="switchTeam">
+          <i class="bi bi-arrow-left-right me-2"></i>
+          Switch Team
+        </a>
       </li>
 
       <!-- Profile action -->
@@ -43,6 +65,13 @@
 
     <!-- User Profile Modal -->
     <UserProfileModal v-model="showProfileModal" @save="handleProfileSaved" />
+    
+    <!-- Team Selection Modal -->
+    <TeamSelectionModal 
+      ref="teamModal"
+      :is-required="false"
+      @team-selected="onTeamSwitched"
+    />
   </li>
   <li class="nav-item d-flex align-items-center ms-2">
     <i :class="['bi', getRoleIcon, getRoleBadgeClass]"></i>
@@ -89,8 +118,9 @@
 
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import UserProfileModal from './modals/UserProfileModal.vue'
+import TeamSelectionModal from './TeamSelectionModal.vue'
 
 // Props
 const props = defineProps({
@@ -110,8 +140,10 @@ const usersStore = useUsersStore()
 // Profile modal state
 const showProfileModal = ref(false)
 
+// Team modal reference
+const teamModal = ref(null)
+
 // Computed properties for book role formatting
-import { computed } from 'vue'
 
 // Format the book role with proper capitalization
 const formatBookRole = computed(() => {
@@ -214,5 +246,46 @@ async function handleLogout() {
     // Still redirect to login even if logout fails
     router.push('/login')
   }
+}
+
+/**
+ * Shows the team selection modal for switching teams
+ * 
+ * @function switchTeam
+ * @returns {void}
+ */
+function switchTeam() {
+  teamModal.value?.show()
+}
+
+/**
+ * Handles successful team switch
+ * 
+ * Called when the user successfully switches to a different team.
+ * The page will refresh or update to reflect the new team context.
+ * 
+ * @function onTeamSwitched
+ * @param {Object} team - The newly selected team
+ * @returns {void}
+ */
+function onTeamSwitched(team) {
+  console.log('Switched to team:', team)
+  // The team selection modal handles the actual switch
+  // We could add notifications here if needed
+  
+  // Optionally refresh the page to update the context
+  window.location.reload()
+}
+
+/**
+ * Format role names with proper capitalization
+ * 
+ * @function formatRole
+ * @param {string} role - The role to format
+ * @returns {string} Formatted role name
+ */
+function formatRole(role) {
+  if (!role) return ''
+  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 </script>

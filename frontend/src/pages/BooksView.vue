@@ -2,7 +2,10 @@
   <GeneralLayout>
     <div class="home container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Books</h1>
+        <div>
+          <h1>Books</h1>
+          <small class="text-muted">Team: {{ usersStore.currentTeam?.name }}</small>
+        </div>
         <button class="btn btn-primary" @click="showNewBookModal">
           <i class="bi bi-plus-circle me-2"></i>New Book
         </button>
@@ -81,6 +84,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Team Selection Modal -->
+      <TeamSelectionModal 
+        ref="teamModal"
+        @team-selected="onTeamSelected"
+      />
     </div>
   </GeneralLayout>
 </template>
@@ -89,13 +98,16 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBooksStore } from '../stores/books';
+import { useUsersStore } from '../stores/users';
 import { useToast } from '../composables/useToast';
 import { Modal } from 'bootstrap';
 import GeneralLayout from '../layouts/GeneralLayout.vue';
 import BookModal from '../components/modals/BookModal.vue';
+import TeamSelectionModal from '../components/TeamSelectionModal.vue';
 
 const router = useRouter();
 const booksStore = useBooksStore();
+const usersStore = useUsersStore();
 const { showToast } = useToast();
 
 // Component state
@@ -103,6 +115,7 @@ const showBookModal = ref(false)
 const selectedBook = ref(null)
 const deleteModal = ref(null);
 const bookToDelete = ref(null);
+const teamModal = ref(null);
 
 let bsDeleteModal = null;
 
@@ -110,7 +123,14 @@ onMounted(async () => {
   // Initialize bootstrap delete modal
   bsDeleteModal = new Modal(deleteModal.value);
 
-  // Fetch books
+  // Check if user has selected a team
+  if (!usersStore.hasSelectedTeam) {
+    // Redirect to login to handle team selection
+    router.push('/login');
+    return;
+  }
+
+  // Fetch books since team is selected
   try {
     await booksStore.fetchBooks();
   } catch (error) {
@@ -187,5 +207,18 @@ function selectBook(book) {
     },
     replace: false
   });
+}
+
+function showTeamSelection() {
+  teamModal.value?.show();
+}
+
+async function onTeamSelected() {
+  // Reload books for the newly selected team
+  try {
+    await booksStore.fetchBooks();
+  } catch (error) {
+    console.error('Failed to load books for selected team', error);
+  }
 }
 </script>

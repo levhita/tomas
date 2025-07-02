@@ -64,7 +64,14 @@ export const useBooksStore = defineStore('books', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fetchWithAuth('/api/books');
+      const usersStore = useUsersStore();
+      const currentTeam = usersStore.currentTeam;
+      
+      if (!currentTeam) {
+        throw new Error('No team selected');
+      }
+
+      const response = await fetchWithAuth(`/api/books?teamId=${currentTeam.id}`);
       const data = await response.json();
       books.value = data;
 
@@ -117,9 +124,22 @@ export const useBooksStore = defineStore('books', () => {
     isLoading.value = true;
     error.value = null;
     try {
+      const usersStore = useUsersStore();
+      const currentTeam = usersStore.currentTeam;
+      
+      if (!currentTeam) {
+        throw new Error('No team selected');
+      }
+
+      // Add teamId to the data
+      const bookData = {
+        ...data,
+        teamId: currentTeam.id
+      };
+
       const response = await fetchWithAuth('/api/books', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(bookData),
       });
 
       if (!response.ok) {

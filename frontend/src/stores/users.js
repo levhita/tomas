@@ -12,7 +12,36 @@ export const useUsersStore = defineStore('users', () => {
 
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value);
-  const isSuperAdmin = computed(() => currentUser.value?.superadmin || false);
+  const isSuperAdmin = computed(() => {
+    const isSuperAdminValue = currentUser.value?.superadmin || false;
+    console.log('isSuperAdmin getter called, user:', currentUser.value, 'superadmin:', isSuperAdminValue);
+    return isSuperAdminValue;
+  });
+  const hasSelectedTeam = computed(() => {
+    if (!token.value) return false;
+    try {
+      const payload = JSON.parse(atob(token.value.split('.')[1]));
+      return !!payload.teamId;
+    } catch {
+      return false;
+    }
+  });
+  const selectedTeam = computed(() => {
+    if (!token.value) return null;
+    try {
+      const payload = JSON.parse(atob(token.value.split('.')[1]));
+      return payload.teamId ? {
+        id: payload.teamId,
+        name: payload.teamName,
+        role: payload.teamRole
+      } : null;
+    } catch {
+      return null;
+    }
+  });
+  
+  // Alias for currentTeam to maintain consistency
+  const currentTeam = selectedTeam;
   const userStats = computed(() => {
     const total = users.value.length;
     const superAdmins = users.value.filter(user => user.superadmin).length;
@@ -139,6 +168,77 @@ export const useUsersStore = defineStore('users', () => {
     isInitialized.value = false;
     isInitializing.value = false;
     localStorage.removeItem('token');
+  }
+
+  // Team-related functions
+
+  /**
+   * Fetch current user's teams
+   * @returns {Promise<Array>} List of teams the user has access to
+   */
+  async function fetchUserTeams() {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/me/teams', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch teams');
+      }
+
+      const teams = await response.json();
+      return teams;
+    } catch (error) {
+      console.error('Error fetching user teams:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Select a team and get a new JWT token with team information
+   * @param {number} teamId - The team ID to select
+   * @returns {Promise<Object>} New token and team information
+   */
+  async function selectTeam(teamId) {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/select-team', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teamId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to select team');
+      }
+
+      const data = await response.json();
+      
+      // Update the token with the new one that includes team information
+      token.value = data.token;
+      localStorage.setItem('token', data.token);
+
+      return data;
+    } catch (error) {
+      console.error('Error selecting team:', error);
+      throw error;
+    }
   }
 
   // Admin functions for user management
@@ -623,6 +723,84 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
+  /**
+   * Fetch user's teams
+   */
+  async function fetchUserTeams() {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/me/teams', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Token expired');
+        }
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch teams');
+      }
+
+      const teams = await response.json();
+      return teams;
+    } catch (error) {
+      console.error('Fetch teams error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Select a team and get new token with team information
+   * @param {number} teamId - Team ID to select
+   */
+  async function selectTeam(teamId) {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/select-team', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teamId }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Access denied');
+        }
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to select team');
+      }
+
+      const data = await response.json();
+      
+      // Update token with new team information
+      token.value = data.token;
+      localStorage.setItem('token', data.token);
+
+      // Update current user with team information
+      if (currentUser.value) {
+        currentUser.value.selectedTeam = data.team;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Select team error:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     currentUser,
@@ -634,6 +812,9 @@ export const useUsersStore = defineStore('users', () => {
     // Getters
     isAuthenticated,
     isSuperAdmin,
+    hasSelectedTeam,
+    selectedTeam,
+    currentTeam,
     userStats,
     // Actions
     login,
@@ -654,6 +835,9 @@ export const useUsersStore = defineStore('users', () => {
     getUserBooks,
     addUserToBook,
     updateUserBookRole,
-    removeUserFromBook
+    removeUserFromBook,
+    // Team management
+    fetchUserTeams,
+    selectTeam
   };
 });

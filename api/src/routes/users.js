@@ -188,6 +188,105 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /users/me/teams
+ * Get current user's teams
+ * 
+ * @permission Authenticated user
+ * @returns {Array} List of teams the user has access to with their roles
+ */
+router.get('/me/teams', authenticateToken, async (req, res) => {
+  try {
+    // Get user's team access
+    const [teams] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role,
+        t.created_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
+    `, [req.user.id]);
+
+    res.status(200).json(teams);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to fetch user teams'
+    });
+  }
+});
+
+/**
+ * POST /users/select-team
+ * Select a team and generate new JWT token with team information
+ * 
+ * @body {number} teamId - Team ID to select
+ * @permission Authenticated user
+ * @returns {Object} New JWT token with team information
+ */
+router.post('/select-team', authenticateToken, async (req, res) => {
+  try {
+    const { teamId } = req.body;
+
+    if (!teamId) {
+      return res.status(400).json({
+        error: 'Team ID is required'
+      });
+    }
+
+    // Verify user has access to this team
+    const [teamAccess] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ? AND t.id = ?
+    `, [req.user.id, teamId]);
+
+    if (teamAccess.length === 0) {
+      return res.status(403).json({
+        error: 'Access denied: You do not have access to this team'
+      });
+    }
+
+    const team = teamAccess[0];
+
+    // Generate new JWT token with team information
+    const token = jwt.sign(
+      {
+        userId: req.user.id,
+        username: req.user.username,
+        superadmin: req.user.superadmin,
+        teamId: team.id,
+        teamName: team.name,
+        teamRole: team.role
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      token,
+      team: {
+        id: team.id,
+        name: team.name,
+        role: team.role
+      }
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to select team'
+    });
+  }
+});
+
+/**
  * GET /users/:id
  * Get a single user by ID
  * 
