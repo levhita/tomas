@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
     // Check if user has access to the account's book via team membership
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
-    
+
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
     }
@@ -126,7 +126,7 @@ router.get('/:id', async (req, res) => {
     // Check if user has access to this account's book via team membership
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
-    
+
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
     }
@@ -212,7 +212,7 @@ router.post('/', async (req, res) => {
     // Check if user has write access to the account's book via team membership
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
-    
+
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
     }
@@ -338,7 +338,7 @@ router.put('/:id', async (req, res) => {
     // Check if user has write access to the account's book via team membership
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
-    
+
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
     }
@@ -432,7 +432,7 @@ router.delete('/:id', async (req, res) => {
     // Check if user has write access to this account's book via team membership
     const bookId = accounts[0].book_id;
     const team = await getTeamByBookId(bookId);
-    
+
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
     }

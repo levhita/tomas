@@ -20,13 +20,13 @@ const {
 
 describe('User Management API', () => {
   let superadminToken;
-  let testUserToken;
+  let adminToken;
 
   beforeAll(async () => {
     // Use token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    testUserToken = tokens.testuser1;
+    adminToken = tokens.admin;
   });
 
   // Only reset between test suites if needed
@@ -112,7 +112,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get('/api/users');
 
       validateApiResponse(response, 403);
@@ -147,7 +147,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const response = await auth.get(`/api/users/${TEST_USERS.SUPERADMIN.id}`);
 
       validateApiResponse(response, 403);
@@ -218,7 +218,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
       const userData = generateRandomData();
 
       const response = await auth.post('/api/users')
@@ -296,7 +296,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.put(`/api/users/${TEST_USERS.SUPERADMIN.id}`)
         .send({
@@ -535,7 +535,7 @@ describe('User Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(testUserToken);
+      const auth = authenticatedRequest(adminToken);
 
       const response = await auth.delete(`/api/users/${TEST_USERS.TESTUSER2.id}`);
 
@@ -602,7 +602,7 @@ describe('User Management API', () => {
       });
 
       it('should deny access for non-superadmin', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/enable`);
 
@@ -679,7 +679,7 @@ describe('User Management API', () => {
       });
 
       it('should deny access for non-superadmin', async () => {
-        const auth = authenticatedRequest(testUserToken);
+        const auth = authenticatedRequest(adminToken);
 
         const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER2.id}/disable`);
 
