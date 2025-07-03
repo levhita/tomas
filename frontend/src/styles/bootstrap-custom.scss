@@ -70,11 +70,126 @@ $gnome-dark-5: #000000; // Pure black
 $primary: $gnome-blue-3;
 $secondary: $gnome-light-3;
 $success: $gnome-green-3;
-$info: $gnome-cyan-3;
+$info: $gnome-purple-3;
 $warning: $gnome-yellow-3;
 $danger: $gnome-red-3;
 $light: $gnome-light-2;
 $dark: $gnome-dark-3;
+
+
+
+$payment: rgba($gnome-purple-4, 0.7); // Payment color credit card type
+$income: darken($gnome-green-5, 15%); // Income color debit card type
+$expense: $gnome-blue-5; // Expense color debit card type 
+$charge: $gnome-yellow-5; // Charge color credit card type
+
+// Modify the next bg classes to lighten the green, purple and blue
+// on dark mode and change the text color to a dark
+// Lighten the green, purple, blue, and yellow backgrounds for dark mode
+// and use dark text for contrast, following Bootstrap's recommended contrast ratios
+[data-bs-theme="dark"] {
+  .bg-payment {
+    background-color: lighten($gnome-purple-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-income {
+    background-color: lighten($gnome-green-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-expense {
+    background-color: lighten($gnome-blue-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+  .bg-charge {
+    background-color: lighten($gnome-yellow-2, 18%) !important;
+    color: $gnome-dark-4 !important;
+  }
+
+}
+// Improve the next 4 classes of bg to improve color contrast and readability
+.bg-payment {
+  background-color: $payment !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($payment, 0.18);
+  @extend .text-white;
+  /*
+    - Payments would be  *Lavender* because  purple
+      helps to spiritual development and works
+      against home and work stress. 
+      When we pay our debts we calm our stress 
+      and feel a little bit more stable.
+  */
+}
+
+.bg-income {
+  background-color: $income !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($income, 0.18);
+  @extend .text-white;
+  /*
+    - Income: *Green* We are using green to attract more transactions like this, 
+      abundance, money and spiritual growth, 
+      help us heal the emotions and Brings luck in business endeavors 
+  */
+}
+
+.bg-expense {
+  background-color: $expense !important;
+  color: $gnome-light-1 !important;
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($expense, 0.18);
+  @extend .text-white;
+  /*
+    Expenses is *blue* because it brings tranquility to the soul, 
+    banishes anger and invite us to meditation 
+    on our consume habits
+  */
+}
+
+.bg-charge {
+  background-color: $charge !important;
+  color: $gnome-dark-4 !important; // Use dark text for yellow for better contrast
+  box-shadow: 0 1px 2px rgba($gnome-dark-4, 0.08);
+  border: 1px solid rgba($charge, 0.18);
+  font-weight: 500;
+  /*
+    With each charge and the ablility to have visibility on it
+    we want to promote learning nd awareness of our money habits, sparks intuition 
+    *should I keep using my credit for charges like this one?*
+    That is the reason why we use *yellow* for Charges
+  */
+}
+/* -------------------------------------------------------------------------- */
+/* Text Color Variations for Transaction Types                                 */
+
+// Text color variations for light/dark mode
+.text-payment {
+  color: $payment !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-purple-2, 10%) !important;
+  }
+}
+.text-charge {
+  color: $charge !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-yellow-2, 10%) !important;
+  }
+}
+.text-expense {
+  color: $expense !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-blue-2, 10%) !important;
+  }
+}
+.text-income {
+  color: $income !important;
+  [data-bs-theme="dark"] & {
+    color: lighten($gnome-green-2, 10%) !important;
+  }
+}
+
 
 // Background colors
 // $body-bg: $gnome-light-1;
@@ -111,7 +226,7 @@ $navbar-light-active-color: $gnome-blue-4;
 $primary-dark: $gnome-blue-3;
 $secondary-dark: $gnome-dark-3;
 $success-dark: $gnome-green-3;
-$info-dark: $gnome-cyan-3;
+$info-dark: $gnome-purple-3;
 $warning-dark: $gnome-yellow-3;
 $danger-dark: $gnome-red-3;
 $light-dark: $gnome-dark-2;
