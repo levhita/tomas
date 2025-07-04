@@ -180,6 +180,53 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {
+    // Parse pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const role = req.query.role || '';
+    const status = req.query.status || '';
+    
+    // Calculate offset
+    const offset = (page - 1) * limit;
+    
+    // Build WHERE conditions
+    let whereConditions = [];
+    let queryParams = [];
+    
+    // Search filter
+    if (search) {
+      whereConditions.push('u.username LIKE ?');
+      queryParams.push(`%${search}%`);
+    }
+    
+    // Role filter
+    if (role === 'superadmin') {
+      whereConditions.push('u.superadmin = 1');
+    } else if (role === 'user') {
+      whereConditions.push('u.superadmin = 0');
+    }
+    
+    // Status filter
+    if (status === 'active') {
+      whereConditions.push('u.active = 1');
+    } else if (status === 'inactive') {
+      whereConditions.push('u.active = 0');
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM user u
+      ${whereClause}
+    `, queryParams);
+    
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated users
     const [users] = await db.query(`
       SELECT 
         u.id, 
@@ -194,11 +241,13 @@ router.get('/', requireSuperAdmin, async (req, res) => {
       FROM user u
       LEFT JOIN team_user tu ON u.id = tu.user_id 
       LEFT JOIN team t ON tu.team_id = t.id AND t.deleted_at IS NULL
+      ${whereClause}
       GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
-    `);
+      LIMIT ? OFFSET ?
+    `, [...queryParams, limit, offset]);
 
-    res.status(200).json(users.map(user => {
+    const formattedUsers = users.map(user => {
       // Convert admin and active flags from 0/1 to boolean and team counts to numbers
       return {
         ...user,
@@ -209,7 +258,19 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         collaborator_teams: parseInt(user.collaborator_teams) || 0,
         viewer_teams: parseInt(user.viewer_teams) || 0
       };
-    }));
+    });
+
+    res.status(200).json({
+      users: formattedUsers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });

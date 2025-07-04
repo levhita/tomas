@@ -7,6 +7,14 @@ export const useUsersStore = defineStore('users', () => {
   const token = ref(null);
   const users = ref([]); // List of all users (for admin)
   const isLoadingUsers = ref(false); // Loading state for users list
+  const usersPagination = ref({
+    page: 1,
+    limit: 5,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  }); // Pagination state for users
   const isInitializing = ref(false); // Track initialization state
   const isInitialized = ref(false); // Track if initialization has been attempted
 
@@ -244,17 +252,31 @@ export const useUsersStore = defineStore('users', () => {
   // Admin functions for user management
 
   /**
-   * Fetch all users - Super admin only
-   * @returns {Promise<Array>} List of all users
+   * Fetch all users with pagination - Super admin only
+   * @param {Object} options - Query options
+   * @param {number} options.page - Page number (default: 1)
+   * @param {number} options.limit - Items per page (default: 20)
+   * @param {string} options.search - Search query
+   * @param {string} options.role - Role filter
+   * @param {string} options.status - Status filter
+   * @returns {Promise<Object>} Paginated users data
    */
-  async function fetchAllUsers() {
+  async function fetchAllUsers(options = {}) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     isLoadingUsers.value = true;
     try {
-      const response = await fetch('/api/users', {
+      const params = new URLSearchParams({
+        page: options.page || usersPagination.value.page,
+        limit: options.limit || usersPagination.value.limit,
+        ...(options.search && { search: options.search }),
+        ...(options.role && { role: options.role }),
+        ...(options.status && { status: options.status })
+      });
+
+      const response = await fetch(`/api/users?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -267,11 +289,15 @@ export const useUsersStore = defineStore('users', () => {
         throw new Error(error.error || 'Failed to fetch users');
       }
 
-      const userData = await response.json();
-      users.value = userData;
-      return userData;
+      const data = await response.json();
+      
+      // Update state
+      users.value = data.users;
+      usersPagination.value = data.pagination;
+
+      return data;
     } catch (error) {
-      console.error('Fetch users error:', error);
+      console.error('Error fetching users:', error);
       throw error;
     } finally {
       isLoadingUsers.value = false;
@@ -823,6 +849,7 @@ export const useUsersStore = defineStore('users', () => {
     token,
     users,
     isLoadingUsers,
+    usersPagination,
     isInitializing,
     isInitialized,
     // Getters
