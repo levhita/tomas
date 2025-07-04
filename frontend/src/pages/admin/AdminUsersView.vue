@@ -27,7 +27,7 @@
             <div class="card-body">
               <div class="row">
                 <div class="col-md-8">
-                  <div class="form-floating">
+                  <div class="form-floating position-relative">
                     <input 
                       type="text" 
                       class="form-control" 
@@ -36,7 +36,17 @@
                       @input="handleSearchInput"
                       placeholder="Search users..."
                     >
-                    <label for="searchUsers">Search users by username</label>
+                    <label for="searchUsers">Search</label>
+                    <button 
+                      v-if="searchQuery" 
+                      type="button" 
+                      class="btn btn-sm btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2"
+                      @click="clearSearch"
+                      title="Clear search"
+                      style="z-index: 10;"
+                    >
+                      <i class="bi bi-x"></i>
+                    </button>
                   </div>
                 </div>
                 <div class="col-md-2">
@@ -337,6 +347,11 @@ function handleSearchInput() {
   searchTimeout.value = setTimeout(() => {
     loadUsers({ page: 1 }) // Reset to first page when searching
   }, 300)
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  loadUsers({ page: 1 }) // Reset to first page when clearing search
 }
 
 function handleFilterChange() {
