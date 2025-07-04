@@ -99,31 +99,62 @@ router.get('/', async (req, res) => {
  */
 router.get('/:workspaceId/all', async (req, res) => {
   const workspaceId = req.params.workspaceId;
-
+  let { page = 1, limit = 20, sortKey = 'date', sortDirection = 'desc', accountId, search } = req.query;
+  page = parseInt(page, 10);
+  limit = parseInt(limit, 10);
+  const offset = (page - 1) * limit;
+  // Allowed sort keys and directions
+  const allowedSortKeys = ['date', 'amount', 'description', 'category_name', 'type', 'note', 'id'];
+  const allowedDirections = ['asc', 'desc'];
+  if (!allowedSortKeys.includes(sortKey)) sortKey = 'date';
+  if (!allowedDirections.includes(sortDirection)) sortDirection = 'desc';
   try {
-    // Check if user has read access to the workspace
     const { allowed, message } = await canRead(workspaceId, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
-
-    // Query all transactions for all accounts in this workspace
+    // Compose ORDER BY clause
+    let orderBy = 't.' + sortKey;
+    if (sortKey === 'category_name') orderBy = 'c.name';
+    if (sortKey === 'account_name') orderBy = 'a.name';
+    // Build WHERE clause
+    let where = 'a.workspace_id = ?';
+    const params = [workspaceId];
+    if (accountId) {
+      where += ' AND t.account_id = ?';
+      params.push(accountId);
+    }
+    if (search) {
+      where += ` AND (
+        t.description LIKE ? OR
+        t.note LIKE ? OR
+        c.name LIKE ? OR
+        a.name LIKE ?
+      )`;
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+    // Query paginated, sorted transactions
     const [transactions] = await db.query(`
       SELECT 
-        t.*,
-        c.name as category_name,
+        t.*, 
+        c.name as category_name, 
         a.name as account_name
       FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
-      WHERE a.workspace_id = ?
-      ORDER BY t.date ASC
-    `, [workspaceId]);
-
-    // Convert exercised from 0/1 to boolean
+      WHERE ${where}
+      ORDER BY ${orderBy} ${sortDirection.toUpperCase()}
+      LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
+    // Get total count
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) as count FROM transaction t LEFT JOIN category c ON t.category_id = c.id LEFT JOIN account a ON t.account_id = a.id WHERE ${where}`,
+      params
+    );
+    const count = countRows[0]?.count || 0;
     transactions.forEach(t => t.exercised = !!t.exercised);
-
-    res.status(200).json(transactions);
+    res.status(200).json({ transactions, total: count });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transactions for workspace' });
