@@ -415,6 +415,39 @@ router.post('/select-team', authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /users/exit-team
+ * Exit team mode and return to admin mode (remove team information from JWT)
+ * 
+ * @permission Authenticated user
+ * @returns {Object} New JWT token without team information
+ */
+router.post('/exit-team', authenticateToken, async (req, res) => {
+  try {
+    // Generate new JWT token without team information
+    const token = jwt.sign(
+      {
+        userId: req.user.id,
+        username: req.user.username,
+        superadmin: req.user.superadmin
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      token,
+      message: 'Successfully exited team mode'
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      error: 'Failed to exit team mode'
+    });
+  }
+});
+
+/**
  * GET /users/:id
  * Get a single user by ID
  * 

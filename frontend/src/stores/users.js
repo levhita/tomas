@@ -249,6 +249,42 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
+  /**
+   * Exit team mode and return to admin mode
+   * @returns {Promise<Object>} New token without team information
+   */
+  async function exitTeamMode() {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/exit-team', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to exit team mode');
+      }
+
+      const data = await response.json();
+      
+      // Update the token with the new one without team information
+      token.value = data.token;
+      localStorage.setItem('token', data.token);
+
+      return data;
+    } catch (error) {
+      console.error('Error exiting team mode:', error);
+      throw error;
+    }
+  }
+
   // Admin functions for user management
 
   /**
@@ -884,6 +920,7 @@ export const useUsersStore = defineStore('users', () => {
     // Team management
     fetchUserTeams,
     selectTeam,
+    exitTeamMode,
     fetchUserTeamsById
   };
 });

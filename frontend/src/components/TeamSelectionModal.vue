@@ -33,13 +33,40 @@
             <p class="text-muted mb-3">Choose a team to work with:</p>
             
             <div class="list-group">
+              <!-- Admin Dashboard option for superadmins -->
+              <button 
+                v-if="usersStore.isSuperAdmin"
+                type="button" 
+                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                :class="{ 'active': !currentTeam }"
+                @click="goToAdmin"
+                :disabled="isSelecting"
+              >
+                <div>
+                  <h6 class="mb-1">
+                    <i class="bi bi-shield-check me-2 text-danger"></i>
+                    Admin Dashboard
+                  </h6>
+                  <small class="text-muted">
+                    <i class="bi bi-gear me-1"></i>
+                    Manage users, teams, and system settings
+                  </small>
+                </div>
+                
+                <div v-if="!currentTeam">
+                  <i v-if="isSelecting" class="spinner-border spinner-border-sm text-light"></i>
+                  <i v-else class="bi bi-check-circle-fill text-success"></i>
+                </div>
+              </button>
+
+              <!-- Team options -->
               <button 
                 v-for="team in teams" 
                 :key="team.id"
                 type="button" 
                 class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                :class="{ 'active': selectedTeamId === team.id }"
-                @click="selectTeam(team)"
+                :class="{ 'active': currentTeam?.id === team.id }"
+                @click="goToTeam(team)"
                 :disabled="isSelecting"
               >
                 <div>
@@ -50,7 +77,7 @@
                   </small>
                 </div>
                 
-                <div v-if="selectedTeamId === team.id">
+                <div v-if="currentTeam?.id === team.id">
                   <i v-if="isSelecting" class="spinner-border spinner-border-sm text-light"></i>
                   <i v-else class="bi bi-check-circle-fill text-success"></i>
                 </div>
@@ -63,22 +90,13 @@
                 Currently working with: <strong>{{ currentTeam.name }}</strong> ({{ formatRole(currentTeam.role) }})
               </small>
             </div>
+            <div v-else-if="usersStore.isSuperAdmin" class="mt-3 p-3 bg-body-secondary rounded">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Currently in: <strong>Admin Dashboard</strong>
+              </small>
+            </div>
           </div>
-        </div>
-
-        <div class="modal-footer" v-if="!isLoading && teams.length > 0">
-          <button v-if="!isRequired" type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            Cancel
-          </button>
-          <button 
-            type="button" 
-            class="btn btn-primary" 
-            @click="confirmSelection"
-            :disabled="!selectedTeamId || isSelecting"
-          >
-            <span v-if="isSelecting" class="spinner-border spinner-border-sm me-2"></span>
-            {{ isSelecting ? 'Switching...' : 'Switch Team' }}
-          </button>
         </div>
       </div>
     </div>
@@ -108,7 +126,6 @@ const usersStore = useUsersStore()
 const router = useRouter()
 
 const teams = ref([])
-const selectedTeamId = ref(null)
 const isLoading = ref(false)
 const isSelecting = ref(false)
 const error = ref('')
@@ -150,11 +167,6 @@ async function loadTeams() {
     isLoading.value = true
     error.value = ''
     teams.value = await usersStore.fetchUserTeams()
-    
-    // Auto-select current team if any
-    if (currentTeam.value) {
-      selectedTeamId.value = currentTeam.value.id
-    }
   } catch (err) {
     console.error('Failed to load teams:', err)
     error.value = err.message || 'Failed to load teams'
@@ -163,16 +175,8 @@ async function loadTeams() {
   }
 }
 
-function selectTeam(team) {
+async function goToTeam(team) {
   if (isSelecting.value) return
-  selectedTeamId.value = team.id
-}
-
-async function confirmSelection() {
-  if (!selectedTeamId.value || isSelecting.value) return
-
-  const team = teams.value.find(t => t.id === selectedTeamId.value)
-  if (!team) return
 
   try {
     isSelecting.value = true
@@ -181,13 +185,35 @@ async function confirmSelection() {
     emit('teamSelected', team)
     hide()
     
-    // Redirect to books if this was required (after login)
-    if (props.isRequired) {
-      router.push('/books')
-    }
+    // Navigate to the team's books page
+    router.push('/books')
   } catch (err) {
-    console.error('Failed to select team:', err)
-    error.value = err.message || 'Failed to select team'
+    console.error('Failed to switch to team:', err)
+    error.value = err.message || 'Failed to switch to team'
+  } finally {
+    isSelecting.value = false
+  }
+}
+
+async function goToAdmin() {
+  if (isSelecting.value) return
+
+  try {
+    isSelecting.value = true
+    
+    // Exit team mode if currently in a team
+    if (currentTeam.value) {
+      await usersStore.exitTeamMode()
+    }
+    
+    emit('teamSelected', null) // null indicates admin mode
+    hide()
+    
+    // Navigate to admin dashboard
+    router.push('/admin')
+  } catch (err) {
+    console.error('Failed to switch to admin:', err)
+    error.value = err.message || 'Failed to switch to admin'
   } finally {
     isSelecting.value = false
   }

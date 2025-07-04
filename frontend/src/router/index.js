@@ -158,6 +158,10 @@ router.beforeEach(async (to, from, next) => {
     // Redirect non-superadmins away from admin routes
     console.log('Redirecting non-superadmin away from admin route')
     next('/books')
+  } else if (requiresSuperAdmin && usersStore.isSuperAdmin && usersStore.currentTeam) {
+    // Redirect superadmins in team mode away from admin routes
+    console.log('Redirecting superadmin in team mode away from admin route')
+    next('/books')
   } else if (!isPublicRoute && usersStore.isAuthenticated && !usersStore.hasSelectedTeam && !requiresSuperAdmin) {
     // If authenticated but no team selected, redirect to login to show team selection
     // ONLY for non-admin routes (admin routes don't require team selection)

@@ -12,18 +12,6 @@
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/books">
-              Books
-            </RouterLink>
-          </li>
-          <!-- Admin section link - only visible for superadmins -->
-          <li v-if="usersStore.isSuperAdmin" class="nav-item">
-            <RouterLink class="nav-link" active-class="active" to="/admin">
-              <i class="bi bi-gear-fill me-1"></i>
-              Admin
-            </RouterLink>
-          </li>
         </ul>
 
         <ul class="navbar-nav">

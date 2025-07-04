@@ -9,37 +9,30 @@
     </a>
 
     <!-- Dropdown menu content -->
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-      <!-- Current team display -->
+    <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown" aria-labelledby="userDropdown">
+      <!-- Current team role display -->
       <li v-if="usersStore.currentTeam">
-        <span class="dropdown-item-text">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <i class="bi bi-people-fill me-2 text-primary"></i>
-              <strong>{{ usersStore.currentTeam.name }}</strong>
-            </div>
-            <span :class="['badge', getRoleBadgeClass]">
-              {{ formatRole(usersStore.currentTeam.role) }}
-            </span>
-          </div>
+        <span class="dropdown-item-text d-flex align-items-center">
+          <i :class="['bi', getTeamRoleIcon, 'me-2', getTeamRoleColorClass]"></i>
+          {{ formatRole(usersStore.currentTeam.role) }}
         </span>
       </li>
 
-      <!-- User role display (for users without teams or superadmins) -->
-      <li v-else>
+      <!-- User role display (for users without teams, but not superadmins) -->
+      <li v-else-if="bookRole !== 'superadmin'">
         <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
           <i :class="['bi', getRoleIcon]"></i>
           {{ bookRole }}
         </span>
       </li>
 
-      <!-- Visual separator -->
-      <li>
+      <!-- Visual separator (only show if there's a role display above) -->
+      <li v-if="usersStore.currentTeam || bookRole !== 'superadmin'">
         <hr class="dropdown-divider">
       </li>
 
-      <!-- Switch team action (only show if user has team access) -->
-      <li v-if="usersStore.currentTeam">
+      <!-- Switch team action (show for all authenticated users) -->
+      <li>
         <a href="#" class="dropdown-item" @click.prevent="switchTeam">
           <i class="bi bi-arrow-left-right me-2"></i>
           Switch Team
@@ -161,11 +154,54 @@ const getRoleBadgeClass = computed(() => {
       return 'text-primary';
     case 'viewer':
       return 'text-info';
-    // General user roles
-    case 'superadmin':
+  }
+})
+
+// Get the appropriate Bootstrap badge class for team roles
+const getTeamRoleBadgeClass = computed(() => {
+  if (!usersStore.currentTeam) return 'bg-secondary';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
+      return 'bg-danger';
+    case 'collaborator':
+      return 'bg-primary';
+    case 'viewer':
+      return 'bg-info';
+    default:
+      return 'bg-secondary';
+  }
+})
+
+// Get the appropriate text color class for team roles
+const getTeamRoleColorClass = computed(() => {
+  if (!usersStore.currentTeam) return 'text-secondary';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
       return 'text-danger';
-    case 'user':
+    case 'collaborator':
       return 'text-primary';
+    case 'viewer':
+      return 'text-info';
+    default:
+      return 'text-secondary';
+  }
+})
+
+// Get the appropriate Bootstrap icon for team roles
+const getTeamRoleIcon = computed(() => {
+  if (!usersStore.currentTeam) return 'bi-person-fill';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
+      return 'bi-shield-fill-check';
+    case 'collaborator':
+      return 'bi-pencil-fill';
+    case 'viewer':
+      return 'bi-eye-fill';
+    default:
+      return 'bi-person-fill';
   }
 })
 
@@ -179,11 +215,6 @@ const getRoleIcon = computed(() => {
       return 'bi-pencil-fill'; // Pencil icon for collaborator (editing capabilities)
     case 'viewer':
       return 'bi-eye-fill'; // Eye icon for viewer (read-only access)
-    // General user roles
-    case 'superadmin':
-      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
-    case 'user':
-      return 'bi-person-fill'; // Person icon for regular user
   }
 })
 
@@ -261,19 +292,16 @@ function switchTeam() {
 /**
  * Handles successful team switch
  * 
- * Called when the user successfully switches to a different team.
- * The page will refresh or update to reflect the new team context.
+ * Called when the user successfully switches to a different team or admin mode.
+ * Always reloads the page to ensure all data is refreshed for the new context.
  * 
  * @function onTeamSwitched
- * @param {Object} team - The newly selected team
+ * @param {Object|null} team - The newly selected team or null for admin mode
  * @returns {void}
  */
 function onTeamSwitched(team) {
-  console.log('Switched to team:', team)
-  // The team selection modal handles the actual switch
-  // We could add notifications here if needed
-  
-  // Optionally refresh the page to update the context
+  console.log('Switched to:', team ? `team ${team.name}` : 'admin mode')
+  // Always reload the page to ensure all data is refreshed for the new team context
   window.location.reload()
 }
 
@@ -289,3 +317,21 @@ function formatRole(role) {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
 </script>
+
+<style scoped>
+.user-menu-dropdown {
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.user-menu-dropdown .dropdown-item-text {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.user-menu-dropdown .dropdown-item-text strong {
+  display: block;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+}
+</style>
