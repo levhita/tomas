@@ -703,7 +703,8 @@ router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
         t.id, 
         t.name, 
         tu.role,
-        t.created_at
+        tu.created_at,
+        t.deleted_at
       FROM team t
       INNER JOIN team_user tu ON t.id = tu.team_id
       WHERE tu.user_id = ?

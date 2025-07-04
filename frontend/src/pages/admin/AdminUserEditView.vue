@@ -178,7 +178,7 @@
               </div>
               <div v-else class="table-responsive">
                 <table class="table table-hover mb-0">
-                  <thead class="table-light">
+                  <thead class="table">
                     <tr>
                       <th>Team</th>
                       <th>Role</th>
@@ -222,14 +222,14 @@
                             :to="`/admin/teams/${team.id}/edit`" 
                             class="btn btn-sm btn-outline-primary"
                             title="Go to Team">
-                            <i class="bi bi-box-arrow-up-right"></i>
+                            <i class="bi bi-people-fill"></i>
                           </RouterLink>
                           <button 
                             class="btn btn-sm btn-outline-danger" 
                             @click="removeUserFromTeam(team)"
                             :disabled="!!team.deleted_at"
                             title="Remove from Team">
-                            <i class="bi bi-person-x"></i>
+                            <i class="bi bi-person-x-fill"></i>
                           </button>
                         </div>
                       </td>
@@ -470,9 +470,8 @@ async function loadUserTeams() {
   isLoadingTeams.value = true
   
   try {
-    // This would need to be implemented in the users store or teams store
-    // For now, we'll use a placeholder approach
-    const teams = await usersStore.fetchUserTeams(userId.value)
+    // Use fetchUserTeamsById for super admin to fetch teams for any user
+    const teams = await usersStore.fetchUserTeamsById(userId.value)
     
     if (!Array.isArray(teams)) {
       console.error('Unexpected response from API:', teams)

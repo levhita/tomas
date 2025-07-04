@@ -352,4 +352,13 @@ onMounted(() => {
 .bg-light .user-avatar {
   background-color: var(--bs-primary) !important;
 }
+
+.list-group-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.list-group-item.disabled:hover {
+  background-color: transparent;
+}
 </style>
