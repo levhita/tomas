@@ -191,9 +191,8 @@ const defaultColumns = [
   { key: 'note', label: 'Note', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
   { key: 'actions', label: 'Actions', thClass: 'text-light-emphasis text-end', tdClass: 'text-end' }
 ];
-const columns = ref(
-  JSON.parse(localStorage.getItem('transactions_columns_order') || 'null') || defaultColumns
-);
+const columns = ref([]);
+
 const columnsnames = columns.value.map(col => ({
   ...col,
   thClass: col.thClass || 'text-light-emphasis text-nowrap',
@@ -202,8 +201,24 @@ const columnsnames = columns.value.map(col => ({
 const headers = ref([...columnsnames]);
 
 // ----------------- Synchronous Functions -----------------
+function getColumnsStorageKey() {
+  const wsId = workspacesStore?.currentWorkspace?.id;
+  return wsId ? `transactions_columns_order_${wsId}` : 'transactions_columns_order_default';
+}
+function getSortStorageKey() {
+  const wsId = workspacesStore?.currentWorkspace?.id;
+  return wsId ? `transactions_sort_${wsId}` : 'transactions_sort_default';
+}
+
+function initColumns() {
+  const saved = localStorage.getItem(getColumnsStorageKey());
+  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
+}
+initColumns();
+
+// Save column order per workspace
 function saveColumnOrder() {
-  localStorage.setItem('transactions_columns_order', JSON.stringify(columns.value));
+  localStorage.setItem(getColumnsStorageKey(), JSON.stringify(columns.value));
 }
 
 function onMove(evt) {
@@ -239,17 +254,13 @@ function handleSort(key) {
   sortTransactions();
 }
 
-const getSortStorageKey = () => {
-  const wsId = workspacesStore?.currentWorkspace?.id;
-  return wsId ? `transactions_sort_${wsId}` : 'transactions_sort_default';
-};
+
 
 function sortTransactions() {
   if (!sortKey.value) return;
   transactions.value = [...transactions.value].sort((a, b) => {
     let aValue = a[sortKey.value];
     let bValue = b[sortKey.value];
-    // Fallback for nested or formatted fields
     if (sortKey.value === 'account') {
       aValue = formatAccounts(a.account_id);
       bValue = formatAccounts(b.account_id);
@@ -272,27 +283,27 @@ function sortTransactions() {
     if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1;
     return 0;
   });
-  // Save sort preferences by workspace
-  const wsId = workspacesStore?.currentWorkspace?.id;
-  if (wsId) {
-    localStorage.setItem(getSortStorageKey(), JSON.stringify({
-      sortKey: sortKey.value,
-      sortDirection: sortDirection.value
-    }));
-  }
+  localStorage.setItem(getSortStorageKey(), JSON.stringify({
+    sortKey: sortKey.value,
+    sortDirection: sortDirection.value
+  }));
+}
+
+// Restore column order and sort preferences on workspace change or mount
+function restoreColumnOrder() {
+  const saved = localStorage.getItem(getColumnsStorageKey());
+  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
 }
 
 // Restore sort preferences on workspace change or mount
 function restoreSortPreferences() {
-  const wsId = workspacesStore?.currentWorkspace?.id;
-  if (!wsId) return;
   const saved = localStorage.getItem(getSortStorageKey());
   if (saved) {
     try {
       const { sortKey: savedKey, sortDirection: savedDir } = JSON.parse(saved);
       if (savedKey) sortKey.value = savedKey;
       if (savedDir) sortDirection.value = savedDir;
-    } catch (e) {}
+    } catch {}
   }
 }
 
@@ -322,6 +333,7 @@ onMounted(async () => {
   if (isWorkspaceValid) {
     const workspaceID = workspacesStore.currentWorkspace.id;
     restoreSortPreferences();
+    restoreColumnOrder();
     // load transactions by workspace ID
     await transactionsStore.fetchTransactionsByWorkspace(workspaceID);
   }
