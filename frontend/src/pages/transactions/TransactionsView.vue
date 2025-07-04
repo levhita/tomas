@@ -24,7 +24,7 @@
         <form class="row g-2 d-flex align-items-center flex-columns   w-75 p-4 mb-4 bg-light rounded-4 ">
           <div class="col-12 col-md-6 m-0">
             <div class="form-floating">
-              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions">
+              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions" v-model="searchQuery">
               <label for="search" class="text-light-emphasis">Search</label>
             </div>
           </div>
@@ -89,7 +89,7 @@
             </thead>
             
             <tbody>
-              <tr v-for="(transaction, i) in transactions" :key="i">
+              <tr v-for="(transaction, i) in filteredTransactions" :key="i">
                 <td v-for="col in columns" :key="col.key" :class="col.tdClass">
                   <template v-if="col.key === 'select'">
                     <input class="form-check-input" type="checkbox" aria-label="Select row" />
@@ -158,7 +158,7 @@
 
 <script setup>
 // ----------------- Imports -----------------
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import draggable from 'vuedraggable';
 import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities';
 import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
@@ -180,6 +180,8 @@ const sortKey = ref(null);
 const sortDirection = ref('asc'); // 'asc' or 'desc'
 const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
 
+const searchQuery = ref('');
+
 const defaultColumns = [
   { key: 'select', label: '', thClass: '', tdClass: '' },
   { key: 'description', label: 'Description', thClass: 'text-light-emphasis text-start sortable', tdClass: 'text-light-emphasis text-start' },
@@ -199,6 +201,43 @@ const columnsnames = columns.value.map(col => ({
   tdClass: col.tdClass || 'text-light-emphasis text-nowrap'
 }));
 const headers = ref([...columnsnames]);
+
+const filteredTransactions = computed(() => {
+  if (!searchQuery.value.trim()) return transactions.value;
+  const query = searchQuery.value.trim().toLowerCase();
+  return transactions.value.filter(tx => {
+    // Check all columns for a match
+    return columns.value.some(col => {
+      let value = '';
+      switch (col.key) {
+        case 'description':
+          value = tx.description;
+          break;
+        case 'amount':
+          value = String(tx.amount);
+          break;
+        case 'account':
+          value = formatAccounts(tx.account_id);
+          break;
+        case 'category':
+          value = tx.category_name;
+          break;
+        case 'type':
+          value = formatTransactionType(tx);
+          break;
+        case 'date':
+          value = tx.date;
+          break;
+        case 'note':
+          value = tx.note;
+          break;
+        default:
+          value = '';
+      }
+      return (value || '').toLowerCase().includes(query);
+    });
+  });
+});
 
 // ----------------- Synchronous Functions -----------------
 function getColumnsStorageKey() {
