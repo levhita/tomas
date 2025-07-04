@@ -21,10 +21,19 @@
                 </ol>
               </nav>
             </div>
-            <RouterLink to="/admin/teams" class="btn btn-outline-secondary">
-              <i class="bi bi-arrow-left me-1"></i>
-              Back to Teams
-            </RouterLink>
+            <div class="d-flex gap-2">
+              <RouterLink to="/admin/teams" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Teams
+              </RouterLink>
+              <button 
+                v-if="!isCreating && !team?.deleted_at" 
+                class="btn btn-outline-danger" 
+                @click="deleteTeam"
+                :disabled="isSaving">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Team Form Card -->
@@ -35,25 +44,40 @@
               </h5>
             </div>
             <div class="card-body">
-              <form @submit.prevent="saveTeam">
-                <!-- Team Name Field -->
-                <div class="form-floating mb-3">
-                  <input type="text" class="form-control" :class="{ 'is-invalid': errors.name }" id="teamName"
-                    v-model="form.name" placeholder="Team Name" required :disabled="isSaving" ref="teamNameInput">
-                  <label for="teamName">Team Name</label>
-                  <div class="invalid-feedback" v-if="errors.name">
-                    {{ errors.name }}
-                  </div>
-                </div>
-
-                <!-- Submit Buttons -->
-                <div class="d-flex justify-content-end gap-2">
-                  <RouterLink to="/admin/teams" class="btn btn-outline-secondary">
+              <!-- Deleted Team Warning -->
+              <div v-if="team?.deleted_at" class="alert alert-warning mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Deleted Team</strong> - This team was deleted on {{ formatDate(team.deleted_at) }}. 
+                Team members cannot access this team's content until it is restored.
+                <div class="mt-2 d-flex gap-2">
+                  <RouterLink to="/admin/teams" class="btn btn-secondary">
                     Cancel
                   </RouterLink>
-                  <button type="submit" class="btn btn-primary" :disabled="isSaving">
+                  <button class="btn btn-sm btn-success" @click="restoreTeam" :disabled="isSaving">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>
+                    Restore Team
+                  </button>
+                  <button class="btn btn-sm btn-danger" @click="permanentlyDeleteTeam" :disabled="isSaving">
+                    <i class="bi bi-trash3 me-1"></i>
+                    Delete Permanently
+                  </button>
+                </div>
+              </div>
+
+              <form @submit.prevent="saveTeam">
+                <!-- Team Name Field -->
+                <div class="d-flex gap-2 mb-3">
+                  <div class="form-floating flex-grow-1">
+                    <input type="text" class="form-control" :class="{ 'is-invalid': errors.name }" id="teamName"
+                      v-model="form.name" placeholder="Team Name" required :disabled="isSaving || !!team?.deleted_at" ref="teamNameInput">
+                    <label for="teamName">Team Name</label>
+                    <div class="invalid-feedback" v-if="errors.name">
+                      {{ errors.name }}
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary align-self-start" :disabled="isSaving || !!team?.deleted_at">
                     <span v-if="isSaving" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    {{ isCreating ? 'Create Team' : 'Save Changes' }}
+                    {{ isCreating ? 'Create Team' : 'Update Name' }}
                   </button>
                 </div>
               </form>
@@ -70,6 +94,13 @@
               </button>
             </div>
             <div class="card-body p-0">
+              <!-- Deleted Team Info -->
+              <div v-if="team?.deleted_at" class="alert alert-info mx-3 mt-3 mb-0" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Note:</strong> Member management is disabled for deleted teams. 
+                Restore the team to enable adding/removing members and changing roles.
+              </div>
+              
               <div v-if="isLoadingMembers" class="p-4 text-center">
                 <div class="spinner-border" role="status">
                   <span class="visually-hidden">Loading members...</span>
@@ -79,11 +110,12 @@
                 <p class="mb-0">No members in this team yet.</p>
               </div>
               <div v-else class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
+                <table class="table table-hover mb-0" :class="{ 'table-muted': !!team?.deleted_at }">
+                  <thead class="table">
                     <tr>
                       <th>User</th>
                       <th>Role</th>
+                      <th>Status</th>
                       <th>Joined</th>
                       <th>Actions</th>
                     </tr>
@@ -113,15 +145,31 @@
                         </select>
                       </td>
                       <td>
+                        <span 
+                          class="badge" 
+                          :class="user.active ? 'bg-success' : 'bg-danger'">
+                          {{ user.active ? 'Active' : 'Inactive' }}
+                        </span>
+                      </td>
+                      <td>
                         <small>{{ formatDate(user.created_at) }}</small>
                       </td>
                       <td>
-                        <button 
-                          class="btn btn-sm btn-outline-danger" 
-                          @click="removeUser(user)"
-                          :disabled="!!team?.deleted_at">
-                          <i class="bi bi-person-x"></i>
-                        </button>
+                        <div class="d-flex gap-1">
+                          <RouterLink 
+                            :to="`/admin/users/${user.id}/edit`" 
+                            class="btn btn-sm btn-outline-primary"
+                            title="Go to User">
+                            <i class="bi bi-person"></i>
+                          </RouterLink>
+                          <button 
+                            class="btn btn-sm btn-outline-danger" 
+                            @click="removeUser(user)"
+                            :disabled="!!team?.deleted_at"
+                            title="Remove User">
+                            <i class="bi bi-person-x"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -148,59 +196,13 @@
     </div>
 
     <!-- Add User Modal -->
-    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <!-- Modal Header -->
-          <div class="modal-header">
-            <h3 class="modal-title fs-5" id="addUserModalLabel">Add Member to {{ team?.name }}</h3>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <!-- Modal Body -->
-          <div class="modal-body">
-            <form @submit.prevent="addUserToTeam">
-              <!-- User Selection -->
-              <div class="form-floating mb-3">
-                <select class="form-select" id="selectedUserId" v-model="addUserForm.userId" required>
-                  <option value="" disabled>Select a user</option>
-                  <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                    {{ user.username }}
-                  </option>
-                </select>
-                <label for="selectedUserId">User</label>
-              </div>
-              
-              <!-- Role Selection -->
-              <div class="form-floating mb-3">
-                <select class="form-select" id="selectedRole" v-model="addUserForm.role" required>
-                  <option value="admin">Admin</option>
-                  <option value="collaborator">Collaborator</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-                <label for="selectedRole">Role</label>
-                <div class="form-text">
-                  <strong>Admin:</strong> Can manage team settings and members<br>
-                  <strong>Collaborator:</strong> Can edit books and transactions<br>
-                  <strong>Viewer:</strong> Can only view team content
-                </div>
-              </div>
-
-              <!-- Submit Buttons -->
-              <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                  Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" :disabled="isAddingUser">
-                  <span v-if="isAddingUser" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                  Add Member
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AddUserModal
+      :team-name="team?.name || ''"
+      :team-id="teamId || 0"
+      :is-submitting="isAddingUser"
+      @submit="addUserToTeam"
+      ref="addUserModal"
+    />
   </AdminLayout>
 </template>
 
@@ -225,6 +227,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import AddUserModal from './modals/AddUserModal.vue'
 import { useTeamsStore } from '../../stores/teams'
 import { useUsersStore } from '../../stores/users'
 import { useConfirm } from '../../composables/useConfirm'
@@ -245,27 +248,19 @@ const isSaving = ref(false)
 const isLoadingMembers = ref(false)
 const isAddingUser = ref(false)
 const teamUsers = ref([])
-const modalInstance = ref(null)
+const addUserModal = ref(null)
 const teamNameInput = ref(null)
 
 // Form state
 const form = ref({
   name: ''
 })
-const addUserForm = ref({
-  userId: '',
-  role: 'viewer'
-})
 const errors = ref({
   name: ''
 })
 
 // Computed properties
-const availableUsers = computed(() => {
-  // Filter out users that are already in the team
-  const teamUserIds = teamUsers.value.map(user => user.id)
-  return usersStore.users.filter(user => !teamUserIds.includes(user.id))
-})
+// Note: availableUsers is no longer used since we now use search instead of loading all users
 
 // Helper functions
 function getUserInitials(username) {
@@ -348,9 +343,120 @@ async function saveTeam() {
   }
 }
 
+async function restoreTeam() {
+  try {
+    await confirm({
+      title: 'Restore Team',
+      message: `Are you sure you want to restore team "${team.value.name}"?`,
+      confirmText: 'Restore',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'success'
+    })
+    
+    isSaving.value = true
+    
+    // Restore team using the dedicated restore endpoint
+    await teamsStore.restoreTeam(teamId.value)
+    
+    showToast({
+      title: 'Success',
+      message: 'Team restored successfully!',
+      variant: 'success'
+    })
+    
+    // Reload team data
+    await loadTeam()
+  } catch (error) {
+    if (error.message === 'User canceled') return
+    
+    console.error('Error restoring team:', error)
+    showToast({
+      title: 'Error',
+      message: `Error restoring team: ${error.message}`,
+      variant: 'danger'
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+async function permanentlyDeleteTeam() {
+  try {
+    await confirm({
+      title: 'Permanently Delete Team',
+      message: `Are you sure you want to permanently delete team "${team.value.name}"? This action cannot be undone and will remove all team data including books, transactions, and member associations.`,
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'danger'
+    })
+    
+    isSaving.value = true
+    
+    // Permanently delete team
+    await teamsStore.permanentlyDeleteTeam(teamId.value)
+    
+    showToast({
+      title: 'Success',
+      message: 'Team permanently deleted successfully!',
+      variant: 'success'
+    })
+    
+    // Navigate back to teams list
+    router.push('/admin/teams')
+  } catch (error) {
+    if (error.message === 'User canceled') return
+    
+    console.error('Error permanently deleting team:', error)
+    showToast({
+      title: 'Error',
+      message: `Error permanently deleting team: ${error.message}`,
+      variant: 'danger'
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+async function deleteTeam() {
+  try {
+    await confirm({
+      title: 'Delete Team',
+      message: `Are you sure you want to delete team "${team.value.name}"? This will soft-delete the team and members will lose access to it. The team can be restored later from the admin panel.`,
+      confirmText: 'Delete Team',
+      cancelText: 'Cancel',
+      confirmButtonVariant: 'danger'
+    })
+    
+    isSaving.value = true
+    
+    // Soft delete team
+    await teamsStore.deleteTeam(teamId.value)
+    
+    showToast({
+      title: 'Success',
+      message: 'Team deleted successfully!',
+      variant: 'success'
+    })
+    
+    // Reload team data to show deleted state
+    await loadTeam()
+  } catch (error) {
+    if (error.message === 'User canceled') return
+    
+    console.error('Error deleting team:', error)
+    showToast({
+      title: 'Error',
+      message: `Error deleting team: ${error.message}`,
+      variant: 'danger'
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
 // User management functions
-async function addUserToTeam() {
-  if (!addUserForm.value.userId || !addUserForm.value.role) {
+async function addUserToTeam(formData) {
+  if (!formData.userId || !formData.role) {
     showToast({
       title: 'Error',
       message: 'Please select a user and role',
@@ -364,8 +470,8 @@ async function addUserToTeam() {
   try {
     await teamsStore.addUserToTeam(
       teamId.value,
-      addUserForm.value.userId,
-      addUserForm.value.role
+      formData.userId,
+      formData.role
     )
     
     showToast({
@@ -377,9 +483,9 @@ async function addUserToTeam() {
     // Refresh team users
     await loadTeamUsers()
     
-    // Close the modal using Bootstrap
-    if (modalInstance.value) {
-      modalInstance.value.hide()
+    // Close the modal
+    if (addUserModal.value) {
+      addUserModal.value.hide()
     }
   } catch (error) {
     console.error('Error adding user to team:', error)
@@ -518,30 +624,7 @@ onMounted(async () => {
     }
   })
   
-  // Initialize Bootstrap modal
-  nextTick(() => {
-    // Import Bootstrap's Modal class
-    import('bootstrap').then(bootstrap => {
-      // Initialize the modal
-      const modalEl = document.getElementById('addUserModal')
-      if (modalEl) {
-        modalInstance.value = new bootstrap.Modal(modalEl)
-        
-        // Reset form when modal is hidden
-        modalEl.addEventListener('hidden.bs.modal', () => {
-          addUserForm.value = {
-            userId: '',
-            role: 'viewer'
-          }
-        })
-      }
-    })
-  })
-  
-  // Load users for team member management
-  if (usersStore.users.length === 0) {
-    await usersStore.fetchAllUsers()
-  }
+  // Note: No longer loading all users since we use search instead
 })
 </script>
 

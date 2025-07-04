@@ -264,6 +264,40 @@ describe('Teams Management API', () => {
 
       validateApiResponse(response, 404);
     });
+
+    it('should allow superadmin to view soft-deleted team', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      
+      // First soft-delete team 1
+      await auth.delete('/api/teams/1');
+      
+      // Superadmin should still be able to view the soft-deleted team
+      const response = await auth.get('/api/teams/1');
+      
+      validateApiResponse(response, 200);
+      expect(response.body).toHaveProperty('id', 1);
+      expect(response.body).toHaveProperty('name');
+      expect(response.body.deleted_at).not.toBeNull();
+      
+      // Restore team for other tests
+      await auth.post('/api/teams/1/restore');
+    });
+
+    it('should deny regular team members access to soft-deleted team', async () => {
+      const superAuth = authenticatedRequest(superadminToken);
+      const memberAuth = authenticatedRequest(adminToken);
+      
+      // First soft-delete team 1
+      await superAuth.delete('/api/teams/1');
+      
+      // Regular team member should not be able to view soft-deleted team
+      const response = await memberAuth.get('/api/teams/1');
+      
+      validateApiResponse(response, 404);
+      
+      // Restore team for other tests
+      await superAuth.post('/api/teams/1/restore');
+    });
   });
 
   describe('POST /api/teams', () => {
@@ -633,6 +667,99 @@ describe('Teams Management API', () => {
     });
   });
 
+  describe('Deleted Team Member Management Restrictions', () => {
+    beforeEach(async () => {
+      await resetBeforeTest(); // Reset for clean state
+    });
+
+    it('should prevent adding users to deleted teams for non-superadmin', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+
+      // First, soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Try to add a user to the deleted team
+      const response = await auth.post('/api/teams/1/users').send({
+        userId: TEST_USERS.NOACCESS.id,
+        role: 'viewer'
+      });
+
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+    });
+
+    it('should prevent removing users from deleted teams for non-superadmin', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+
+      // First, soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Try to remove a user from the deleted team
+      const response = await auth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+    });
+
+    it('should prevent changing user roles in deleted teams for non-superadmin', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+
+      // First, soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Try to change a user's role in the deleted team
+      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`).send({
+        role: 'collaborator'
+      });
+
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+    });
+
+    it('should allow superadmin to manage deleted team members', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const superAuth = authenticatedRequest(superadminToken);
+
+      // First, soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Superadmin should be able to add users to deleted teams
+      const addResponse = await superAuth.post('/api/teams/1/users').send({
+        userId: TEST_USERS.NOACCESS.id,
+        role: 'viewer'
+      });
+      validateApiResponse(addResponse, 201);
+
+      // Superadmin should be able to change roles in deleted teams
+      const updateResponse = await superAuth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`).send({
+        role: 'collaborator'
+      });
+      validateApiResponse(updateResponse, 200);
+
+      // Superadmin should be able to remove users from deleted teams
+      const removeResponse = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.NOACCESS.id}`);
+      validateApiResponse(removeResponse, 204);
+    });
+
+    it('should restore team member management after restoration', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const superAuth = authenticatedRequest(superadminToken);
+
+      // First, soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Restore the team
+      await superAuth.post('/api/teams/1/restore');
+
+      // Now regular admin should be able to manage members again
+      const response = await auth.post('/api/teams/1/users').send({
+        userId: TEST_USERS.NOACCESS.id,
+        role: 'viewer'
+      });
+      validateApiResponse(response, 201);
+    });
+  });
+
   describe('Team Deletion Management', () => {
     describe('DELETE /api/teams/:id - Soft Delete', () => {
       beforeEach(async () => {
@@ -661,9 +788,10 @@ describe('Teams Management API', () => {
         const response = await auth.delete('/api/teams/2');
         validateApiResponse(response, 204);
 
-        // Verify team is soft-deleted
+        // Verify team is soft-deleted - superadmin can still view deleted teams
         const teamResponse = await auth.get('/api/teams/2');
-        validateApiResponse(teamResponse, 404);
+        validateApiResponse(teamResponse, 200);
+        expect(teamResponse.body.deleted_at).toBeTruthy();
       });
 
       it('should deny collaborator from soft-deleting team', async () => {

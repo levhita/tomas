@@ -279,6 +279,53 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   /**
+   * Search users by username - Super admin only
+   * @param {string} query - Search query
+   * @param {number} limit - Maximum number of results (default 10)
+   * @param {number} teamId - Optional team ID to check membership status
+   * @returns {Promise<Array>} List of matching users with membership status
+   */
+  async function searchUsers(query, limit = 10, teamId = null) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+
+    if (!query || query.trim().length < 1) {
+      return [];
+    }
+
+    try {
+      const searchParams = new URLSearchParams({
+        q: query.trim(),
+        limit: limit.toString()
+      });
+      
+      if (teamId) {
+        searchParams.append('teamId', teamId.toString());
+      }
+      
+      const response = await fetch(`/api/users/search?${searchParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to search users');
+      }
+
+      const userData = await response.json();
+      return userData;
+    } catch (error) {
+      console.error('Search users error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new user - Super admin only
    * @param {Object} userData - User data
    * @param {string} userData.username - Username
@@ -733,79 +780,39 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   /**
-   * Fetch user's teams
+   * Fetch teams for a specific user (admin only)
+   * @param {number} userId - User ID
+   * @returns {Promise<Array>} List of teams the user belongs to
    */
-  async function fetchUserTeams() {
+  async function fetchUserTeamsById(userId) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+    
     try {
-      if (!token.value) {
-        throw new Error('No token available');
-      }
-
-      const response = await fetch('/api/users/me/teams', {
+      const response = await fetch(`/api/users/${userId}/teams`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
           'Content-Type': 'application/json',
         },
       });
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('Token expired');
-        }
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch teams');
-      }
-
-      const teams = await response.json();
-      return teams;
-    } catch (error) {
-      console.error('Fetch teams error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Select a team and get new token with team information
-   * @param {number} teamId - Team ID to select
-   */
-  async function selectTeam(teamId) {
-    try {
-      if (!token.value) {
-        throw new Error('No token available');
-      }
-
-      const response = await fetch('/api/users/select-team', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token.value}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ teamId }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('Access denied');
-        }
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to select team');
-      }
-
-      const data = await response.json();
       
-      // Update token with new team information
-      token.value = data.token;
-      localStorage.setItem('token', data.token);
-
-      // Update current user with team information
-      if (currentUser.value) {
-        currentUser.value.selectedTeam = data.team;
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch user teams';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error('Could not parse error response:', e);
+        }
+        throw new Error(errorMessage);
       }
-
+      
+      const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Select team error:', error);
+      console.error('Fetch user teams error:', error);
       throw error;
     }
   }
@@ -832,6 +839,7 @@ export const useUsersStore = defineStore('users', () => {
     initializeFromToken,
     // Admin actions
     fetchAllUsers,
+    searchUsers,
     createUser,
     updateUser,
     deleteUser,
@@ -848,6 +856,7 @@ export const useUsersStore = defineStore('users', () => {
     removeUserFromBook,
     // Team management
     fetchUserTeams,
-    selectTeam
+    selectTeam,
+    fetchUserTeamsById
   };
 });

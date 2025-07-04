@@ -127,29 +127,39 @@ async function canRead(teamId, userId) {
  * Get users of a team
  * 
  * Retrieves all users who have access to a team, along with their
- * roles and basic profile information. Only works for active (non-deleted) teams.
+ * roles and basic profile information. Can optionally include deleted teams.
  * 
  * This is typically used in team management interfaces and for
  * permission verification.
  * 
  * @param {number} teamId - The team ID to get users for
+ * @param {boolean} includeDeleted - Whether to include deleted teams (default: false)
  * @returns {Promise<Array>} - Returns array of team users with their roles
  * 
  * @example
  * // Returns an array of objects like:
  * // [{ id: 1, username: 'johndoe', role: 'admin', created_at: '2023-01-01' }, ...]
  */
-async function getTeamUsers(teamId) {
-  const [users] = await db.execute(`
-    SELECT u.id, u.username, tu.role, u.created_at
+async function getTeamUsers(teamId, includeDeleted = false) {
+  let query = `
+    SELECT u.id, u.username, tu.role, u.created_at, u.active
     FROM user u
     INNER JOIN team_user tu ON u.id = tu.user_id
     INNER JOIN team t ON tu.team_id = t.id
-    WHERE tu.team_id = ? AND t.deleted_at IS NULL
-    ORDER BY u.username ASC
-  `, [teamId]);
+    WHERE tu.team_id = ?`;
+  
+  if (!includeDeleted) {
+    query += ' AND t.deleted_at IS NULL';
+  }
+  
+  query += ' ORDER BY u.username ASC';
 
-  return users;
+  const [users] = await db.execute(query, [teamId]);
+
+  return users.map(user => ({
+    ...user,
+    active: user.active === 1
+  }));
 }
 
 /**
@@ -176,7 +186,23 @@ async function getTeamById(teamId, includeDeleted = false) {
   }
 
   const [teams] = await db.execute(query, [teamId]);
-  return teams[0] || null;
+  const team = teams[0];
+  
+  if (!team) {
+    return null;
+  }
+
+  // Get book count for this team
+  const [bookCounts] = await db.execute(`
+    SELECT COUNT(*) as book_count
+    FROM book
+    WHERE team_id = ? AND deleted_at IS NULL
+  `, [teamId]);
+
+  return {
+    ...team,
+    book_count: bookCounts[0].book_count || 0
+  };
 }
 
 /**

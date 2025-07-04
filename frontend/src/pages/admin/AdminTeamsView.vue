@@ -23,7 +23,7 @@
           </div>
 
           <!-- Search and Filters -->
-          <div class="card mb-4 admin-filters">
+          <div class="card mb-4">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-6">
@@ -148,7 +148,7 @@
                       <td>
                         <div class="btn-group btn-group-sm admin-actions" role="group">
                           <RouterLink :to="`/admin/teams/${team.id}/edit`" class="btn btn-outline-primary" 
-                            title="Edit team" :class="{ 'disabled': !!team.deleted_at }">
+                            title="Edit team">
                             <i class="bi bi-pencil"></i>
                           </RouterLink>
                           <button type="button" class="btn"

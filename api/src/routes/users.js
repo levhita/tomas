@@ -106,6 +106,72 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * GET /users/search
+ * Search users by username (for adding to teams)
+ * 
+ * @query {string} q - Search query (username partial match)
+ * @query {number} limit - Maximum number of results (default 10)
+ * @query {number} teamId - Optional team ID to check membership status
+ * @permission SuperAdmin only
+ * @returns {Array} List of matching users with membership status
+ */
+router.get('/search', requireSuperAdmin, async (req, res) => {
+  try {
+    const { q, limit = 10, teamId } = req.query;
+    
+    if (!q || q.trim().length < 1) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    const searchTerm = `%${q.trim()}%`;
+    const resultLimit = Math.min(parseInt(limit) || 10, 50); // Cap at 50 results
+    
+    let query = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.superadmin, 
+        u.active,
+        u.created_at,
+        CASE 
+          WHEN tu.user_id IS NOT NULL THEN 1 
+          ELSE 0 
+        END as is_team_member,
+        tu.role as team_role
+      FROM user u
+      LEFT JOIN team_user tu ON u.id = tu.user_id ${teamId ? 'AND tu.team_id = ?' : ''}
+      WHERE u.username LIKE ? 
+        AND u.active = 1
+    `;
+    
+    const queryParams = [];
+    
+    // Add teamId parameter if provided (for the LEFT JOIN)
+    if (teamId) {
+      queryParams.push(parseInt(teamId));
+    }
+    
+    queryParams.push(searchTerm);
+    
+    query += ` ORDER BY u.username ASC LIMIT ?`;
+    queryParams.push(resultLimit);
+    
+    const [users] = await db.query(query, queryParams);
+    
+    res.status(200).json(users.map(user => ({
+      ...user,
+      superadmin: user.superadmin === 1,
+      active: user.active === 1,
+      is_team_member: user.is_team_member === 1,
+      team_role: user.team_role || null
+    })));
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+/**
  * GET /users
  * Get list of all users with team statistics
  * 
@@ -162,7 +228,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     // The user information is already available from the auth middleware
     // But we'll fetch fresh data from the database to ensure it's up to date
     const [users] = await db.query(`
-      SELECT id, username, superadmin, active, created_at 
+      SELECT id, username, superadmin, active, created_at
       FROM user 
       WHERE id = ?
     `, [req.user.id]);
@@ -202,7 +268,8 @@ router.get('/me/teams', authenticateToken, async (req, res) => {
         t.id, 
         t.name, 
         tu.role,
-        t.created_at
+        t.created_at,
+        t.deleted_at
       FROM team t
       INNER JOIN team_user tu ON t.id = tu.team_id
       WHERE tu.user_id = ?

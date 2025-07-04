@@ -170,7 +170,9 @@ router.get('/all', requireSuperAdmin, async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const team = await getTeamById(req.params.id);
+    // Superadmin can access any team, including deleted ones
+    const includeDeleted = req.user.superadmin;
+    const team = await getTeamById(req.params.id, includeDeleted);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
@@ -303,10 +305,15 @@ router.post('/:id/users', async (req, res) => {
   }
 
   try {
-    // First check if the team exists
-    const team = await getTeamById(req.params.id);
+    // First check if the team exists (including deleted teams)
+    const team = await getTeamById(req.params.id, true);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check if team is deleted - only allow superadmins to manage deleted teams
+    if (team.deleted_at && !req.user.superadmin) {
+      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
     }
 
     // Then check if user has admin access (or is superadmin)
@@ -358,10 +365,15 @@ router.post('/:id/users', async (req, res) => {
  */
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
-    // First check if team exists
-    const team = await getTeamById(req.params.id);
+    // First check if team exists (including deleted teams)
+    const team = await getTeamById(req.params.id, true);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check if team is deleted - only allow superadmins to manage deleted teams
+    if (team.deleted_at && !req.user.superadmin) {
+      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
     }
 
     // Then check admin permission (or is superadmin)
@@ -425,10 +437,15 @@ router.put('/:id/users/:userId', async (req, res) => {
   }
 
   try {
-    // First check if the team exists
-    const team = await getTeamById(req.params.id);
+    // First check if the team exists (including deleted teams)
+    const team = await getTeamById(req.params.id, true);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check if team is deleted - only allow superadmins to manage deleted teams
+    if (team.deleted_at && !req.user.superadmin) {
+      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
     }
 
     // Then check if user has admin access (or is superadmin)
@@ -487,8 +504,9 @@ router.put('/:id/users/:userId', async (req, res) => {
  */
 router.get('/:id/users', async (req, res) => {
   try {
-    // First check if the team exists
-    const team = await getTeamById(req.params.id);
+    // Superadmin can access any team, including deleted ones
+    const includeDeleted = req.user.superadmin;
+    const team = await getTeamById(req.params.id, includeDeleted);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
@@ -501,7 +519,7 @@ router.get('/:id/users', async (req, res) => {
       }
     }
 
-    const users = await getTeamUsers(req.params.id);
+    const users = await getTeamUsers(req.params.id, includeDeleted);
     res.status(200).json(users);
   } catch (err) {
     console.error('Database error:', err);

@@ -358,6 +358,104 @@ export const useTeamsStore = defineStore('teams', () => {
     }
   }
   
+  /**
+   * Restore a soft-deleted team - Super admin only
+   * @param {number} teamId - Team ID
+   * @returns {Promise<Object>} Restored team data
+   */
+  async function restoreTeam(teamId) {
+    if (!usersStore.isSuperAdmin) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+    
+    try {
+      const response = await fetch(`/api/teams/${teamId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${usersStore.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to restore team');
+      }
+      
+      const restoredTeam = await response.json();
+      
+      // Update the team in the local teams array
+      const index = teams.value.findIndex(team => team.id === teamId);
+      if (index !== -1) {
+        teams.value[index] = { ...teams.value[index], ...restoredTeam };
+      }
+      
+      return restoredTeam;
+    } catch (error) {
+      console.error('Restore team error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restore multiple soft-deleted teams - Super admin only
+   * @param {Array<number>} teamIds - Array of team IDs
+   * @returns {Promise<Array>} List of restored teams
+   */
+  async function restoreMultipleTeams(teamIds) {
+    if (!usersStore.isSuperAdmin) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+    
+    try {
+      const restoredTeams = [];
+      
+      for (const teamId of teamIds) {
+        const restoredTeam = await restoreTeam(teamId);
+        restoredTeams.push(restoredTeam);
+      }
+      
+      return restoredTeams;
+    } catch (error) {
+      console.error('Restore multiple teams error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Permanently delete a team and all associated data - Super admin only
+   * @param {number} teamId - Team ID
+   * @returns {Promise<Object>} Deletion result
+   */
+  async function permanentlyDeleteTeam(teamId) {
+    if (!usersStore.isSuperAdmin) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+    
+    try {
+      const response = await fetch(`/api/teams/${teamId}/permanent`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${usersStore.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to permanently delete team');
+      }
+      
+      // Remove the team from the local teams array
+      teams.value = teams.value.filter(team => team.id !== teamId);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Permanently delete team error:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     teams,
@@ -378,6 +476,9 @@ export const useTeamsStore = defineStore('teams', () => {
     updateUserRole,
     removeUserFromTeam,
     getTeamById,
-    fetchTeam: getTeamById
+    fetchTeam: getTeamById,
+    restoreTeam,
+    restoreMultipleTeams,
+    permanentlyDeleteTeam
   };
 });

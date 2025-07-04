@@ -81,11 +81,11 @@
 
               <div v-else class="table-responsive">
                 <table class="table table-hover mb-0">
-                  <thead class="table-light">
+                  <thead class="table">
                     <tr>
                       <th>User</th>
                       <th>Role</th>
-                      <th>Books</th>
+                      <th>Teams</th>
                       <th>Status</th>
                       <th>Created</th>
                       <th>Actions</th>
@@ -107,32 +107,36 @@
                         </div>
                       </td>
                       <td>
-                        <span class="badge status-badge" :class="user.superadmin ? 'bg-danger' : 'bg-secondary'">
+                        <span class="badge status-badge" :class="user.superadmin ? 'bg-primary' : 'bg-info'">
                           {{ user.superadmin ? 'Super Admin' : 'User' }}
                         </span>
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ user.book_count || 0 }}
-                            book{{ (user.book_count || 0) !== 1 ? 's' : '' }}</span>
-                          <small class="text-muted" v-if="user.book_count > 0">
-                            <span v-if="user.admin_books > 0" class="me-2">
-                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_books }} admin
+                          <span class="fw-semibold">{{ user.team_count || 0 }}
+                            team{{ (user.team_count || 0) !== 1 ? 's' : '' }}</span>
+                          <small class="text-muted" v-if="user.team_count > 0">
+                            <span v-if="user.admin_teams > 0" class="me-2">
+                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_teams }} admin
                             </span>
-                            <span v-if="user.collaborator_books > 0" class="me-2">
-                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_books }} edit
+                            <span v-if="user.collaborator_teams > 0" class="me-2">
+                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_teams }} edit
                             </span>
-                            <span v-if="user.viewer_books > 0">
-                              <i class="bi bi-eye text-info"></i> {{ user.viewer_books }} view
+                            <span v-if="user.viewer_teams > 0">
+                              <i class="bi bi-eye text-info"></i> {{ user.viewer_teams }} view
                             </span>
                           </small>
                           <small class="text-muted" v-else>
-                            No book access
+                            No team access
                           </small>
                         </div>
                       </td>
                       <td>
-                        <span class="badge status-badge" :class="user.active ? 'bg-success' : 'bg-danger'">
+                        <span class="badge status-badge btn" 
+                          :class="user.active ? 'bg-info' : 'bg-secondary'"
+                          @click="toggleUserStatus(user)" 
+                          :title="user.active ? 'Click to disable user' : 'Click to enable user'"
+                          :disabled="user.id === usersStore.currentUser?.id">
                           {{ user.active ? 'Active' : 'Inactive' }}
                         </span>
                       </td>
@@ -140,18 +144,12 @@
                         <small>{{ formatDate(user.created_at) }}</small>
                       </td>
                       <td>
-                        <div class="btn-group btn-group-sm admin-actions" role="group">
-                          <button type="button" class="btn btn-outline-primary" @click="editUser(user)"
+                        <div class="admin-actions">
+                          <button type="button" class="btn btn-link me-2" @click="editUser(user)"
                             title="Edit user">
                             <i class="bi bi-pencil"></i>
                           </button>
-                          <button type="button" class="btn"
-                            :class="user.active ? 'btn-outline-warning' : 'btn-outline-success'"
-                            @click="toggleUserStatus(user)" :title="user.active ? 'Disable user' : 'Enable user'"
-                            :disabled="user.id === usersStore.currentUser?.id">
-                            <i class="bi" :class="user.active ? 'bi-pause-circle' : 'bi-play-circle'"></i>
-                          </button>
-                          <button type="button" class="btn btn-outline-danger" @click="deleteUser(user)"
+                          <button type="button" class="btn btn-link" @click="deleteUser(user)"
                             title="Delete user" :disabled="user.id === usersStore.currentUser?.id">
                             <i class="bi bi-trash"></i>
                           </button>
@@ -285,7 +283,7 @@ async function toggleUserStatus(user) {
       message: `Are you sure you want to ${action} user "${user.username}"?`,
       confirmText: action.charAt(0).toUpperCase() + action.slice(1),
       cancelText: 'Cancel',
-      confirmButtonVariant: user.active ? 'warning' : 'success'
+      confirmButtonVariant: 'primary'
     })
 
     if (user.active) {
