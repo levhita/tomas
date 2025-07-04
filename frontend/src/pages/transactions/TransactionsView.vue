@@ -48,7 +48,7 @@
             </div>
           </div>
           <div class="col-4 col-md-2 m-0">
-            <button class="btn btn-info w-100" type="button">Reset Filters</button>
+            <button class="btn btn-info w-100" type="button" @click="resetFilters">Reset Filters</button>
           </div>
         </form>
         <!-- Sortable Table -->
@@ -220,41 +220,46 @@ const filteredTransactions = computed(() => {
   if (selectedAccountId.value) {
     txs = txs.filter(tx => tx.account_id === selectedAccountId.value);
   }
-  
-    txs = txs.filter(tx => {
-      return columns.value.some(col => {
-        let value = '';
-        switch (col.key) {
-          case 'description':
-            value = tx.description;
-            break;
-          case 'amount':
-            value = String(tx.amount);
-            break;
-          case 'account':
-            value = formatAccounts(tx.account_id);
-            break;
-          case 'category':
-            value = tx.category_name;
-            break;
-          case 'type':
-            value = formatTransactionType(tx);
-            break;
-          case 'date':
-            value = tx.date;
-            break;
-          case 'note':
-            value = tx.note;
-            break;
-          default:
-            value = '';
-        }
-        return (value || '').toLowerCase().includes(query);
-      });
+  txs = txs.filter(tx => {
+    return columns.value.some(col => {
+      let value = '';
+      switch (col.key) {
+        case 'description':
+          value = tx.description;
+          break;
+        case 'amount':
+          value = String(tx.amount);
+          break;
+        case 'account':
+          value = formatAccounts(tx.account_id);
+          break;
+        case 'category':
+          value = tx.category_name;
+          break;
+        case 'type':
+          value = formatTransactionType(tx);
+          break;
+        case 'date':
+          value = tx.date;
+          break;
+        case 'note':
+          value = tx.note;
+          break;
+        default:
+          value = '';
+      }
+      return (value || '').toLowerCase().includes(query);
     });
+  });
   // If no search query or category selected, return all transactions
   return txs;
 });
+
+// Reset Filters functionality
+function resetFilters() {
+  searchQuery.value = '';
+  selectedAccountId.value = null;
+}
 
 // ----------------- Synchronous Functions -----------------
 function getColumnsStorageKey() {
