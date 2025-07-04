@@ -36,6 +36,22 @@
             </div>
           </div>
 
+          <!-- Team Metadata (only for edit mode) -->
+          <div v-if="!isCreating && team" class="d-flex gap-4 mb-3 text-muted">
+            <small>
+              <i class="bi bi-book me-1"></i>
+              {{ team.book_count || 0 }} active {{ team.book_count === 1 ? 'book' : 'books' }}
+            </small>
+            <small v-if="team.deleted_book_count > 0">
+              <i class="bi bi-book-half me-1"></i>
+              {{ team.deleted_book_count }} deleted {{ team.deleted_book_count === 1 ? 'book' : 'books' }}
+            </small>
+            <small>
+              <i class="bi bi-calendar3 me-1"></i>
+              Created {{ formatDate(team.created_at) }}
+            </small>
+          </div>
+
           <!-- Team Form Card -->
           <div class="card mb-4">
             <div class="card-header">
@@ -175,20 +191,6 @@
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-
-          <!-- Team Books Section (only for edit mode) -->
-          <div class="card" v-if="!isCreating && teamId">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Team Books</h5>
-            </div>
-            <div class="card-body">
-              <p class="mb-0">
-                This team has {{ team?.book_count || 0 }} active {{ team?.book_count === 1 ? 'book' : 'books' }}.
-                <br>
-                <small class="text-muted">Note: As a superadmin, you can see the book count but need team access to view book details.</small>
-              </p>
             </div>
           </div>
         </div>

@@ -192,16 +192,24 @@ async function getTeamById(teamId, includeDeleted = false) {
     return null;
   }
 
-  // Get book count for this team
-  const [bookCounts] = await db.execute(`
+  // Get active book count for this team
+  const [activeCounts] = await db.execute(`
     SELECT COUNT(*) as book_count
     FROM book
     WHERE team_id = ? AND deleted_at IS NULL
   `, [teamId]);
 
+  // Get soft-deleted book count for this team
+  const [deletedCounts] = await db.execute(`
+    SELECT COUNT(*) as deleted_book_count
+    FROM book
+    WHERE team_id = ? AND deleted_at IS NOT NULL
+  `, [teamId]);
+
   return {
     ...team,
-    book_count: bookCounts[0].book_count || 0
+    book_count: activeCounts[0].book_count || 0,
+    deleted_book_count: deletedCounts[0].deleted_book_count || 0
   };
 }
 
