@@ -343,6 +343,19 @@ $enable-shadows: true;
   }
 }
 
+// Pagination button color fix for light mode
+.pagination .page-item.active .page-link.bg-info {
+  color: $gnome-light-1 !important; // Use white text for better contrast on purple
+  background-color: $info !important;
+  border-color: $info !important;
+}
+
+// Input focus color should use $info (purple) instead of $primary (blue)
+.form-control:focus, .form-select:focus {
+  border-color: $info !important;
+  box-shadow: 0 0 0 0.25rem rgba($info, 0.25) !important;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Additional Custom Semantic Variables                                      */
 /* -------------------------------------------------------------------------- */
