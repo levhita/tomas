@@ -278,7 +278,6 @@ function onMove(evt) {
 }
 
 function formatAccounts(accountID) {
-  console.log('formatAccounts called with:', accountID);
   const result = accountsStore.getAccountById(accountID);
   return result.name || '-';
 }
