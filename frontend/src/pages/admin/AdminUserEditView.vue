@@ -162,7 +162,7 @@
           <div class="card" v-if="!isNew && userId">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h5 class="card-title mb-0">User Teams ({{ userTeams.length }})</h5>
-              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTeamModal">
+              <button class="btn btn-primary" @click="showAddToTeamModal">
                 <i class="bi bi-people-fill me-1"></i>
                 Add to Team
               </button>
@@ -229,7 +229,7 @@
                             @click="removeUserFromTeam(team)"
                             :disabled="!!team.deleted_at"
                             title="Remove from Team">
-                            <i class="bi bi-person-x-fill"></i>
+                            <i class="bi bi-person-x"></i>
                           </button>
                         </div>
                       </td>
@@ -243,71 +243,27 @@
       </div>
     </div>
 
-    <!-- Add Team Modal -->
-    <div class="modal fade" id="addTeamModal" tabindex="-1" aria-labelledby="addTeamModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <!-- Modal Header -->
-          <div class="modal-header">
-            <h3 class="modal-title fs-5" id="addTeamModalLabel">Add {{ userData.username }} to Team</h3>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <!-- Modal Body -->
-          <div class="modal-body">
-            <form @submit.prevent="addUserToTeam">
-              <!-- Team Selection -->
-              <div class="form-floating mb-3">
-                <select class="form-select" id="selectedTeamId" v-model="addTeamForm.teamId" required>
-                  <option value="" disabled>Select a team</option>
-                  <option v-for="team in availableTeams" :key="team.id" :value="team.id">
-                    {{ team.name }}
-                  </option>
-                </select>
-                <label for="selectedTeamId">Team</label>
-              </div>
-              
-              <!-- Role Selection -->
-              <div class="form-floating mb-3">
-                <select class="form-select" id="selectedTeamRole" v-model="addTeamForm.role" required>
-                  <option value="admin">Admin</option>
-                  <option value="collaborator">Collaborator</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-                <label for="selectedTeamRole">Role</label>
-                <div class="form-text">
-                  <strong>Admin:</strong> Can manage team settings and members<br>
-                  <strong>Collaborator:</strong> Can edit books and transactions<br>
-                  <strong>Viewer:</strong> Can only view team content
-                </div>
-              </div>
-
-              <!-- Submit Buttons -->
-              <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                  Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" :disabled="isAddingToTeam">
-                  <span v-if="isAddingToTeam" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                  Add to Team
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Add User to Team Modal -->
+    <AddUserToTeamModal
+      v-if="!isNew && userId"
+      ref="addToTeamModal"
+      :username="userData.username"
+      :userId="userId"
+      :userTeams="userTeams"
+      @added="handleUserAddedToTeam"
+    />
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUsersStore } from '../../stores/users'
 import { useTeamsStore } from '../../stores/teams'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
 import AdminLayout from '../../layouts/AdminLayout.vue'
+import AddUserToTeamModal from './modals/AddUserToTeamModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -328,26 +284,12 @@ const userTeams = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isLoadingTeams = ref(false)
-const isAddingToTeam = ref(false)
 const error = ref(null)
-const modalInstance = ref(null)
-
-// Form state for adding user to team
-const addTeamForm = ref({
-  teamId: '',
-  role: 'viewer'
-})
+const addToTeamModal = ref(null)
 
 // Computed
 const userId = computed(() => route.params.id ? parseInt(route.params.id) : null)
 const isNew = computed(() => !userId.value)
-
-// Computed properties for team management
-const availableTeams = computed(() => {
-  // Filter out teams that the user is already a member of
-  const userTeamIds = userTeams.value.map(team => team.id)
-  return teamsStore.teams.filter(team => !userTeamIds.includes(team.id) && !team.deleted_at)
-})
 
 // Helper functions
 function formatDate(dateString) {
@@ -367,26 +309,6 @@ onMounted(async () => {
     await loadUserData()
     await loadUserTeams()
   }
-  
-  // Initialize Bootstrap modal
-  nextTick(() => {
-    // Import Bootstrap's Modal class
-    import('bootstrap').then(bootstrap => {
-      // Initialize the modal
-      const modalEl = document.getElementById('addTeamModal')
-      if (modalEl) {
-        modalInstance.value = new bootstrap.Modal(modalEl)
-        
-        // Reset form when modal is hidden
-        modalEl.addEventListener('hidden.bs.modal', () => {
-          addTeamForm.value = {
-            teamId: '',
-            role: 'viewer'
-          }
-        })
-      }
-    })
-  })
   
   // Load teams for team management
   if (teamsStore.teams.length === 0) {
@@ -491,25 +413,14 @@ async function loadUserTeams() {
   }
 }
 
-async function addUserToTeam() {
-  if (!addTeamForm.value.teamId || !addTeamForm.value.role) {
-    showToast({
-      title: 'Error',
-      message: 'Please select a team and role',
-      variant: 'danger'
-    })
-    return
+function showAddToTeamModal() {
+  if (addToTeamModal.value) {
+    addToTeamModal.value.show()
   }
-  
-  isAddingToTeam.value = true
-  
+}
+
+async function handleUserAddedToTeam() {
   try {
-    await teamsStore.addUserToTeam(
-      addTeamForm.value.teamId,
-      userId.value,
-      addTeamForm.value.role
-    )
-    
     showToast({
       title: 'Success',
       message: 'User added to team successfully',
@@ -518,11 +429,6 @@ async function addUserToTeam() {
     
     // Refresh user teams
     await loadUserTeams()
-    
-    // Close the modal using Bootstrap
-    if (modalInstance.value) {
-      modalInstance.value.hide()
-    }
   } catch (error) {
     console.error('Error adding user to team:', error)
     showToast({
@@ -530,8 +436,6 @@ async function addUserToTeam() {
       message: `Error adding user to team: ${error.message}`,
       variant: 'danger'
     })
-  } finally {
-    isAddingToTeam.value = false
   }
 }
 
