@@ -24,7 +24,7 @@
         <form class="row g-2 d-flex align-items-center flex-columns   w-75 p-4 mb-4 bg-light rounded-4 ">
           <div class="col-12 col-md-6 m-0">
             <div class="form-floating">
-              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions">
+              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions" v-model="searchQuery">
               <label for="search" class="text-light-emphasis">Search</label>
             </div>
           </div>
@@ -89,7 +89,7 @@
             </thead>
             
             <tbody>
-              <tr v-for="(transaction, i) in transactions" :key="i">
+              <tr v-for="(transaction, i) in filteredTransactions" :key="i">
                 <td v-for="col in columns" :key="col.key" :class="col.tdClass">
                   <template v-if="col.key === 'select'">
                     <input class="form-check-input" type="checkbox" aria-label="Select row" />
@@ -157,29 +157,30 @@
 </template>
 
 <script setup>
-  import {  onMounted, ref, watch } from 'vue';
-  import draggable from 'vuedraggable';
-  import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities'
+// ----------------- Imports -----------------
+import { onMounted, ref, watch, computed } from 'vue';
+import draggable from 'vuedraggable';
+import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities';
+import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useWorkspacesStore } from '../../stores/workspaces';
+import { useTransactionsStore } from '../../stores/transactions';
+import { useAccountsStore } from '../../stores/accounts';
 
-  import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
-  import { useRouter, useRoute } from 'vue-router'
+// ----------------- use* Instances -----------------
+const router = useRouter();
+const route = useRoute();
+const workspacesStore = useWorkspacesStore();
+const transactionsStore = useTransactionsStore();
+const accountsStore = useAccountsStore();
 
-  import { useWorkspacesStore } from '../../stores/workspaces'
-  import { useTransactionsStore } from '../../stores/transactions'
-  import { useAccountsStore } from '../../stores/accounts'
+// ----------------- State -----------------
+const transactions = ref([]);
+const sortKey = ref(null);
+const sortDirection = ref('asc'); // 'asc' or 'desc'
+const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
 
-
-
-
-
-  const router = useRouter()
-  const route = useRoute()
-
-  // Ref to hold the sorted/displayed transactions
-  const transactions = ref([]);
-  const workspacesStore = useWorkspacesStore();
-  const transactionsStore = useTransactionsStore();
-  const accountsStore = useAccountsStore();
+const searchQuery = ref('');
 
 const defaultColumns = [
   { key: 'select', label: '', thClass: '', tdClass: '' },
@@ -191,123 +192,189 @@ const defaultColumns = [
   { key: 'date', label: 'Date', thClass: 'text-light-emphasis text-end sortable', tdClass: 'text-light-emphasis text-end' },
   { key: 'note', label: 'Note', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
   { key: 'actions', label: 'Actions', thClass: 'text-light-emphasis text-end', tdClass: 'text-end' }
-]
-// Load from localStorage or use default
-const columns = ref(
-  JSON.parse(localStorage.getItem('transactions_columns_order') || 'null') || defaultColumns
-)
+];
+const columns = ref([]);
+
 const columnsnames = columns.value.map(col => ({
   ...col,
   thClass: col.thClass || 'text-light-emphasis text-nowrap',
   tdClass: col.tdClass || 'text-light-emphasis text-nowrap'
 }));
-const headers = ref([...columnsnames])
-console.log('Headers:', headers.value);
-function saveColumnOrder() {
-  localStorage.setItem('transactions_columns_order', JSON.stringify(columns.value))
+const headers = ref([...columnsnames]);
+
+const filteredTransactions = computed(() => {
+  if (!searchQuery.value.trim()) return transactions.value;
+  const query = searchQuery.value.trim().toLowerCase();
+  return transactions.value.filter(tx => {
+    // Check all columns for a match
+    return columns.value.some(col => {
+      let value = '';
+      switch (col.key) {
+        case 'description':
+          value = tx.description;
+          break;
+        case 'amount':
+          value = String(tx.amount);
+          break;
+        case 'account':
+          value = formatAccounts(tx.account_id);
+          break;
+        case 'category':
+          value = tx.category_name;
+          break;
+        case 'type':
+          value = formatTransactionType(tx);
+          break;
+        case 'date':
+          value = tx.date;
+          break;
+        case 'note':
+          value = tx.note;
+          break;
+        default:
+          value = '';
+      }
+      return (value || '').toLowerCase().includes(query);
+    });
+  });
+});
+
+// ----------------- Synchronous Functions -----------------
+function getColumnsStorageKey() {
+  const wsId = workspacesStore?.currentWorkspace?.id;
+  return wsId ? `transactions_columns_order_${wsId}` : 'transactions_columns_order_default';
+}
+function getSortStorageKey() {
+  const wsId = workspacesStore?.currentWorkspace?.id;
+  return wsId ? `transactions_sort_${wsId}` : 'transactions_sort_default';
 }
 
-// Optionally restrict movement (e.g., keep select/actions fixed)
+function initColumns() {
+  const saved = localStorage.getItem(getColumnsStorageKey());
+  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
+}
+initColumns();
+
+// Save column order per workspace
+function saveColumnOrder() {
+  localStorage.setItem(getColumnsStorageKey(), JSON.stringify(columns.value));
+}
+
 function onMove(evt) {
   // Prevent moving the first or last column (select/actions)
   if (
     evt.draggedContext.element.key === 'select' ||
     evt.draggedContext.element.key === 'actions'
   ) {
-    return false
+    return false;
   }
   if (
     evt.relatedContext.element.key === 'select' ||
     evt.relatedContext.element.key === 'actions'
   ) {
-    return false
+    return false;
   }
-  return true
+  return true;
 }
-  const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
 
-  function formatAccounts(accountID) {
-    console.log('formatAccounts called with:', accountID);
-    const result =  accountsStore.getAccountById(accountID);
-    
-    return result.name || '-';
-  }   
-
-  async function validateAndSetWorkspace() {
-    const workspaceId = route.params.workspaceId || route.query.workspaceId;
-    if (!workspaceId) {
-      console.error('No workspace ID provided in route params or query');
-      return;
-    }
-    const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
-    return result;
-
-  }
-
-  const sortKey = ref(null)
-const sortDirection = ref('asc') // 'asc' or 'desc'
+function formatAccounts(accountID) {
+  console.log('formatAccounts called with:', accountID);
+  const result = accountsStore.getAccountById(accountID);
+  return result.name || '-';
+}
 
 function handleSort(key) {
   if (sortKey.value === key) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
   } else {
-    sortKey.value = key
-    sortDirection.value = 'asc'
+    sortKey.value = key;
+    sortDirection.value = 'asc';
   }
-  sortTransactions()
+  sortTransactions();
 }
+
+
 
 function sortTransactions() {
-  if (!sortKey.value) return
+  if (!sortKey.value) return;
   transactions.value = [...transactions.value].sort((a, b) => {
-    let aValue = a[sortKey.value]
-    let bValue = b[sortKey.value]
-    // Fallback for nested or formatted fields
+    let aValue = a[sortKey.value];
+    let bValue = b[sortKey.value];
     if (sortKey.value === 'account') {
-      aValue = formatAccounts(a.account_id)
-      bValue = formatAccounts(b.account_id)
+      aValue = formatAccounts(a.account_id);
+      bValue = formatAccounts(b.account_id);
     }
     if (sortKey.value === 'category') {
-      aValue = a.category_name
-      bValue = b.category_name
+      aValue = a.category_name;
+      bValue = b.category_name;
     }
     if (sortKey.value === 'amount') {
-      aValue = Number(a.amount)
-      bValue = Number(b.amount)
+      aValue = Number(a.amount);
+      bValue = Number(b.amount);
     }
     if (sortKey.value === 'type') {
-      aValue = formatTransactionType(a)
-      bValue = formatTransactionType(b)
+      aValue = formatTransactionType(a);
+      bValue = formatTransactionType(b);
     }
-    if (aValue == null) aValue = ''
-    if (bValue == null) bValue = ''
-    if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1
-    if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1
-    return 0
-  })
+    if (aValue == null) aValue = '';
+    if (bValue == null) bValue = '';
+    if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1;
+    return 0;
+  });
+  localStorage.setItem(getSortStorageKey(), JSON.stringify({
+    sortKey: sortKey.value,
+    sortDirection: sortDirection.value
+  }));
 }
 
-// Watch for changes in the store's transactions and update the local ref
+// Restore column order and sort preferences on workspace change or mount
+function restoreColumnOrder() {
+  const saved = localStorage.getItem(getColumnsStorageKey());
+  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
+}
+
+// Restore sort preferences on workspace change or mount
+function restoreSortPreferences() {
+  const saved = localStorage.getItem(getSortStorageKey());
+  if (saved) {
+    try {
+      const { sortKey: savedKey, sortDirection: savedDir } = JSON.parse(saved);
+      if (savedKey) sortKey.value = savedKey;
+      if (savedDir) sortDirection.value = savedDir;
+    } catch {}
+  }
+}
+
+// ----------------- Asynchronous Functions -----------------
+async function validateAndSetWorkspace() {
+  const workspaceId = route.params.workspaceId || route.query.workspaceId;
+  if (!workspaceId) {
+    console.error('No workspace ID provided in route params or query');
+    return;
+  }
+  const result = await workspacesStore.validateAndLoadWorkspace(workspaceId);
+  return result;
+}
+
+// ----------------- Vue Methods -----------------
 watch(
   () => transactionsStore.transactions,
   (newTransactions) => {
-    transactions.value = newTransactions
-    sortTransactions()
+    transactions.value = newTransactions;
+    sortTransactions();
   },
   { immediate: true }
-  )
+);
 
-  onMounted(async () => {
-    const isWorkspaceValid = await validateAndSetWorkspace();
-    if(isWorkspaceValid){
-      const workspaceID = workspacesStore.currentWorkspace.id;
-      // load transactions by workspace ID
-      await transactionsStore.fetchTransactionsByWorkspace(workspaceID);
-
-    }
-    
-    
-  });
-
-
+onMounted(async () => {
+  const isWorkspaceValid = await validateAndSetWorkspace();
+  if (isWorkspaceValid) {
+    const workspaceID = workspacesStore.currentWorkspace.id;
+    restoreSortPreferences();
+    restoreColumnOrder();
+    // load transactions by workspace ID
+    await transactionsStore.fetchTransactionsByWorkspace(workspaceID);
+  }
+});
 </script>
