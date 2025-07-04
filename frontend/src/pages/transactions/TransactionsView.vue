@@ -224,7 +224,7 @@ const headers = ref([...columnsnames]);
 // Fetch transactions with pagination, sorting, and filtering
 async function fetchPaginatedTransactions() {
   const workspaceID = workspacesStore.currentWorkspace.id;
-  const { transactions: txs, total: count } = await transactionsStore.fetchTransactionsByWorkspace(
+  const { transactions: transactionsList, total: totalCount } = await transactionsStore.fetchTransactionsByWorkspace(
     workspaceID,
     {
       page: page.value,
@@ -235,8 +235,8 @@ async function fetchPaginatedTransactions() {
       search: searchQuery.value || ''
     }
   );
-  transactions.value = txs;
-  total.value = count || txs.length;
+  transactions.value = transactionsList;
+  total.value = totalCount || transactionsList.length;
 }
 
 // Watchers for filters
@@ -356,7 +356,6 @@ async function validateAndSetWorkspace() {
 onMounted(async () => {
   const isWorkspaceValid = await validateAndSetWorkspace();
   if (isWorkspaceValid) {
-    const workspaceID = workspacesStore.currentWorkspace.id;
     restoreSortPreferences();
     restoreColumnOrder();
     await fetchPaginatedTransactions();
