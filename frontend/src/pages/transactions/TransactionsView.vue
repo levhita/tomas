@@ -134,21 +134,37 @@
         <!-- Pagination -->
         <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
           <div class="text-light-emphasis small">
-            Showing 1 to 5 of 5 results
+            Showing {{ (page - 1) * limit + 1 }} to {{ Math.min(page * limit, total) }} of {{ total }} results
           </div>
-          <nav>
-            <ul class="pagination mb-0">
-              <li class="page-item disabled">
-                <button class="page-link bg-body-tertiary text-light-emphasis">Previous</button>
-              </li>
-              <li class="page-item active">
-                <button class="page-link bg-info text-light-emphasis border-info">1</button>
-              </li>
-              <li class="page-item disabled">
-                <button class="page-link bg-body-tertiary text-light-emphasis">Next</button>
-              </li>
-            </ul>
-          </nav>
+          <div class="d-flex align-items-center gap-2">
+            <label for="limitSelect" class="form-label mb-0 me-1 small">Rows per page:</label>
+            <select id="limitSelect" class="form-select form-select-sm w-auto" v-model.number="limit" @change="handleLimitChange">
+              <option :value="5">5</option>
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+            <nav>
+              <ul class="pagination mb-0 ms-2">
+                <li :class="['page-item', { disabled: page === 1 }]">
+                  <button class="page-link bg-body-tertiary text-light-emphasis" @click="handlePageChange(page - 1)">Previous</button>
+                </li>
+                <li v-for="p in Math.ceil(total / limit)" :key="p" :class="['page-item', { active: page === p }]">
+                  <button
+                    class="page-link"
+                    :class="page === p ? 'bg-info text-light-emphasis border-info' : 'bg-body-tertiary text-light-emphasis'"
+                    @click="handlePageChange(p)"
+                  >
+                    {{ p }}
+                  </button>
+                </li>
+                <li :class="['page-item', { disabled: page === Math.ceil(total / limit) }]">
+                  <button class="page-link bg-body-tertiary text-light-emphasis" @click="handlePageChange(page + 1)">Next</button>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
       </div>
     </div>
@@ -175,8 +191,11 @@ const accountsStore = useAccountsStore();
 
 // ----------------- State -----------------
 const transactions = ref([]);
-const sortKey = ref(null);
-const sortDirection = ref('asc'); // 'asc' or 'desc'
+const total = ref(0);
+const page = ref(1);
+const limit = ref(10); // Default page size
+const sortKey = ref('date');
+const sortDirection = ref('desc'); // 'asc' or 'desc'
 const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
 
 const searchQuery = ref('');
@@ -294,6 +313,17 @@ function formatAccounts(accountID) {
   return result.name || '-';
 }
 
+// Fetch transactions with pagination and sorting
+async function fetchPaginatedTransactions() {
+  const workspaceID = workspacesStore.currentWorkspace.id;
+  const { transactions: txs, total: count } = await transactionsStore.fetchTransactionsByWorkspace(
+    workspaceID,
+    { page: page.value, limit: limit.value, sortKey: sortKey.value, sortDirection: sortDirection.value }
+  );
+  transactions.value = txs;
+  total.value = count || txs.length;
+}
+
 function handleSort(key) {
   if (sortKey.value === key) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -301,42 +331,23 @@ function handleSort(key) {
     sortKey.value = key;
     sortDirection.value = 'asc';
   }
-  sortTransactions();
-}
-
-
-
-function sortTransactions() {
-  if (!sortKey.value) return;
-  transactions.value = [...transactions.value].sort((a, b) => {
-    let aValue = a[sortKey.value];
-    let bValue = b[sortKey.value];
-    if (sortKey.value === 'account') {
-      aValue = formatAccounts(a.account_id);
-      bValue = formatAccounts(b.account_id);
-    }
-    if (sortKey.value === 'category') {
-      aValue = a.category_name;
-      bValue = b.category_name;
-    }
-    if (sortKey.value === 'amount') {
-      aValue = Number(a.amount);
-      bValue = Number(b.amount);
-    }
-    if (sortKey.value === 'type') {
-      aValue = formatTransactionType(a);
-      bValue = formatTransactionType(b);
-    }
-    if (aValue == null) aValue = '';
-    if (bValue == null) bValue = '';
-    if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1;
-    return 0;
-  });
+  page.value = 1;
+  fetchPaginatedTransactions();
   localStorage.setItem(getSortStorageKey(), JSON.stringify({
     sortKey: sortKey.value,
     sortDirection: sortDirection.value
   }));
+}
+
+function handlePageChange(newPage) {
+  if (newPage < 1 || newPage > Math.ceil(total.value / limit.value)) return;
+  page.value = newPage;
+  fetchPaginatedTransactions();
+}
+
+function handleLimitChange() {
+  page.value = 1;
+  fetchPaginatedTransactions();
 }
 
 // Restore column order and sort preferences on workspace change or mount
@@ -369,23 +380,13 @@ async function validateAndSetWorkspace() {
 }
 
 // ----------------- Vue Methods -----------------
-watch(
-  () => transactionsStore.transactions,
-  (newTransactions) => {
-    transactions.value = newTransactions;
-    sortTransactions();
-  },
-  { immediate: true }
-);
-
 onMounted(async () => {
   const isWorkspaceValid = await validateAndSetWorkspace();
   if (isWorkspaceValid) {
     const workspaceID = workspacesStore.currentWorkspace.id;
     restoreSortPreferences();
     restoreColumnOrder();
-    // load transactions by workspace ID
-    await transactionsStore.fetchTransactionsByWorkspace(workspaceID);
+    await fetchPaginatedTransactions();
   }
 });
 </script>
