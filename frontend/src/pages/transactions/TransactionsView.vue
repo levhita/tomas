@@ -5,23 +5,13 @@
         <!-- Header -->
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
           <h2 class="mb-0 text-light-emphasis fs-4">Transactions</h2>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-info d-flex align-items-center gap-1" type="button">
-              <i class="bi bi-funnel"></i>
-              <span class="d-none d-md-inline">Filter</span>
-            </button>
-            <button class="btn btn-outline-info d-flex align-items-center gap-1" type="button">
-              <i class="bi bi-layout-three-columns"></i>
-              <span class="d-none d-md-inline">Columns</span>
-            </button>
-            <button class="btn btn-info d-flex align-items-center gap-1" type="button">
-              <i class="bi bi-plus-lg"></i>
-              <span>Create</span>
-            </button>
-          </div>
+          <button class="btn btn-info d-flex align-items-center gap-1" type="button">
+            <i class="bi bi-plus-lg"></i>
+            <span>Create</span>
+          </button>
         </div>
         <!-- Filters -->
-        <form class="row g-2 d-flex align-items-center flex-columns   w-75 p-4 mb-4 bg-light rounded-4 ">
+        <form class="row g-2 d-flex align-items-center flex-columns p-4 mb-4 bg-light rounded-4 ">
           <div class="col-12 col-md-6 m-0">
             <div class="form-floating">
               <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions" v-model="searchQuery">
