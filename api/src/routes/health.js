@@ -139,4 +139,80 @@ router.get('/admin', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /health/stats
+ * Get dashboard statistics for administrators
+ * 
+ * @permission Superadmin only
+ * @returns {Object} Statistics for the admin dashboard
+ * 
+ * Example response:
+ * {
+ *   "users": {
+ *     "total": 150,
+ *     "active": 120,
+ *     "superadmins": 5
+ *   },
+ *   "teams": {
+ *     "total": 25,
+ *     "active": 20
+ *   },
+ *   "books": {
+ *     "total": 45
+ *   }
+ * }
+ */
+router.get('/stats', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is superadmin
+    if (!req.user.superadmin) {
+      return res.status(403).json({ error: 'Admin privileges required' });
+    }
+
+    // Get user statistics
+    const [userStats] = await db.execute(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN superadmin = 1 THEN 1 ELSE 0 END) as superadmins
+      FROM user
+    `);
+
+    // Get team statistics
+    const [teamStats] = await db.execute(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) as active
+      FROM team
+    `);
+
+    // Get book statistics
+    const [bookStats] = await db.execute(`
+      SELECT COUNT(*) as total
+      FROM book
+    `);
+
+    // Return statistics
+    res.status(200).json({
+      users: {
+        total: userStats[0].total,
+        active: userStats[0].active,
+        superadmins: userStats[0].superadmins
+      },
+      teams: {
+        total: teamStats[0].total,
+        active: teamStats[0].active
+      },
+      books: {
+        total: bookStats[0].total
+      }
+    });
+  } catch (err) {
+    console.error('Stats check failed:', err);
+    res.status(500).json({
+      error: 'Failed to retrieve statistics'
+    });
+  }
+});
+
 module.exports = router;
