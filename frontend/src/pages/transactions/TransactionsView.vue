@@ -221,48 +221,32 @@ const columnsnames = columns.value.map(col => ({
 }));
 const headers = ref([...columnsnames]);
 
-const filteredTransactions = computed(() => {
-  let txs = transactions.value;
-  // Filter by search query
-  let query = searchQuery.value !== '' ? searchQuery.value.trim().toLowerCase() : '';
-  // Filter by account if selected
-  if (selectedAccountId.value) {
-    txs = txs.filter(tx => tx.account_id === selectedAccountId.value);
-  }
-  txs = txs.filter(tx => {
-    return columns.value.some(col => {
-      let value = '';
-      switch (col.key) {
-        case 'description':
-          value = tx.description;
-          break;
-        case 'amount':
-          value = String(tx.amount);
-          break;
-        case 'account':
-          value = formatAccounts(tx.account_id);
-          break;
-        case 'category':
-          value = tx.category_name;
-          break;
-        case 'type':
-          value = formatTransactionType(tx);
-          break;
-        case 'date':
-          value = tx.date;
-          break;
-        case 'note':
-          value = tx.note;
-          break;
-        default:
-          value = '';
-      }
-      return (value || '').toLowerCase().includes(query);
-    });
-  });
-  // If no search query or category selected, return all transactions
-  return txs;
+// Fetch transactions with pagination, sorting, and filtering
+async function fetchPaginatedTransactions() {
+  const workspaceID = workspacesStore.currentWorkspace.id;
+  const { transactions: txs, total: count } = await transactionsStore.fetchTransactionsByWorkspace(
+    workspaceID,
+    {
+      page: page.value,
+      limit: limit.value,
+      sortKey: sortKey.value,
+      sortDirection: sortDirection.value,
+      accountId: selectedAccountId.value || undefined,
+      search: searchQuery.value || ''
+    }
+  );
+  transactions.value = txs;
+  total.value = count || txs.length;
+}
+
+// Watchers for filters
+watch([selectedAccountId, searchQuery], () => {
+  page.value = 1;
+  fetchPaginatedTransactions();
 });
+
+// Remove local filtering from filteredTransactions
+const filteredTransactions = computed(() => transactions.value);
 
 // Reset Filters functionality
 function resetFilters() {
@@ -313,17 +297,7 @@ function formatAccounts(accountID) {
   return result.name || '-';
 }
 
-// Fetch transactions with pagination and sorting
-async function fetchPaginatedTransactions() {
-  const workspaceID = workspacesStore.currentWorkspace.id;
-  const { transactions: txs, total: count } = await transactionsStore.fetchTransactionsByWorkspace(
-    workspaceID,
-    { page: page.value, limit: limit.value, sortKey: sortKey.value, sortDirection: sortDirection.value }
-  );
-  transactions.value = txs;
-  total.value = count || txs.length;
-}
-
+// Sort and pagination handlers
 function handleSort(key) {
   if (sortKey.value === key) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -350,13 +324,12 @@ function handleLimitChange() {
   fetchPaginatedTransactions();
 }
 
-// Restore column order and sort preferences on workspace change or mount
+// Column order and sort preferences restoration
 function restoreColumnOrder() {
   const saved = localStorage.getItem(getColumnsStorageKey());
   columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
 }
 
-// Restore sort preferences on workspace change or mount
 function restoreSortPreferences() {
   const saved = localStorage.getItem(getSortStorageKey());
   if (saved) {
