@@ -59,7 +59,30 @@
                     scope="col"
                     style="cursor: grab;"
                   >
-                    {{ element.label }}
+                    <span
+                      v-if="element.key !== 'select' && element.key !== 'actions'"
+                      class="d-inline-flex align-items-center user-select-none"
+                      @click="handleSort(element.key)"
+                      style="cursor:pointer;"
+                    >
+                      {{ element.label }}
+                      <i
+                        v-if="sortKey === element.key"
+                        :class="[
+                          'bi',
+                          sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down',
+                          'ms-1',
+                          'text-info'
+                        ]"
+                      ></i>
+                      <i
+                        v-else
+                        class="bi bi-arrow-down-up ms-1 text-info opacity-75"
+                      ></i>
+                    </span>
+                    <span v-else>
+                      {{ element.label }}
+                    </span>
                   </th>
                 </template>
               </draggable>
@@ -221,14 +244,57 @@ function onMove(evt) {
 
   }
 
+  const sortKey = ref(null)
+const sortDirection = ref('asc') // 'asc' or 'desc'
 
-  // Watch for changes in the store's transactions and update the local ref
-  watch(
-    () => transactionsStore.transactions,
-    (newTransactions) => {
-      transactions.value = newTransactions
-    },
-    { immediate: true }
+function handleSort(key) {
+  if (sortKey.value === key) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDirection.value = 'asc'
+  }
+  sortTransactions()
+}
+
+function sortTransactions() {
+  if (!sortKey.value) return
+  transactions.value = [...transactions.value].sort((a, b) => {
+    let aValue = a[sortKey.value]
+    let bValue = b[sortKey.value]
+    // Fallback for nested or formatted fields
+    if (sortKey.value === 'account') {
+      aValue = formatAccounts(a.account_id)
+      bValue = formatAccounts(b.account_id)
+    }
+    if (sortKey.value === 'category') {
+      aValue = a.category_name
+      bValue = b.category_name
+    }
+    if (sortKey.value === 'amount') {
+      aValue = Number(a.amount)
+      bValue = Number(b.amount)
+    }
+    if (sortKey.value === 'type') {
+      aValue = formatTransactionType(a)
+      bValue = formatTransactionType(b)
+    }
+    if (aValue == null) aValue = ''
+    if (bValue == null) bValue = ''
+    if (aValue < bValue) return sortDirection.value === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection.value === 'asc' ? 1 : -1
+    return 0
+  })
+}
+
+// Watch for changes in the store's transactions and update the local ref
+watch(
+  () => transactionsStore.transactions,
+  (newTransactions) => {
+    transactions.value = newTransactions
+    sortTransactions()
+  },
+  { immediate: true }
   )
 
   onMounted(async () => {
