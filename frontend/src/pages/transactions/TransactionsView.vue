@@ -30,10 +30,19 @@
           </div>
           <div class="col-8 col-md-4 m-0">
             <div class="form-floating">
-              <select class="form-select bg-body-tertiary text-light-emphasis" id="account">
-                <option selected>All Accounts</option>
-                <option>Debit Card</option>
-                <option>Mexico Account</option>
+              <select
+                class="form-select bg-body-tertiary text-light-emphasis"
+                id="account"
+                v-model="selectedAccountId"
+              >
+                <option :value="null">All Accounts</option>
+                <option
+                  v-for="account in accountsStore.accounts"
+                  :key="account.id"
+                  :value="account.id"
+                >
+                  {{ account.name }}
+                </option>
               </select>
               <label for="account" class="text-light-emphasis">Account</label>
             </div>
@@ -181,6 +190,7 @@ const sortDirection = ref('asc'); // 'asc' or 'desc'
 const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symbol;
 
 const searchQuery = ref('');
+const selectedAccountId = ref(null);
 
 const defaultColumns = [
   { key: 'select', label: '', thClass: '', tdClass: '' },
@@ -203,40 +213,47 @@ const columnsnames = columns.value.map(col => ({
 const headers = ref([...columnsnames]);
 
 const filteredTransactions = computed(() => {
-  if (!searchQuery.value.trim()) return transactions.value;
-  const query = searchQuery.value.trim().toLowerCase();
-  return transactions.value.filter(tx => {
-    // Check all columns for a match
-    return columns.value.some(col => {
-      let value = '';
-      switch (col.key) {
-        case 'description':
-          value = tx.description;
-          break;
-        case 'amount':
-          value = String(tx.amount);
-          break;
-        case 'account':
-          value = formatAccounts(tx.account_id);
-          break;
-        case 'category':
-          value = tx.category_name;
-          break;
-        case 'type':
-          value = formatTransactionType(tx);
-          break;
-        case 'date':
-          value = tx.date;
-          break;
-        case 'note':
-          value = tx.note;
-          break;
-        default:
-          value = '';
-      }
-      return (value || '').toLowerCase().includes(query);
+  let txs = transactions.value;
+  // Filter by search query
+  let query = searchQuery.value !== '' ? searchQuery.value.trim().toLowerCase() : '';
+  // Filter by account if selected
+  if (selectedAccountId.value) {
+    txs = txs.filter(tx => tx.account_id === selectedAccountId.value);
+  }
+  
+    txs = txs.filter(tx => {
+      return columns.value.some(col => {
+        let value = '';
+        switch (col.key) {
+          case 'description':
+            value = tx.description;
+            break;
+          case 'amount':
+            value = String(tx.amount);
+            break;
+          case 'account':
+            value = formatAccounts(tx.account_id);
+            break;
+          case 'category':
+            value = tx.category_name;
+            break;
+          case 'type':
+            value = formatTransactionType(tx);
+            break;
+          case 'date':
+            value = tx.date;
+            break;
+          case 'note':
+            value = tx.note;
+            break;
+          default:
+            value = '';
+        }
+        return (value || '').toLowerCase().includes(query);
+      });
     });
-  });
+  // If no search query or category selected, return all transactions
+  return txs;
 });
 
 // ----------------- Synchronous Functions -----------------
@@ -278,7 +295,6 @@ function onMove(evt) {
 }
 
 function formatAccounts(accountID) {
-  console.log('formatAccounts called with:', accountID);
   const result = accountsStore.getAccountById(accountID);
   return result.name || '-';
 }
