@@ -124,7 +124,22 @@
   color: white !important;
 }
 
+/* Admin Dashboard Stats Hover Effects */
+.admin .admin-dashboard-stats .card {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
 
+.admin .admin-dashboard-stats .card.bg-primary:hover {
+  background-color: var(--color-primary-dark) !important;
+}
+
+.admin .admin-dashboard-stats .card.bg-success:hover {
+  background-color: var(--color-success-dark) !important;
+}
+
+.admin .admin-dashboard-stats .text-decoration-none:hover {
+  text-decoration: none !important;
+}
 
 .admin .form-floating>.form-control:focus~label {
   color: var(--bs-primary);

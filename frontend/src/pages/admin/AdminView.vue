@@ -95,7 +95,7 @@
                   </h5>
                   <div class="row">
                     <!-- User Statistics -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <h6 class="text-muted mb-3">User Distribution</h6>
                       <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
@@ -133,7 +133,7 @@
                     </div>
 
                     <!-- Team Statistics -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <h6 class="text-muted mb-3">Team Status</h6>
                       <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
@@ -167,38 +167,13 @@
                         </div>
                       </div>
                     </div>
-
-                    <!-- System Information -->
-                    <div class="col-md-4">
-                      <h6 class="text-muted mb-3">System Information</h6>
-                      <div class="mb-2">
-                        <small class="text-muted">Database Tables:</small>
-                        <span class="float-end">{{ adminStore.healthData.database?.tables || 'N/A' }}</span>
-                      </div>
-                      <div class="mb-2">
-                        <small class="text-muted">Node Version:</small>
-                        <span class="float-end">{{ adminStore.healthData.environment?.node_version || 'N/A' }}</span>
-                      </div>
-                      <div class="mb-2">
-                        <small class="text-muted">Platform:</small>
-                        <span class="float-end">{{ adminStore.healthData.environment?.platform || 'N/A' }}</span>
-                      </div>
-                      <div class="mb-2">
-                        <small class="text-muted">Architecture:</small>
-                        <span class="float-end">{{ adminStore.healthData.environment?.arch || 'N/A' }}</span>
-                      </div>
-                      <div class="mb-2">
-                        <small class="text-muted">DB Response Time:</small>
-                        <span class="float-end">{{ adminStore.healthData.database?.response_time || 'N/A' }}</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Admin Functions Row -->
+          <!-- System Health Details Row -->
           <div class="row mb-4">
             <div class="col-md-12">
               <div class="card">
@@ -263,43 +238,6 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Admin Functions Row -->
-          <div class="row">
-            <div class="col-md-6 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="bi bi-people me-2"></i>
-                    User Management
-                  </h5>
-                  <p class="card-text">Manage users, permissions, and access rights. Create, edit, or deactivate user
-                    accounts.</p>
-                  <RouterLink to="/admin/users" class="btn btn-primary">
-                    <i class="bi bi-arrow-right me-1"></i>
-                    Manage Users
-                  </RouterLink>
-                </div>
-              </div>
-            </div>
-            
-            <div class="col-md-6 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="bi bi-people-fill me-2"></i>
-                    Team Management
-                  </h5>
-                  <p class="card-text">Manage teams, team members, and access levels. Create, edit, or delete teams
-                    across the organization.</p>
-                  <RouterLink to="/admin/teams" class="btn btn-success">
-                    <i class="bi bi-arrow-right me-1"></i>
-                    Manage Teams
-                  </RouterLink>
                 </div>
               </div>
             </div>
