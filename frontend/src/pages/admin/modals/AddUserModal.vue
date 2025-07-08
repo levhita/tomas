@@ -221,7 +221,7 @@ async function performSearch() {
   isSearching.value = true
   
   try {
-    const results = await usersStore.searchUsers(query, 10, props.teamId)
+    const results = await usersStore.searchUsers(query, 5, props.teamId)
     searchResults.value = results
   } catch (error) {
     console.error('Error searching users:', error)

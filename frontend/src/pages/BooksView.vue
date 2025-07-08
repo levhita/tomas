@@ -96,7 +96,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../stores/books';
 import { useUsersStore } from '../stores/users';
 import { useToast } from '../composables/useToast';
@@ -106,6 +106,7 @@ import BookModal from '../components/modals/BookModal.vue';
 import TeamSelectionModal from '../components/TeamSelectionModal.vue';
 
 const router = useRouter();
+const route = useRoute();
 const booksStore = useBooksStore();
 const usersStore = useUsersStore();
 const { showToast } = useToast();
@@ -122,6 +123,41 @@ let bsDeleteModal = null;
 onMounted(async () => {
   // Initialize bootstrap delete modal
   bsDeleteModal = new Modal(deleteModal.value);
+
+  // Check for error parameters from redirects
+  const errorParam = route.query.error;
+  if (errorParam) {
+    let errorMessage = 'An error occurred';
+    
+    switch (errorParam) {
+      case 'missing-book':
+        errorMessage = 'No book was specified. Please select a book to continue.';
+        break;
+      case 'invalid-book':
+        errorMessage = 'The requested book was not found or you do not have access to it.';
+        break;
+      case 'book-error':
+        errorMessage = 'There was an error loading the book. Please try again.';
+        break;
+      case 'unauthorized-admin':
+        errorMessage = 'You do not have permission to access the admin area.';
+        break;
+      default:
+        errorMessage = `An error occurred: ${errorParam}`;
+    }
+    
+    showToast({
+      title: 'Access Error',
+      message: errorMessage,
+      variant: 'warning'
+    });
+    
+    // Clean the URL by removing the error parameter
+    router.replace({ 
+      name: 'books',
+      query: { ...route.query, error: undefined }
+    });
+  }
 
   // Check if user has selected a team
   if (!usersStore.hasSelectedTeam) {

@@ -254,7 +254,20 @@ export const useBooksStore = defineStore('books', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fetchWithAuth(`/api/books/${id}/users`);
+      // First get the book to find its team_id
+      const bookResponse = await fetchWithAuth(`/api/books/${id}`);
+      if (!bookResponse.ok) {
+        const errorData = await bookResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch book details');
+      }
+      
+      const book = await bookResponse.json();
+      if (!book.team_id) {
+        throw new Error('Book does not have an associated team');
+      }
+
+      // Now get the team users
+      const response = await fetchWithAuth(`/api/teams/${book.team_id}/users`);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -282,24 +295,34 @@ export const useBooksStore = defineStore('books', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fetchWithAuth(`/api/books/${bookId}/users`, {
+      // First get the book to find its team_id
+      const bookResponse = await fetchWithAuth(`/api/books/${bookId}`);
+      if (!bookResponse.ok) {
+        const errorData = await bookResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch book details');
+      }
+      
+      const book = await bookResponse.json();
+      if (!book.team_id) {
+        throw new Error('Book does not have an associated team');
+      }
+
+      // Add user to the team instead of the book
+      const response = await fetchWithAuth(`/api/teams/${book.team_id}/users`, {
         method: 'POST',
         body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add user to book');
+        throw new Error(errorData.error || 'Failed to add user to team');
       }
 
       const updatedUsers = await response.json();
 
       // Update book users if it's the current book
       if (currentBook.value && currentBook.value.id === parseInt(bookId)) {
-        currentBook.value = {
-          ...currentBook.value,
-          users: updatedUsers
-        };
+        currentBookUsers.value = updatedUsers;
       }
 
       return updatedUsers;
@@ -316,25 +339,34 @@ export const useBooksStore = defineStore('books', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fetchWithAuth(`/api/books/${bookId}/users/${userId}`, {
+      // First get the book to find its team_id
+      const bookResponse = await fetchWithAuth(`/api/books/${bookId}`);
+      if (!bookResponse.ok) {
+        const errorData = await bookResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch book details');
+      }
+      
+      const book = await bookResponse.json();
+      if (!book.team_id) {
+        throw new Error('Book does not have an associated team');
+      }
+
+      // Remove user from the team instead of the book
+      const response = await fetchWithAuth(`/api/teams/${book.team_id}/users/${userId}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to remove user from book');
+        throw new Error(errorData.error || 'Failed to remove user from team');
       }
 
       // Update book users if it's the current book
       if (currentBook.value && currentBook.value.id === parseInt(bookId)) {
-        const updatedUsers = currentBook.value.users.filter(
+        const updatedUsers = currentBookUsers.value.filter(
           user => user.id !== parseInt(userId)
         );
-
-        currentBook.value = {
-          ...currentBook.value,
-          users: updatedUsers
-        };
+        currentBookUsers.value = updatedUsers;
       }
     } catch (err) {
       console.error('Error removing user from book:', err);

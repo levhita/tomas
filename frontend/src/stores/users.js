@@ -9,7 +9,7 @@ export const useUsersStore = defineStore('users', () => {
   const isLoadingUsers = ref(false); // Loading state for users list
   const usersPagination = ref({
     page: 1,
-    limit: 5,
+    limit: 10,
     total: 0,
     totalPages: 0,
     hasNext: false,

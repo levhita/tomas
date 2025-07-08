@@ -88,7 +88,6 @@
                   v-model="pageSize"
                   @change="handlePageSizeChange"
                 >
-                  <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="20">20</option>
                   <option value="50">50</option>
@@ -309,7 +308,7 @@ const searchQuery = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
 const searchTimeout = ref(null)
-const pageSize = ref(5) // Default page size matching store default
+const pageSize = ref(10) // Default page size matching store default
 
 // Computed properties
 const currentUsers = computed(() => usersStore.users)
