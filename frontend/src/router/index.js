@@ -9,6 +9,7 @@ import AdminUserEditView from '../pages/admin/AdminUserEditView.vue'
 import AdminTeamsView from '../pages/admin/AdminTeamsView.vue'
 import AdminTeamEditView from '../pages/admin/AdminTeamEditView.vue'
 import TransactionsView from '../pages/transactions/TransactionsView.vue'
+import NotFoundView from '../pages/NotFoundView.vue'
 
 
 const routes = [
@@ -107,6 +108,14 @@ const routes = [
       requiresAuth: true,
       requiresSuperAdmin: false,
       public: false
+    }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFoundView,
+    name: 'not-found',
+    meta: {
+      public: true
     }
   }
 ]

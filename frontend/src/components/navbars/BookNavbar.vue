@@ -2,16 +2,23 @@
   <!-- Book-specific navbar -->
   <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
     <div class="container-fluid">
-      <!-- Brand logo with link to books -->
-       <div class="d-flex justify-content-center align-items-center">
-         <RouterLink class="me-2" to="/books">
-           <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
-         </RouterLink>
-   
-         <span v-if="book" class="fw-bold fs-4">
-           {{ book.name }}
-         </span>
-       </div>
+      <!-- Back to books button -->
+      <div class="navbar-brand">
+        <RouterLink class="btn btn-outline-primary" to="/books" title="Back to all books">
+          <i class="bi bi-chevron-left"></i>
+        </RouterLink>
+      </div>
+
+      <!-- Brand logo and book name -->
+      <div class="d-flex justify-content-left align-items-center me-2">
+        <RouterLink class="me-2" to="/books">
+          <img src="/logo/logo_128.png" alt="Tomás - Purrfect Budgets" class="navbar-logo">
+        </RouterLink>
+  
+        <span v-if="book" class="fw-bold fs-4">
+          {{ book.name }}
+        </span>
+      </div>
 
       <!-- Mobile toggle button -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -20,55 +27,59 @@
       </button>
 
       <!-- Navigation content -->
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <!-- Left-aligned nav items -->
-        <ul class="navbar-nav me-auto d-flex justify-content-end ">
-          <li class="nav-item  mr-2">
-            <!-- Calendar link -->
-            <RouterLink v-if="book" class="nav-link link-body-emphasis" active-class="active"
-              :to="{ path: '/calendar', query: { bookId: book.id } }">
-              <i class="bi bi-calendar-week me-1"></i>
-              Calendar
-            </RouterLink>
-          </li>
-
-          <li class="nav-item ">
-            <!-- Categories button -->
-            <button v-if="book" class="btn btn-link nav-link link-body-emphasis" @click="openCategoriesModal">
-              <i class="bi bi-tags me-1"></i>
-              Categories
-            </button>
-          </li>
-          <li class="nav-item ">
-           <RouterLink v-if="book" class="nav-link link-body-emphasis" active-class="active"
-              :to="{ path: '/transactions', query: { bookId: book.id } }">
-              <i class="bi bi-list-columns-reverse"></i>
-              Transactions
-            </RouterLink>
-          </li>
-        </ul>
+      <div class="collapse navbar-collapse flex-grow-1" id="navbarNav">
+        <!-- Left-aligned tab navigation -->
+        <div class="navbar-nav flex-grow-1">
+          <div v-if="book" class="nav-tabs-container">
+            <ul class="nav nav-tabs border-0">
+              <li class="nav-item">
+                <RouterLink 
+                  class="nav-link" 
+                  active-class="active"
+                  :to="{ path: '/calendar', query: { bookId: book.id } }">
+                  <i class="bi bi-calendar-week me-1"></i>
+                  Calendar
+                </RouterLink>
+              </li>
+              <li class="nav-item">
+                <RouterLink 
+                  class="nav-link" 
+                  active-class="active"
+                  :to="{ path: '/transactions', query: { bookId: book.id } }">
+                  <i class="bi bi-list-columns-reverse me-1"></i>
+                  Transactions
+                </RouterLink>
+              </li>
+            </ul>
+          </div>
+        </div>
 
         <!-- Right-aligned nav items -->
         <ul class="navbar-nav">
-          <!-- Book settings button -->
+          <!-- Book management tools group -->
           <li v-if="book" class="nav-item me-2">
-            <button class="btn btn-link nav-link" title="Book settings" @click="openBookSettings">
-              <i class="bi bi-gear"></i>
-            </button>
+            <div class="btn-group" role="group" aria-label="Book management tools">
+              <button class="btn btn-link" @click="openCategoriesModal" title="Manage Categories">
+                <i class="bi bi-tags"></i>
+              </button>
+              <button class="btn btn-link" @click="openBookSettings" title="Book Settings">
+                <i class="bi bi-book"></i>
+              </button>
+            </div>
           </li>
 
-          <!-- Dark mode toggle -->
-          <DarkModeToggle />
-
-          <!-- Back to books link -->
-          <li v-if="book" class="nav-item me-2">
-            <RouterLink class="nav-link" to="/books" title="Back to books">
-              <i class="bi bi-grid-3x3-gap me-1"></i>
-              Books
-            </RouterLink>
+          <!-- App settings tools group -->
+          <li class="nav-item me-2">
+            <div class="btn-group" role="group" aria-label="App settings">
+              <button class="btn btn-link" @click="toggleDarkMode" 
+                      :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+                      :aria-label="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+                <i class="bi" :class="isDarkMode ? 'bi-sun' : 'bi-moon'"></i>
+              </button>
+            </div>
           </li>
 
-          <!-- User menu with book role -->
+          <!-- User menu -->
           <UserMenu :bookRole="userRole" />
         </ul>
       </div>
@@ -96,7 +107,6 @@
 
 import { ref, computed, watch, onMounted } from 'vue'
 import UserMenu from '../UserMenu.vue'
-import DarkModeToggle from '../DarkModeToggle.vue'
 import BookModal from '../modals/BookModal.vue'
 import CategoriesModal from '../modals/CategoriesModal.vue'
 import { useBooksStore } from '../../stores/books'
@@ -163,6 +173,42 @@ const roleDisplay = computed(() => {
 const showBookModal = ref(false)
 const bookToEdit = ref(null)
 const showCategoriesModal = ref(false)
+const isDarkMode = ref(false)
+
+// Dark mode toggle functionality
+function toggleDarkMode() {
+  isDarkMode.value = !isDarkMode.value
+
+  if (isDarkMode.value) {
+    document.documentElement.setAttribute('data-bs-theme', 'dark')
+  } else {
+    document.documentElement.setAttribute('data-bs-theme', 'light')
+  }
+
+  localStorage.setItem('darkMode', isDarkMode.value ? 'true' : 'false')
+}
+
+// Initialize dark mode state
+function initializeDarkMode() {
+  const savedDarkMode = localStorage.getItem('darkMode')
+
+  if (savedDarkMode === 'true') {
+    isDarkMode.value = true
+    document.documentElement.setAttribute('data-bs-theme', 'dark')
+  } else if (savedDarkMode === 'false') {
+    isDarkMode.value = false
+    document.documentElement.setAttribute('data-bs-theme', 'light')
+  } else if (savedDarkMode === null) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    isDarkMode.value = prefersDark
+
+    if (prefersDark) {
+      document.documentElement.setAttribute('data-bs-theme', 'dark')
+    } else {
+      document.documentElement.setAttribute('data-bs-theme', 'light')
+    }
+  }
+}
 
 // Method to ensure book users are loaded
 async function ensureBookUsersLoaded() {
@@ -227,6 +273,11 @@ async function handleSaveBook(bookData) {
 // Load book users when component is mounted
 onMounted(() => {
   console.log('Component mounted, ensuring book users are loaded');
+  
+  // Initialize dark mode
+  initializeDarkMode();
+  
+  // Load book users if book is available
   if (props.book) {
     ensureBookUsersLoaded();
   }
@@ -240,3 +291,81 @@ watch(() => props.book, async (newBook) => {
   }
 }, { immediate: true })
 </script>
+
+<style scoped>
+.navbar-logo {
+  height: 40px;
+  width: 40px;
+}
+
+.nav-tabs-container {
+  display: flex;
+  align-items: left;
+}
+
+.nav-tabs-container .nav-tabs {
+  background: none;
+  border: none;
+}
+
+.nav-tabs-container .nav-link {
+  color: var(--bs-body-color);
+  border: 1px solid transparent;
+  border-radius: var(--bs-border-radius-pill);
+  padding: 0.5rem 1rem;
+  margin: 0 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.nav-tabs-container .nav-link:hover {
+  color: var(--bs-primary);
+  background-color: var(--bs-gray-100);
+}
+
+.nav-tabs-container .nav-link.active {
+  color: var(--bs-primary);
+  background-color: var(--bs-primary-bg-subtle);
+  border-color: var(--bs-primary);
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .nav-tabs-container .nav-link:hover {
+  background-color: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .nav-tabs-container .nav-link.active {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+  .nav-tabs-container {
+    margin-top: 1rem;
+    justify-content: left;
+  }
+  
+  .nav-tabs-container .nav-tabs {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .nav-tabs-container .nav-item {
+    width: 100%;
+  }
+  
+  .nav-tabs-container .nav-link {
+    text-align: center;
+    margin: 0.25rem 0;
+  }
+
+  /* Stack button groups vertically on mobile */
+  .navbar-nav {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .btn-group {
+    justify-content: center;
+  }
+}
+</style>

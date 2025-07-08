@@ -140,10 +140,19 @@ async function validateAndSetBook() {
 
   // Handle validation result
   if (!result.success) {
-    router.replace({
-      name: 'books',
-      query: { error: result.error }
-    });
+    if (result.error === 'invalid-book') {
+      // For invalid books, show a 404 page instead of redirecting to books
+      router.replace({ 
+        name: 'not-found',
+        query: { from: route.path }
+      });
+    } else {
+      // For other errors, redirect to books with error message
+      router.replace({
+        name: 'books',
+        query: { error: result.error }
+      });
+    }
     return false;
   }
 

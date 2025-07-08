@@ -66,9 +66,9 @@
       @team-selected="onTeamSwitched"
     />
   </li>
-  <li class="nav-item d-flex align-items-center ms-2">
+  <!-- <li class="nav-item d-flex align-items-center ms-2">
     <i :class="['bi', getRoleIcon, getRoleBadgeClass]"></i>
-  </li>
+  </li> -->
 </template>
 
 <script setup>

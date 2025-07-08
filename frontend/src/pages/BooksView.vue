@@ -133,9 +133,6 @@ onMounted(async () => {
       case 'missing-book':
         errorMessage = 'No book was specified. Please select a book to continue.';
         break;
-      case 'invalid-book':
-        errorMessage = 'The requested book was not found or you do not have access to it.';
-        break;
       case 'book-error':
         errorMessage = 'There was an error loading the book. Please try again.';
         break;
