@@ -12,6 +12,7 @@ export const useBooksStore = defineStore('books', () => {
   const currentBook = ref(null);
   const isLoading = ref(false);
   const error = ref(null);
+  const currentBookAccounts = ref([]);
 
   // Getters
   const hasAdminPermission = computed(() => {
@@ -47,6 +48,23 @@ export const useBooksStore = defineStore('books', () => {
     );
 
     return userEntry?.role === 'admin' || userEntry?.role === 'collaborator';
+  });
+
+  // Accounts computed properties
+  const accountsByName = computed(() => {
+    return currentBookAccounts.value.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  });
+
+  const getAccountById = computed(() => {
+    return (id) => currentBookAccounts.value.find(a => a.id === id);
+  });
+
+  const totalBalance = computed(() => {
+    return currentBookAccounts.value.reduce((sum, account) => {
+      return sum + (account.type === 'debit' ? account.starting_amount : -account.starting_amount);
+    }, 0);
   });
 
   // Actions
@@ -196,6 +214,97 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
+  // Accounts management functions
+
+  /**
+   * Fetch accounts for the current book
+   * @returns {Promise<Array>} List of accounts
+   * @throws {Error} If no current book or fetch fails
+   */
+  async function fetchBookAccounts() {
+    try {
+      if (!currentBook.value) {
+        throw new Error('No book selected');
+      }
+
+      const response = await fetchWithAuth(`/api/books/${currentBook.value.id}/accounts`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch accounts');
+      }
+
+      const data = await response.json();
+      currentBookAccounts.value = data;
+      return data;
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a new account to the current book
+   * @param {Object} account - The account data to create
+   * @param {string} account.name - The account name
+   * @param {string} account.type - The account type (debit/credit)
+   * @param {number} account.starting_amount - The starting balance
+   * @returns {Promise<Object>} The created account
+   * @throws {Error} If no current book or account data is invalid or creation fails
+   */
+  async function addAccountToBook(account) {
+    try {
+      if (!currentBook.value) {
+        throw new Error('No book selected');
+      }
+
+      // Add book_id to the account data
+      const accountData = {
+        ...account,
+        book_id: currentBook.value.id
+      };
+
+      // Use accounts store for actual creation
+      const accountsStore = useAccountsStore();
+      const newAccount = await accountsStore.createAccount(accountData);
+      
+      // Add to current book accounts
+      currentBookAccounts.value.push(newAccount);
+      return newAccount;
+    } catch (error) {
+      console.error('Error adding account to book:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an account in the current book
+   * @param {number} accountId - The account ID to update
+   * @param {Object} updates - The fields to update
+   * @returns {Promise<Object>} The updated account
+   * @throws {Error} If update fails
+   */
+  async function updateAccountInBook(accountId, updates) {
+    try {
+      // Use accounts store for actual update
+      const accountsStore = useAccountsStore();
+      const updatedAccount = await accountsStore.updateAccount(accountId, updates);
+      
+      // Update the account in current book accounts
+      const index = currentBookAccounts.value.findIndex(a => a.id === accountId);
+      if (index !== -1) {
+        currentBookAccounts.value[index] = updatedAccount;
+      }
+      
+      return updatedAccount;
+    } catch (error) {
+      console.error('Error updating account in book:', error);
+      throw error;
+    }
+  }
+
+  // Other book management functions
+
   async function restoreBook(id) {
     isLoading.value = true;
     error.value = null;
@@ -242,7 +351,6 @@ export const useBooksStore = defineStore('books', () => {
 
     try {
       // Get stores
-      const accountsStore = useAccountsStore();
       const categoriesStore = useCategoriesStore();
       const teamsStore = useTeamsStore();
 
@@ -251,7 +359,7 @@ export const useBooksStore = defineStore('books', () => {
 
       // Load data in parallel
       await Promise.all([
-        accountsStore.fetchAccounts(book.id),
+        fetchBookAccounts(), // Fetch accounts from this store
         categoriesStore.fetchCategories(book.id)
       ]);
 
@@ -267,12 +375,13 @@ export const useBooksStore = defineStore('books', () => {
 
   // Function to reset all book-related data
   function resetBookData() {
-    const accountsStore = useAccountsStore();
     const categoriesStore = useCategoriesStore();
     const transactionsStore = useTransactionsStore();
 
-    // Reset each store
-    accountsStore.resetState();
+    // Reset accounts in this store
+    currentBookAccounts.value = [];
+
+    // Reset other stores
     categoriesStore.resetState();
     transactionsStore.resetState();
   }
@@ -364,10 +473,14 @@ export const useBooksStore = defineStore('books', () => {
     currentBook,
     isLoading,
     error,
+    currentBookAccounts,
 
-    // Getters
+    // Computed properties
     hasAdminPermission,
     hasWritePermission,
+    accountsByName,
+    getAccountById,
+    totalBalance,
 
     // Actions
     fetchBookById,
@@ -377,6 +490,9 @@ export const useBooksStore = defineStore('books', () => {
     restoreBook,
     resetBookData,
     loadBookById,
-    saveBook
+    saveBook,
+    fetchBookAccounts,
+    addAccountToBook,
+    updateAccountInBook
   };
 });

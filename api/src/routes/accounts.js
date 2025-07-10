@@ -17,46 +17,6 @@ const db = require('../db');
 const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team');
 
 /**
- * GET /accounts
- * List all accounts for a book
- * 
- * @query {number} book_id - Required book ID
- * @permission Read access to book (via team membership)
- * @returns {Array} List of accounts
- */
-router.get('/', async (req, res) => {
-  const bookId = req.query.book_id;
-
-  if (!bookId) {
-    return res.status(400).json({ error: 'book_id is required' });
-  }
-
-  try {
-    // Verify user has access to the book via team membership
-    const team = await getTeamByBookId(bookId);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    const { allowed, message } = await canRead(team.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
-    const [accounts] = await db.query(`
-      SELECT * FROM account 
-      WHERE book_id = ?
-      ORDER BY name ASC
-    `, [bookId]);
-
-    res.status(200).json(accounts);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch accounts' });
-  }
-});
-
-/**
  * GET /accounts/:id
  * Get details for a single account
  * 

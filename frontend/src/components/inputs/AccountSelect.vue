@@ -8,7 +8,7 @@
         <i class="bi bi-caret-down-fill ms-auto"></i>
       </button>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li v-for="account in accountsStore.accountsByName" :key="account.id">
+        <li v-for="account in booksStore.accountsByName" :key="account.id">
           <button class="dropdown-item d-flex justify-content-between align-items-center"
             @click="selectAccount(account)">
             {{ account.name }}
@@ -18,7 +18,7 @@
             </button>
           </button>
         </li>
-        <li v-if="!accountsStore.accounts.length" class="dropdown-item text-muted">
+        <li v-if="!booksStore.currentBookAccounts.length" class="dropdown-item text-muted">
           No accounts found
         </li>
         <li v-if="canManageAccounts">
@@ -81,7 +81,7 @@ const canManageAccounts = computed(() => booksStore.hasAdminPermission)
 // Computed property to get the current account
 const currentAccount = computed(() => {
   if (!props.modelValue) return null;
-  return accountsStore.accounts.find(account => account.id === props.modelValue);
+  return booksStore.currentBookAccounts.find(account => account.id === props.modelValue);
 })
 
 /**
@@ -94,11 +94,23 @@ function openNewAccountModal() {
 
 /**
  * Opens the account modal for editing an existing account
+ * Fetches fresh account data from the API to ensure latest information
  * @param {Object} account - The account to edit
  */
-function openEditAccountModal(account) {
-  accountToEdit.value = account
-  showAccountModal.value = true
+async function openEditAccountModal(account) {
+  try {
+    // Fetch fresh account data from the API
+    const freshAccountData = await accountsStore.fetchAccountById(account.id);
+    accountToEdit.value = freshAccountData;
+    showAccountModal.value = true;
+  } catch (error) {
+    console.error('Error fetching account data:', error);
+    showToast({
+      title: 'Error',
+      message: `Error loading account data: ${error.message}`,
+      variant: 'danger'
+    });
+  }
 }
 
 /**
@@ -116,19 +128,19 @@ function selectAccount(account) {
 async function handleSaveAccount(accountData) {
   try {
     if (accountData.id) {
-      // Update existing account
-      await accountsStore.updateAccount(accountData.id, accountData)
+      // Update existing account using books store (which will also update the local cache)
+      await booksStore.updateAccountInBook(accountData.id, accountData)
     } else {
       // Create new account
-      await accountsStore.addAccount(accountData)
+      await booksStore.addAccountToBook(accountData)
     }
 
     showAccountModal.value = false
 
     // If we just created a new account, select it
-    if (!accountData.id && accountsStore.accounts.length > 0) {
+    if (!accountData.id && booksStore.currentBookAccounts.length > 0) {
       // Find the newly created account (should be the last one added)
-      const newAccount = accountsStore.accounts.find(a => a.name === accountData.name)
+      const newAccount = booksStore.currentBookAccounts.find(a => a.name === accountData.name)
       if (newAccount) {
         emit('update:modelValue', newAccount.id)
       }

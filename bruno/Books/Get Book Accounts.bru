@@ -1,0 +1,11 @@
+meta {
+  name: Get Book Accounts
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{server_url}}/books/{{bookId}}/accounts
+  body: none
+  auth: inherit
+}

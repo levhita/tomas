@@ -77,6 +77,42 @@ describe('Book Management API', () => {
     });
   });
 
+  describe('GET /api/books/:id/accounts', () => {
+    it('should return accounts for book with read access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/accounts`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      if (response.body.length > 0) {
+        const account = response.body[0];
+        expect(account).toHaveProperty('id');
+        expect(account).toHaveProperty('name');
+        expect(account).toHaveProperty('type');
+        expect(account).toHaveProperty('book_id');
+        expect(account.book_id).toBe(TEST_BOOKS.BOOK1.id);
+      }
+    });
+
+    it('should deny access to book accounts without permission', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/accounts`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should return 404 for non-existent book accounts', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/books/99999/accounts');
+
+      validateApiResponse(response, 404);
+    });
+  });
+
   describe('POST /api/books', () => {
     beforeEach(resetBeforeTest);
 

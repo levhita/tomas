@@ -34,63 +34,7 @@ describe('Accounts Management API', () => {
     noaccessToken = tokens.noaccess;     // User 5: no team access
   });
 
-  describe('GET /api/accounts', () => {
-    it('should return accounts for book with read access', async () => {
-      const auth = authenticatedRequest(adminToken); // Use admin token for team 1 access
-      const response = await auth.get('/api/accounts')
-        .query({ book_id: testBookId });
 
-      validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-
-      if (response.body.length > 0) {
-        const account = response.body[0];
-        expect(account).toHaveProperty('id');
-        expect(account).toHaveProperty('name');
-        expect(account).toHaveProperty('type');
-        expect(account).toHaveProperty('book_id');
-        expect(account.book_id).toBe(testBookId);
-      }
-    });
-
-    it('should deny access without book_id parameter', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const response = await auth.get('/api/accounts');
-
-      validateApiResponse(response, 400);
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/book_id.*required/i);
-    });
-
-    it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
-      const accessibleBookId = 1; // Book exists but noaccess user has no team access
-
-      const response = await auth.get('/api/accounts')
-        .query({ book_id: accessibleBookId });
-
-      validateApiResponse(response, 403);
-      expect(response.body).toHaveProperty('error');
-    });
-
-    it('should deny access without authentication', async () => {
-      const response = await request(app)
-        .get('/api/accounts')
-        .query({ book_id: testBookId });
-
-      validateApiResponse(response, 401);
-    });
-
-    it('should deny superadmin access to team resources', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/accounts')
-        .query({ book_id: testBookId });
-
-      validateApiResponse(response, 403);
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/access.*denied|permission|forbidden/i);
-    });
-  });
 
   describe('GET /api/accounts/:id', () => {
     it('should return account details for valid account', async () => {

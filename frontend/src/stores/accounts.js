@@ -1,55 +1,57 @@
+/**
+ * Accounts Store
+ * 
+ * Manages individual account CRUD operations including:
+ * - Creating, updating, and deleting accounts
+ * - Account balance calculations and queries
+ * - Account sorting and filtering utilities
+ * 
+ * Note: For book-context operations like fetching accounts for a book,
+ * use the books store (booksStore.fetchBookAccounts, booksStore.addAccountToBook)
+ * 
+ * Account Types:
+ * - Debit accounts: Expenses decrease balance (negative), Income increases balance (positive)
+ * - Credit accounts: Expenses increase debt/balance (positive), Income/payments decrease debt/balance (negative)
+ */
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
 import fetchWithAuth from '../utils/fetch';
 
 export const useAccountsStore = defineStore('accounts', () => {
-  // State
-  const accounts = ref([]);
-
-  // Getters
-  const accountsByName = computed(() => {
-    return accounts.value.sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-  });
-
-  const getAccountById = computed(() => {
-    return (id) => accounts.value.find(a => a.id === id);
-  });
-
-  const totalBalance = computed(() => {
-    return accounts.value.reduce((sum, account) => {
-      return sum + (account.type === 'debit' ? account.starting_amount : -account.starting_amount);
-    }, 0);
-  });
-
   // Actions
-  async function fetchAccounts(bookId) {
+  
+  /**
+   * Fetch a single account by ID
+   * @param {number} id - The account ID to fetch
+   * @returns {Promise<Object>} The account data
+   * @throws {Error} If account is not found or fetch fails
+   */
+  async function fetchAccountById(id) {
     try {
-      // Check if bookId is provided
-      if (!bookId) {
-        console.error('fetchAccounts: bookId is required');
-        throw new Error('Book ID is required to fetch accounts');
-      }
-
-      // Fetch accounts for the specified book
-      const response = await fetchWithAuth(`/api/accounts?book_id=${bookId}`);
+      const response = await fetchWithAuth(`/api/accounts/${id}`);
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch accounts');
+        throw new Error(errorData.error || 'Failed to fetch account');
       }
 
-      const data = await response.json();
-      accounts.value = data;
-      return data;
+      return await response.json();
     } catch (error) {
-      console.error('Error fetching accounts:', error);
+      console.error('Error fetching account:', error);
       throw error;
     }
   }
 
-  async function addAccount(account) {
+  /**
+   * Create a new account
+   * @param {Object} account - The account data to create
+   * @param {string} account.name - The account name
+   * @param {string} account.type - The account type (debit/credit)
+   * @param {number} account.starting_amount - The starting balance
+   * @param {number} account.book_id - The book ID this account belongs to
+   * @returns {Promise<Object>} The created account
+   * @throws {Error} If account data is invalid or creation fails
+   */
+  async function createAccount(account) {
     try {
       // Make sure account has a book_id
       if (!account.book_id) {
@@ -63,18 +65,24 @@ export const useAccountsStore = defineStore('accounts', () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add account');
+        throw new Error(errorData.error || 'Failed to create account');
       }
 
       const newAccount = await response.json();
-      accounts.value.push(newAccount);
       return newAccount;
     } catch (error) {
-      console.error('Error adding account:', error);
+      console.error('Error creating account:', error);
       throw error;
     }
   }
 
+  /**
+   * Update an existing account
+   * @param {number} id - The account ID to update
+   * @param {Object} updates - The fields to update
+   * @returns {Promise<Object>} The updated account
+   * @throws {Error} If update fails
+   */
   async function updateAccount(id, updates) {
     try {
       const response = await fetchWithAuth(`/api/accounts/${id}`, {
@@ -88,10 +96,6 @@ export const useAccountsStore = defineStore('accounts', () => {
       }
 
       const updatedAccount = await response.json();
-      const index = accounts.value.findIndex(a => a.id === id);
-      if (index !== -1) {
-        accounts.value[index] = updatedAccount;
-      }
       return updatedAccount;
     } catch (error) {
       console.error('Error updating account:', error);
@@ -99,6 +103,11 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
+  /**
+   * Delete an account
+   * @param {number} id - The account ID to delete
+   * @throws {Error} If deletion fails
+   */
   async function deleteAccount(id) {
     try {
       const response = await fetchWithAuth(`/api/accounts/${id}`, {
@@ -109,17 +118,19 @@ export const useAccountsStore = defineStore('accounts', () => {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to delete account');
       }
-
-      const index = accounts.value.findIndex(a => a.id === id);
-      if (index !== -1) {
-        accounts.value.splice(index, 1);
-      }
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
     }
   }
 
+  /**
+   * Fetch account balance up to a specific date
+   * @param {number} id - The account ID
+   * @param {string} upToDate - The date to calculate balance up to (YYYY-MM-DD)
+   * @returns {Promise<Object>} The account balance information
+   * @throws {Error} If fetch fails
+   */
   async function fetchAccountBalance(id, upToDate) {
     try {
       const response = await fetchWithAuth(`/api/accounts/${id}/balance?upToDate=${upToDate}`);
@@ -134,25 +145,12 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
 
-  // Add this function to the store
-  function resetState() {
-    accounts.value = [];
-  }
-
   return {
-    // State
-    accounts,
-    // Getters
-    accountsByName,
-    getAccountById,
-    totalBalance,
     // Actions
-    fetchAccounts,
-    addAccount,
+    fetchAccountById,
+    createAccount,
     updateAccount,
     deleteAccount,
     fetchAccountBalance,
-    // New action
-    resetState,
   };
 });

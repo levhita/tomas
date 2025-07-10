@@ -66,7 +66,7 @@ const endDate = computed(() => dateAccountSelector.value?.endDate)
 const rangeType = ref('monthly')
 
 const accountId = ref(null)
-const selectedAccount = computed(() => accountsStore.getAccountById(accountId.value))
+const selectedAccount = computed(() => booksStore.getAccountById(accountId.value))
 
 const showModal = ref(false)
 const currentTransaction = ref({})
@@ -156,13 +156,6 @@ async function validateAndSetBook() {
     return false;
   }
 
-  // Load accounts for the book
-  try {
-    await accountsStore.fetchAccounts(bookId);
-  } catch (error) {
-    console.error('Error loading accounts:', error);
-  }
-
   // Success - book and all dependent data are loaded
   return true;
 }
@@ -184,8 +177,8 @@ onMounted(async () => {
   const isBookValid = await validateAndSetBook();
 
   // Only set initial account if book is valid
-  if (isBookValid && accountsStore.accountsByName.length > 0) {
-    accountId.value = accountsStore.accountsByName[0].id;
+  if (isBookValid && booksStore.accountsByName.length > 0) {
+    accountId.value = booksStore.accountsByName[0].id;
   }
 });
 </script>

@@ -68,6 +68,49 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * GET /books/:id/accounts
+ * Get all accounts for a specific book
+ * 
+ * @param {number} id - Book ID
+ * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
+ * @returns {Array} List of accounts for the book
+ */
+router.get('/:id/accounts', async (req, res) => {
+  try {
+    const bookId = req.params.id;
+
+    // First check if the book exists
+    const book = await getBookById(bookId);
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    // Check team-based access for all users including superadmin
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canRead(team.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Fetch accounts for the book
+    const [accounts] = await db.query(`
+      SELECT * FROM account 
+      WHERE book_id = ?
+      ORDER BY name ASC
+    `, [bookId]);
+
+    res.status(200).json(accounts);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch accounts' });
+  }
+});
+
+/**
  * POST /books
  * Create a new book within a team
  * 
