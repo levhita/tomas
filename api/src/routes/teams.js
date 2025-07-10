@@ -104,7 +104,7 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
 
 /**
  * GET /teams/all
- * Get all teams (admin only)
+ * Get all teams (superadmin only)
  * 
  * @permission Super admin only
  * @query {boolean} deleted - If 'true', return only soft-deleted teams (recycle bin). Default: 'false'

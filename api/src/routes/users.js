@@ -452,7 +452,7 @@ router.post('/exit-team', authenticateToken, async (req, res) => {
  * Get a single user by ID
  * 
  * @param {number} id - User ID
- * @permission User can access their own data, admins can access any user
+ * @permission User can access their own data, superadmins can access any user
  * @returns {Object} User data (excluding password)
  */
 router.get('/:id', authenticateToken, async (req, res) => {
@@ -478,7 +478,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
     const user = users[0];
-    // Convert admin and active flags from 0/1 to boolean
+    // Convert superadmin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
     user.active = user.active === 1;
     res.status(200).json(user);
@@ -497,10 +497,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
  * 
  * @body {string} username - Required unique username
  * @body {string} password - Required password
- * @body {string} password - Required password
  * @body {boolean} superadmin - Optional admin flag, defaults to false
  * @body {boolean} active - Optional active flag, defaults to true
- * @permission Admin only
+ * @permission Superadmin only
  * @returns {Object} Newly created user (excluding password)
  */
 router.post('/', requireSuperAdmin, async (req, res) => {
@@ -566,12 +565,12 @@ router.post('/', requireSuperAdmin, async (req, res) => {
  * @param {number} id - User ID to update
  * @body {string} username - Optional new username
  * @body {string} password - Optional new password
- * @body {boolean} admin - Optional admin status flag
- * @permission User can update their own data (except admin flag), admins can update any user
+ * @body {boolean} superadmin - Optional superadmin status flag
+ * @permission User can update their own data (except superadmin flag), superadmins can update any user
  * @returns {Object} Updated user data (excluding password)
  * 
- * Note: Only admins can modify the admin flag. Regular users can only update
- * their own account information and cannot change their admin status.
+ * Note: Only superadmins can modify the superadmin flag. Regular users can only update
+ * their own account information and cannot change their superadmin status.
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -600,7 +599,7 @@ router.put('/:id', async (req, res) => {
     // Check permissions
     const isOwnAccount = req.user.id === parseInt(id);
 
-    // Only admins can update admin flag and active status
+    // Only superadmins can update superadmin flag and active status
     if (superadmin !== undefined && !req.user.superadmin) {
       return res.status(403).json({
         error: 'Only administrators can change admin privileges'
@@ -609,7 +608,7 @@ router.put('/:id', async (req, res) => {
 
     if (active !== undefined && !req.user.superadmin) {
       return res.status(403).json({
-        error: 'Only administrators can change user active status'
+        error: 'Only superadmins can change user active status'
       });
     }
 
@@ -719,11 +718,11 @@ router.put('/:id', async (req, res) => {
  * Delete a user
  * 
  * @param {number} id - User ID to delete
- * @permission Admin only, cannot delete own account
+ * @permission superAdmin only, cannot delete own account
  * @returns {null} 204 No Content on success
  * 
  * Note: Users cannot delete their own accounts as a safety measure.
- * This prevents admins from accidentally removing their own access.
+ * This prevents superadmins from accidentally removing their own access.
  */
 router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
@@ -772,7 +771,7 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
  * Get team access for a specific user
  * 
  * @param {number} id - User ID
- * @permission Super admin only
+ * @permission Superadmins only
  * @returns {Array} List of teams the user has access to with their roles
  */
 router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
