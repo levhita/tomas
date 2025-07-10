@@ -25,7 +25,8 @@ const {
   canWrite,
   canRead,
   getTeamUsers,
-  getTeamById
+  getTeamById,
+  getUserRole
 } = require('../utils/team');
 
 /**
@@ -597,6 +598,52 @@ router.get('/:id/users', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch team users' });
+  }
+});
+
+/**
+ * GET /teams/:id/books
+ * List all books for a specific team
+ * 
+ * @param {number} id - Team ID
+ * @permission Read access to the team (admin, collaborator, viewer) or superadmin
+ * @returns {Array} List of books for the specified team
+ */
+router.get('/:id/books', async (req, res) => {
+  try {
+    // First check if the team exists
+    const team = await getTeamById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check if user has read access to this team
+    const { allowed, message } = await canRead(req.params.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Get user's role in this team
+    const userRole = await getUserRole(req.params.id, req.user.id);
+
+    const [books] = await db.query(`
+      SELECT b.*, t.name as team_name
+      FROM book b
+      INNER JOIN team t ON b.team_id = t.id
+      WHERE b.team_id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
+      ORDER BY b.name ASC
+    `, [req.params.id]);
+
+    // Add role to each book for consistency with previous API
+    const booksWithRole = books.map(book => ({
+      ...book,
+      role: userRole
+    }));
+
+    res.status(200).json(booksWithRole);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch books' });
   }
 });
 

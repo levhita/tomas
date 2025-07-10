@@ -456,6 +456,37 @@ export const useTeamsStore = defineStore('teams', () => {
     }
   }
 
+  /**
+   * Fetch books for a team
+   * @param {number} teamId - Team ID
+   * @returns {Promise<Array>} List of books in the team
+   */
+  async function fetchTeamBooks(teamId) {
+    if (!usersStore.token) {
+      throw new Error('Authentication required');
+    }
+    
+    try {
+      const response = await fetch(`/api/teams/${teamId}/books`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${usersStore.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch team books');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Fetch team books error:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     teams,
@@ -479,6 +510,7 @@ export const useTeamsStore = defineStore('teams', () => {
     fetchTeam: getTeamById,
     restoreTeam,
     restoreMultipleTeams,
-    permanentlyDeleteTeam
+    permanentlyDeleteTeam,
+    fetchTeamBooks
   };
 });

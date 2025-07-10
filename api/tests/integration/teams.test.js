@@ -121,7 +121,7 @@ describe('Teams Management API', () => {
 
       // Now test with the collaborator - verify they can access books for this team
       const userAuth = authenticatedRequest(collaboratorToken);
-      const response = await userAuth.get(`/api/books?teamId=${teamId}`);
+      const response = await userAuth.get(`/api/teams/${teamId}/books`);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -1163,6 +1163,103 @@ describe('Teams Management API', () => {
       
       const adminAccess = await canAdmin(1, 2);
       expect(adminAccess.allowed).toBe(false);
+    });
+  });
+
+  describe('GET /api/teams/:id/books', () => {
+    it('should return books for team with write access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
+      const response = await auth.get('/api/teams/1/books');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+
+      // Check book structure
+      const book = response.body[0];
+      expect(book).toHaveProperty('id');
+      expect(book).toHaveProperty('name');
+      expect(book).toHaveProperty('role');
+      expect(['viewer', 'collaborator', 'admin']).toContain(book.role);
+      expect(book.team_name).toBe('Test Team 1'); // Should be from team 1
+    });
+
+    it('should return books for team with read access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1, collaborator in team 2
+      const response = await auth.get('/api/teams/1/books');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+
+      // Check book structure
+      const book = response.body[0];
+      expect(book).toHaveProperty('id');
+      expect(book).toHaveProperty('name');
+      expect(book).toHaveProperty('role');
+      expect(['viewer', 'collaborator', 'admin']).toContain(book.role);
+      expect(book.team_name).toBe('Test Team 1'); // Should be from team 1
+    });
+
+    it('should deny access to team user has no access to', async () => {
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get('/api/teams/1/books');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team membership', async () => {
+      const auth = authenticatedRequest(superadminToken); // Superadmin with no team membership
+      const response = await auth.get('/api/teams/1/books');
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).get('/api/teams/1/books');
+
+      validateApiResponse(response, 401);
+    });
+
+    it('should return 404 for non-existent team', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/teams/99999/books');
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/team not found/i);
+    });
+
+    it('should return empty array for team with no books', async () => {
+      await resetBeforeTest();
+      
+      // Create a new team without books
+      const auth = authenticatedRequest(superadminToken);
+      const teamResponse = await auth.post('/api/teams')
+        .send({
+          name: 'Empty Team for Books Test'
+        });
+
+      const teamId = teamResponse.body.id;
+
+      // Add the collaborator user to this new team
+      await auth.post(`/api/teams/${teamId}/users`)
+        .send({
+          userId: 3, // collaborator user
+          role: 'viewer'
+        });
+
+      // Now test with the collaborator - verify they can access books for this team
+      const userAuth = authenticatedRequest(collaboratorToken);
+      const response = await userAuth.get(`/api/teams/${teamId}/books`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0); // New team has no books yet
     });
   });
 });

@@ -34,54 +34,6 @@ const {
 } = require('../utils/team');
 
 /**
- * GET /books
- * List all books for a specific team
- * 
- * @query {number} teamId - Required team ID
- * @permission Requires authentication and team membership (any role)
- * @returns {Array} List of books for the specified team
- */
-router.get('/', async (req, res) => {
-  const teamId = req.query.teamId;
-
-  if (!teamId) {
-    return res.status(400).json({ error: 'teamId parameter is required' });
-  }
-
-  try {
-    // Check if user has read access to this team
-    const { allowed, message } = await canRead(teamId, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
-    // Get user's role in this team
-    const userRole = await getUserRole(teamId, req.user.id);
-
-    const [books] = await db.query(`
-      SELECT b.*, t.name as team_name
-      FROM book b
-      INNER JOIN team t ON b.team_id = t.id
-      WHERE b.team_id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
-      ORDER BY b.name ASC
-    `, [teamId]);
-
-    // Add role to each book for consistency with previous API
-    const booksWithRole = books.map(book => ({
-      ...book,
-      role: userRole
-    }));
-
-    res.status(200).json(booksWithRole);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch books' });
-  }
-});
-
-
-
-/**
  * GET /books/:id
  * Get details for a single book
  * 

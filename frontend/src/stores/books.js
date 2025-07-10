@@ -5,6 +5,7 @@ import { useAccountsStore } from './accounts';
 import { useCategoriesStore } from './categories';
 import { useTransactionsStore } from './transactions';
 import { useUsersStore } from './users';
+import { useTeamsStore } from './teams';
 
 export const useBooksStore = defineStore('books', () => {
   // State
@@ -60,35 +61,6 @@ export const useBooksStore = defineStore('books', () => {
   });
 
   // Actions
-  async function fetchBooks() {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      const usersStore = useUsersStore();
-      const currentTeam = usersStore.currentTeam;
-      
-      if (!currentTeam) {
-        throw new Error('No team selected');
-      }
-
-      const response = await fetchWithAuth(`/api/books?teamId=${currentTeam.id}`);
-      const data = await response.json();
-      books.value = data;
-
-      // Set current book if none is selected
-      if (!currentBook.value && data.length > 0) {
-        currentBook.value = data[0];
-      }
-
-      return data;
-    } catch (err) {
-      console.error('Error fetching books:', err);
-      error.value = err.message;
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
 
   async function fetchBookById(id) {
     isLoading.value = true;
@@ -436,7 +408,17 @@ export const useBooksStore = defineStore('books', () => {
     try {
       // Ensure books are loaded
       if (books.value.length === 0) {
-        await fetchBooks();
+        const usersStore = useUsersStore();
+        const currentTeam = usersStore.currentTeam;
+        
+        if (!currentTeam) {
+          throw new Error('No team selected');
+        }
+
+        // Use teams store to fetch books
+        const teamsStore = useTeamsStore();
+        const data = await teamsStore.fetchTeamBooks(currentTeam.id);
+        books.value = data;
       }
 
       // Find the book
@@ -499,6 +481,8 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
 
+  // Actions
+
   return {
     // State
     books,
@@ -514,7 +498,6 @@ export const useBooksStore = defineStore('books', () => {
     hasWritePermission,
 
     // Actions
-    fetchBooks,
     fetchBookById,
     createBook,
     updateBook,

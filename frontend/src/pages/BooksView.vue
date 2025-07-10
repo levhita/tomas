@@ -106,6 +106,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../stores/books';
+import { useTeamsStore } from '../stores/teams';
 import { useUsersStore } from '../stores/users';
 import { useToast } from '../composables/useToast';
 import { Modal } from 'bootstrap';
@@ -116,6 +117,7 @@ import TeamSelectionModal from '../components/TeamSelectionModal.vue';
 const router = useRouter();
 const route = useRoute();
 const booksStore = useBooksStore();
+const teamsStore = useTeamsStore();
 const usersStore = useUsersStore();
 const { showToast } = useToast();
 
@@ -173,7 +175,13 @@ onMounted(async () => {
 
   // Fetch books since team is selected
   try {
-    await booksStore.fetchBooks();
+    const currentTeam = usersStore.currentTeam;
+    if (!currentTeam) {
+      throw new Error('No team selected');
+    }
+    
+    const data = await teamsStore.fetchTeamBooks(currentTeam.id);
+    booksStore.books = data;
   } catch (error) {
     console.error('Failed to load books', error);
   }
@@ -257,7 +265,13 @@ function showTeamSelection() {
 async function onTeamSelected() {
   // Reload books for the newly selected team
   try {
-    await booksStore.fetchBooks();
+    const currentTeam = usersStore.currentTeam;
+    if (!currentTeam) {
+      throw new Error('No team selected');
+    }
+    
+    const data = await teamsStore.fetchTeamBooks(currentTeam.id);
+    booksStore.books = data;
   } catch (error) {
     console.error('Failed to load books for selected team', error);
   }
