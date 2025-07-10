@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import BooksView from '../pages/BooksView.vue'
 import CalendarView from '../pages/CalendarView.vue'
-import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
 import TeamManagementView from '../pages/TeamManagementView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
@@ -32,11 +31,6 @@ const routes = [
     path: '/calendar',
     component: CalendarView,
     name: 'calendar'
-  },
-  {
-    path: '/flow',
-    component: FlowView,
-    name: 'flow'
   },
   {
     path: '/team',
