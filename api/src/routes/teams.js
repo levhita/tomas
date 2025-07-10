@@ -355,6 +355,79 @@ router.post('/:id/users', async (req, res) => {
 });
 
 /**
+ * POST /teams/:id/users/add-by-username
+ * Add a user to a team by username
+ * 
+ * @param {number} id - Team ID
+ * @body {string} username - Username of the user to add
+ * @body {string} role - Role to assign (admin, collaborator, viewer)
+ * @permission Admin access to the team or superadmin
+ * @returns {Array} Updated list of team users
+ */
+router.post('/:id/users/add-by-username', async (req, res) => {
+  const { username, role } = req.body;
+
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'Valid role is required (admin, collaborator, or viewer)' });
+  }
+
+  try {
+    // First check if the team exists (including deleted teams)
+    const team = await getTeamById(req.params.id, true);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check if team is deleted - only allow superadmins to manage deleted teams
+    if (team.deleted_at && !req.user.superadmin) {
+      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
+    }
+
+    // Then check if user has admin access (or is superadmin)
+    if (!req.user.superadmin) {
+      const { allowed, message } = await canAdmin(req.params.id, req.user.id);
+      if (!allowed) {
+        return res.status(403).json({ error: message });
+      }
+    }
+
+    // Check if user exists by username
+    const [users] = await db.query('SELECT id FROM user WHERE username = ? AND active = 1', [username.trim()]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: `User '${username}' not found or is inactive` });
+    }
+
+    const userId = users[0].id;
+
+    // Check if user is already in team
+    const [existing] = await db.query(`
+      SELECT 1 FROM team_user 
+      WHERE team_id = ? AND user_id = ?
+    `, [req.params.id, userId]);
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: `User '${username}' is already a member of this team` });
+    }
+
+    // Add user to team with specified role
+    await db.query(`
+      INSERT INTO team_user (team_id, user_id, role) 
+      VALUES (?, ?, ?)
+    `, [req.params.id, userId, role]);
+
+    const updatedUsers = await getTeamUsers(req.params.id);
+    res.status(201).json(updatedUsers);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to add user to team' });
+  }
+});
+
+/**
  * DELETE /teams/:id/users/:userId
  * Remove a user from a team
  * 

@@ -2,7 +2,7 @@
 
 # Scope on Changes
 
-Keep the frontend following what is already implemented in the API, always check with incodeAPI.js in the frontend and with the routes in the API to validate that what is done is correct.
+Keep the frontend following what is already implemented in the API, always check with the stores in the frontend and with the routes in the API to validate that what is done is correct.
 
 Furthermore, check with schema.sql to validate that the database schema is correct and that the API is returning the expected data.
 

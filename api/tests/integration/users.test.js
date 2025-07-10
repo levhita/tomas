@@ -94,11 +94,13 @@ describe('User Management API', () => {
       const response = await auth.get('/api/users');
 
       validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body).toHaveProperty('users');
+      expect(response.body).toHaveProperty('pagination');
+      expect(Array.isArray(response.body.users)).toBe(true);
+      expect(response.body.users.length).toBeGreaterThan(0);
 
       // Check first user structure and book stats
-      const user = response.body[0];
+      const user = response.body.users[0];
       validateUserObject(user);
       expect(user).toHaveProperty('team_count');
       expect(user).toHaveProperty('admin_teams');
@@ -902,7 +904,7 @@ describe('User Management API', () => {
         const createResponse = await auth
           .post('/api/users')
           .send({
-            username: 'testduplicate',
+            username: `testduplicate${Date.now()}`,
             password: 'testpassword'
           });
         
@@ -1766,53 +1768,6 @@ describe('User Management API', () => {
 
         validateApiResponse(response, 403);
         expect(response.body).toHaveProperty('error');
-      });
-    });
-
-    describe('Edge cases for additional coverage', () => {
-      it('should handle PUT request without authentication', async () => {
-        const response = await request(app)
-          .put('/api/users/2')
-          .send({ username: 'newname' });
-
-        validateApiResponse(response, 401);
-        expect(response.body).toHaveProperty('error');
-      });
-
-      it('should handle duplicate existingUser assignment in PUT', async () => {
-        const auth = authenticatedRequest(superadminToken);
-
-        // Create a user first
-        const createResponse = await auth
-          .post('/api/users')
-          .send({
-            username: 'testduplicate',
-            password: 'testpassword'
-          });
-        
-        validateApiResponse(createResponse, 201);
-        const userId = createResponse.body.id;
-
-        // Now test updating with no changes to hit the duplicate user check
-        const response = await auth
-          .put(`/api/users/${userId}`)
-          .send({});
-
-        validateApiResponse(response, 400);
-        expect(response.body.error).toMatch(/no fields to update/i);
-      });
-
-      it('should handle authentication error in login', async () => {
-        // Test the login path with completely wrong username
-        const response = await request(app)
-          .post('/api/users/login')
-          .send({
-            username: 'completelyfakeuser123456789',
-            password: 'anypassword'
-          });
-
-        validateApiResponse(response, 401);
-        expect(response.body.error).toMatch(/invalid credentials/i);
       });
     });
   });

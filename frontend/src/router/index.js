@@ -3,6 +3,7 @@ import BooksView from '../pages/BooksView.vue'
 import CalendarView from '../pages/CalendarView.vue'
 import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
+import TeamManagementView from '../pages/TeamManagementView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
 import AdminUsersView from '../pages/admin/AdminUsersView.vue'
 import AdminUserEditView from '../pages/admin/AdminUserEditView.vue'
@@ -36,6 +37,11 @@ const routes = [
     path: '/flow',
     component: FlowView,
     name: 'flow'
+  },
+  {
+    path: '/team',
+    component: TeamManagementView,
+    name: 'team-management'
   },
   {
     path: '/admin',

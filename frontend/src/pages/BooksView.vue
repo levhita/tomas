@@ -1,14 +1,22 @@
 <template>
   <GeneralLayout>
-    <div class="home container-fluid">
+    <div class="home container">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1>Books</h1>
           <small class="text-muted">Team: {{ usersStore.currentTeam?.name }}</small>
         </div>
-        <button class="btn btn-primary" @click="showNewBookModal">
-          <i class="bi bi-plus-circle me-2"></i>New Book
-        </button>
+        <div>
+          <button 
+            v-if="usersStore.isCurrentUserAdmin" 
+            class="btn btn-secondary me-2" 
+            @click="goToTeamManagement">
+            <i class="bi bi-people me-2"></i>Manage Team
+          </button>
+          <button class="btn btn-primary" @click="showNewBookModal">
+            <i class="bi bi-plus-circle me-2"></i>New Book
+          </button>
+        </div>
       </div>
 
       <div v-if="booksStore.isLoading" class="text-center my-5">
@@ -253,5 +261,9 @@ async function onTeamSelected() {
   } catch (error) {
     console.error('Failed to load books for selected team', error);
   }
+}
+
+function goToTeamManagement() {
+  router.push('/team');
 }
 </script>

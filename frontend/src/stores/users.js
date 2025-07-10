@@ -50,6 +50,9 @@ export const useUsersStore = defineStore('users', () => {
   
   // Alias for currentTeam to maintain consistency
   const currentTeam = selectedTeam;
+  const isCurrentUserAdmin = computed(() => {
+    return selectedTeam.value?.role === 'admin';
+  });
   const userStats = computed(() => {
     const total = users.value.length;
     const superAdmins = users.value.filter(user => user.superadmin).length;
@@ -894,6 +897,7 @@ export const useUsersStore = defineStore('users', () => {
     hasSelectedTeam,
     selectedTeam,
     currentTeam,
+    isCurrentUserAdmin,
     userStats,
     // Actions
     login,
