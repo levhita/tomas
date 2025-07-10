@@ -7,6 +7,8 @@ export const useTeamsStore = defineStore('teams', () => {
   const teams = ref([]);
   const isLoadingTeams = ref(false);
   const currentTeam = ref(null);
+  const currentTeamBooks = ref([]);
+  const currentTeamUsers = ref([]);
   
   // Get the users store for authentication
   const usersStore = useUsersStore();
@@ -28,6 +30,17 @@ export const useTeamsStore = defineStore('teams', () => {
       averageUsersPerTeam: total > 0 ? 
         (teams.value.reduce((sum, team) => sum + (team.user_count || 0), 0) / total).toFixed(1) : 0
     };
+  });
+
+  // Books computed properties
+  const booksByName = computed(() => {
+    return currentTeamBooks.value.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  });
+
+  const getBookById = computed(() => {
+    return (id) => currentTeamBooks.value.find(book => book.id === parseInt(id));
   });
   
   /**
@@ -197,13 +210,13 @@ export const useTeamsStore = defineStore('teams', () => {
   }
   
   /**
-   * Fetch team users - Super admin only
+   * Fetch team users and store them in currentTeamUsers
    * @param {number} teamId - Team ID
    * @returns {Promise<Array>} List of users in the team
    */
   async function fetchTeamUsers(teamId) {
-    if (!usersStore.isSuperAdmin) {
-      throw new Error('Unauthorized: Super admin access required');
+    if (!usersStore.token) {
+      throw new Error('Authentication required');
     }
     
     try {
@@ -220,7 +233,9 @@ export const useTeamsStore = defineStore('teams', () => {
         throw new Error(error.error || 'Failed to fetch team users');
       }
       
-      return await response.json();
+      const data = await response.json();
+      currentTeamUsers.value = data;
+      return data;
     } catch (error) {
       console.error('Fetch team users error:', error);
       throw error;
@@ -396,31 +411,6 @@ export const useTeamsStore = defineStore('teams', () => {
       throw error;
     }
   }
-
-  /**
-   * Restore multiple soft-deleted teams - Super admin only
-   * @param {Array<number>} teamIds - Array of team IDs
-   * @returns {Promise<Array>} List of restored teams
-   */
-  async function restoreMultipleTeams(teamIds) {
-    if (!usersStore.isSuperAdmin) {
-      throw new Error('Unauthorized: Super admin access required');
-    }
-    
-    try {
-      const restoredTeams = [];
-      
-      for (const teamId of teamIds) {
-        const restoredTeam = await restoreTeam(teamId);
-        restoredTeams.push(restoredTeam);
-      }
-      
-      return restoredTeams;
-    } catch (error) {
-      console.error('Restore multiple teams error:', error);
-      throw error;
-    }
-  }
   
   /**
    * Permanently delete a team and all associated data - Super admin only
@@ -457,7 +447,7 @@ export const useTeamsStore = defineStore('teams', () => {
   }
 
   /**
-   * Fetch books for a team
+   * Fetch books for a team and store them in currentTeamBooks
    * @param {number} teamId - Team ID
    * @returns {Promise<Array>} List of books in the team
    */
@@ -480,7 +470,9 @@ export const useTeamsStore = defineStore('teams', () => {
         throw new Error(errorData.error || 'Failed to fetch team books');
       }
       
-      return await response.json();
+      const data = await response.json();
+      currentTeamBooks.value = data;
+      return data;
     } catch (error) {
       console.error('Fetch team books error:', error);
       throw error;
@@ -492,9 +484,13 @@ export const useTeamsStore = defineStore('teams', () => {
     teams,
     isLoadingTeams,
     currentTeam,
+    currentTeamBooks,
+    currentTeamUsers,
     
     // Computed
     teamStats,
+    booksByName,
+    getBookById,
     
     // Actions
     fetchAllTeams,
@@ -503,14 +499,13 @@ export const useTeamsStore = defineStore('teams', () => {
     updateTeam,
     deleteTeam,
     fetchTeamUsers,
+    fetchTeamBooks,
     addUserToTeam,
     updateUserRole,
     removeUserFromTeam,
     getTeamById,
     fetchTeam: getTeamById,
     restoreTeam,
-    restoreMultipleTeams,
-    permanentlyDeleteTeam,
-    fetchTeamBooks
+    permanentlyDeleteTeam
   };
 });

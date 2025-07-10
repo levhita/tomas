@@ -270,3 +270,87 @@ main {
     color: var(--bs-primary-color);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* 2.11 Book Navigation Navbar                                               */
+/* -------------------------------------------------------------------------- */
+
+/* Book navbar logo sizing */
+.book-navbar .navbar-logo {
+  height: 40px;
+  width: 40px;
+}
+
+/* Navigation tabs container */
+.book-navbar .nav-tabs-container {
+  display: flex;
+  align-items: left;
+}
+
+.book-navbar .nav-tabs-container .nav-tabs {
+  background: none;
+  border: none;
+}
+
+.book-navbar .nav-tabs-container .nav-link {
+  color: var(--bs-body-color);
+  border: 1px solid transparent;
+  border-radius: var(--bs-border-radius-pill);
+  padding: 0.5rem 1rem;
+  margin: 0 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.book-navbar .nav-tabs-container .nav-link:hover {
+  color: var(--bs-primary);
+  background-color: var(--bs-gray-100);
+}
+
+.book-navbar .nav-tabs-container .nav-link.active {
+  color: var(--bs-primary);
+  background-color: var(--bs-primary-bg-subtle);
+  border-color: var(--bs-primary);
+}
+
+/* Dark mode adjustments for book navbar */
+[data-bs-theme="dark"] .book-navbar .nav-tabs-container .nav-link:hover {
+  background-color: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .book-navbar .nav-tabs-container .nav-link.active {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+/* Responsive adjustments for book navbar */
+@media (max-width: 991.98px) {
+  .book-navbar .nav-tabs-container {
+    margin-top: 1rem;
+    justify-content: left;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-tabs {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-item {
+    width: 100%;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-link {
+    text-align: center;
+    margin: 0.25rem 0;
+  }
+
+  /* Stack button groups vertically on mobile */
+  .book-navbar .navbar-nav {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .book-navbar .btn-group {
+    justify-content: center;
+  }
+}
+
+/* ========================================================================== */

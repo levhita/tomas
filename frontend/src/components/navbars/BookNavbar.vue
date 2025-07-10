@@ -1,6 +1,6 @@
 <template>
   <!-- Book-specific navbar -->
-  <nav class="navbar navbar-expand-lg bg-body-secondary p-3">
+  <nav class="navbar navbar-expand-lg bg-body-secondary p-3 book-navbar">
     <div class="container-fluid">
       <!-- Back to books button -->
       <div class="navbar-brand">
@@ -111,6 +111,7 @@ import BookModal from '../modals/BookModal.vue'
 import CategoriesModal from '../modals/CategoriesModal.vue'
 import { useBooksStore } from '../../stores/books'
 import { useUsersStore } from '../../stores/users'
+import { useTeamsStore } from '../../stores/teams'
 import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
@@ -120,6 +121,7 @@ const props = defineProps({
 // Store reference for book operations
 const booksStore = useBooksStore()
 const usersStore = useUsersStore()
+const teamsStore = useTeamsStore()
 const { showToast } = useToast()
 
 // Computed property to get the user's role in the current book
@@ -135,22 +137,17 @@ const userRole = computed(() => {
     return null;
   }
 
-  // Check if currentBookUsers is available
-  const users = booksStore.currentBookUsers;
+  // Check if currentTeamUsers is available
+  const users = teamsStore.currentTeamUsers;
   if (!users || !Array.isArray(users) || users.length === 0) {
-    console.log('currentBookUsers not available or empty:', users);
+    console.log('currentTeamUsers not available or empty:', users);
     return null;
   }
 
-  console.log('Current book users:', users);
-  console.log('Current user ID:', currentUser.id);
-
-  // Find the user's role in the current book
+  // Find the user's role in the current team
   const userEntry = users.find(
     entry => entry.id === currentUser.id
   );
-
-  console.log('User entry found:', userEntry);
 
   return userEntry?.role || null;
 })
@@ -210,29 +207,17 @@ function initializeDarkMode() {
   }
 }
 
-// Method to ensure book users are loaded
-async function ensureBookUsersLoaded() {
-  console.log('Ensuring book users are loaded');
-
+// Load team users for the current book
+async function loadTeamUsers() {
   if (!props.book) {
     console.log('No book to load users for');
     return;
   }
 
   try {
-    // Always load book users to ensure we have the latest data
-    console.log('Loading book users for book ID:', props.book.id);
-    const users = await booksStore.getBookUsers(props.book.id);
-    console.log('Loaded users:', users);
-
-    // Directly set the ref value for proper reactivity
-    booksStore.currentBookUsers = users;
-
-    // Force a component update by triggering a no-op state change
-    const dummy = ref(0);
-    dummy.value++;
+    await teamsStore.fetchTeamUsers(props.book.team_id);
   } catch (error) {
-    console.error('Error loading book users:', error);
+    console.error('Error loading team users:', error);
   }
 }
 
@@ -272,100 +257,20 @@ async function handleSaveBook(bookData) {
 
 // Load book users when component is mounted
 onMounted(() => {
-  console.log('Component mounted, ensuring book users are loaded');
   
   // Initialize dark mode
   initializeDarkMode();
   
-  // Load book users if book is available
+  // Load team users if book is available
   if (props.book) {
-    ensureBookUsersLoaded();
+    loadTeamUsers();
   }
 })
 
 // Watch for changes in the book prop
 watch(() => props.book, async (newBook) => {
-  console.log('Book changed:', newBook);
   if (newBook) {
-    await ensureBookUsersLoaded();
+    await loadTeamUsers();
   }
 }, { immediate: true })
 </script>
-
-<style scoped>
-.navbar-logo {
-  height: 40px;
-  width: 40px;
-}
-
-.nav-tabs-container {
-  display: flex;
-  align-items: left;
-}
-
-.nav-tabs-container .nav-tabs {
-  background: none;
-  border: none;
-}
-
-.nav-tabs-container .nav-link {
-  color: var(--bs-body-color);
-  border: 1px solid transparent;
-  border-radius: var(--bs-border-radius-pill);
-  padding: 0.5rem 1rem;
-  margin: 0 0.25rem;
-  transition: all 0.15s ease-in-out;
-}
-
-.nav-tabs-container .nav-link:hover {
-  color: var(--bs-primary);
-  background-color: var(--bs-gray-100);
-}
-
-.nav-tabs-container .nav-link.active {
-  color: var(--bs-primary);
-  background-color: var(--bs-primary-bg-subtle);
-  border-color: var(--bs-primary);
-}
-
-/* Dark mode adjustments */
-[data-bs-theme="dark"] .nav-tabs-container .nav-link:hover {
-  background-color: var(--bs-gray-800);
-}
-
-[data-bs-theme="dark"] .nav-tabs-container .nav-link.active {
-  background-color: var(--bs-primary-bg-subtle);
-}
-
-/* Responsive adjustments */
-@media (max-width: 991.98px) {
-  .nav-tabs-container {
-    margin-top: 1rem;
-    justify-content: left;
-  }
-  
-  .nav-tabs-container .nav-tabs {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .nav-tabs-container .nav-item {
-    width: 100%;
-  }
-  
-  .nav-tabs-container .nav-link {
-    text-align: center;
-    margin: 0.25rem 0;
-  }
-
-  /* Stack button groups vertically on mobile */
-  .navbar-nav {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .btn-group {
-    justify-content: center;
-  }
-}
-</style>

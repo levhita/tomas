@@ -43,7 +43,7 @@ async function validateAndSetBook() {
   }
 
   // Use the enhanced book store to validate and load everything
-  const result = await booksStore.validateAndLoadBook(bookId);
+  const result = await booksStore.loadBookById(bookId);
 
   // Handle validation result
   if (!result.success) {

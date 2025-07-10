@@ -29,7 +29,7 @@
         {{ booksStore.error }}
       </div>
 
-      <div v-else-if="booksStore.books.length === 0" class="text-center my-5">
+      <div v-else-if="teamsStore.currentTeamBooks.length === 0" class="text-center my-5">
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
           No books found. Create your first book to get started.
@@ -37,7 +37,7 @@
       </div>
 
       <div v-else class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        <div v-for="book in booksStore.booksByName" :key="book.id" class="col">
+        <div v-for="book in teamsStore.booksByName" :key="book.id" class="col">
           <div class="card h-100 book-card">
             <div class="card-body">
               <h5 class="card-title">{{ book.name }}</h5>
@@ -180,8 +180,7 @@ onMounted(async () => {
       throw new Error('No team selected');
     }
     
-    const data = await teamsStore.fetchTeamBooks(currentTeam.id);
-    booksStore.books = data;
+    await teamsStore.fetchTeamBooks(currentTeam.id);
   } catch (error) {
     console.error('Failed to load books', error);
   }
@@ -270,8 +269,7 @@ async function onTeamSelected() {
       throw new Error('No team selected');
     }
     
-    const data = await teamsStore.fetchTeamBooks(currentTeam.id);
-    booksStore.books = data;
+    await teamsStore.fetchTeamBooks(currentTeam.id);
   } catch (error) {
     console.error('Failed to load books for selected team', error);
   }
