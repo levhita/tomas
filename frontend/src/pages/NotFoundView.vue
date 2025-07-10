@@ -1,5 +1,5 @@
 <template>
-  <div class="container-fluid d-flex justify-content-center align-items-center min-vh-100">
+  <div class="container-fluid d-flex justify-content-center align-items-center not-found-page">
     <div class="text-center">
       <div class="mb-4">
         <h1 class="display-1 fw-bold text-primary">404</h1>
@@ -68,8 +68,4 @@ const goBack = () => {
 }
 </script>
 
-<style scoped>
-.min-vh-100 {
-  min-height: 100vh;
-}
-</style>
+
