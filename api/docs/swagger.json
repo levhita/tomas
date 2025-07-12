@@ -191,6 +191,37 @@
           }
         }
       },
+      "AccountInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "book_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Checking Account"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Main checking account"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit"
+            ],
+            "default": "debit",
+            "example": "debit"
+          },
+          "book_id": {
+            "type": "integer",
+            "example": 123
+          }
+        }
+      },
       "Category": {
         "type": "object",
         "properties": {
@@ -523,6 +554,158 @@
             }
           }
         }
+      },
+      "put": {
+        "summary": "Update an existing account",
+        "description": "Update all fields of an existing account. Requires write access to the account's book via team membership.",
+        "tags": [
+          "Accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Account ID to update"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "type"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Updated Account Name"
+                  },
+                  "note": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "Updated account description"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "debit",
+                      "credit"
+                    ],
+                    "example": "debit"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to update account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an account",
+        "description": "Permanently delete an account. Cannot delete accounts that have associated transactions. Requires write access to the account's book.",
+        "tags": [
+          "Accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Account ID to delete"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Account deleted successfully (no content)"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "428": {
+            "description": "Cannot delete account with transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Cannot delete account with transactions",
+                  "code": "PRECONDITION_REQUIRED"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/accounts/{id}/balance": {
@@ -604,6 +787,64 @@
           },
           "500": {
             "description": "Failed to calculate balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "post": {
+        "summary": "Create a new account",
+        "description": "Create a new account within a book. Requires write access to the book via team membership.",
+        "tags": [
+          "Accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to create account",
             "content": {
               "application/json": {
                 "schema": {

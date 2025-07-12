@@ -99,6 +99,16 @@ const options = {
             created_at: { type: 'string', format: 'date-time', example: '2024-01-15T10:30:00Z' }
           }
         },
+        AccountInput: {
+          type: 'object',
+          required: ['name', 'book_id'],
+          properties: {
+            name: { type: 'string', example: 'Checking Account' },
+            note: { type: 'string', nullable: true, example: 'Main checking account' },
+            type: { type: 'string', enum: ['debit', 'credit'], default: 'debit', example: 'debit' },
+            book_id: { type: 'integer', example: 123 }
+          }
+        },
         Category: {
           type: 'object',
           properties: {

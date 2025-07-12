@@ -201,15 +201,41 @@ router.get('/:id/balance', async (req, res) => {
 });
 
 /**
- * POST /accounts
- * Create a new account
- * 
- * @body {string} name - Required account name
- * @body {string} note - Optional account description
- * @body {string} type - Account type (debit or credit), defaults to debit
- * @body {number} book_id - Required book ID
- * @permission Write access to the book (via team membership: admin, collaborator)
- * @returns {Object} Newly created account
+ * @swagger
+ * /accounts:
+ *   post:
+ *     summary: Create a new account
+ *     description: Create a new account within a book. Requires write access to the book via team membership.
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AccountInput'
+ *     responses:
+ *       201:
+ *         description: Account created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Account'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to create account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
   const { name, note = null, type = "debit", book_id } = req.body;
@@ -254,15 +280,61 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /accounts/:id
- * Update an existing account
- * 
- * @param {number} id - Account ID to update
- * @body {string} name - Account name
- * @body {string} note - Account description
- * @body {string} type - Account type (debit or credit)
- * @permission Write access to the account's book (via team membership: admin, collaborator)
- * @returns {Object} Updated account
+ * @swagger
+ * /accounts/{id}:
+ *   put:
+ *     summary: Update an existing account
+ *     description: Update all fields of an existing account. Requires write access to the account's book via team membership.
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Account ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ['name', 'type']
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 'Updated Account Name'
+ *               note:
+ *                 type: string
+ *                 nullable: true
+ *                 example: 'Updated account description'
+ *               type:
+ *                 type: string
+ *                 enum: ['debit', 'credit']
+ *                 example: 'debit'
+ *     responses:
+ *       200:
+ *         description: Account updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Account'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to update account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   const { name, note, type } = req.body;
@@ -317,13 +389,46 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /accounts/:id
- * Delete an account
- * 
- * @param {number} id - Account ID to delete
- * @permission Write access to the account's book (via team membership: admin, collaborator)
- * @returns {null} 204 No Content on success
- * @throws {Error} 428 Precondition Required if account has transactions
+ * @swagger
+ * /accounts/{id}:
+ *   delete:
+ *     summary: Delete an account
+ *     description: Permanently delete an account. Cannot delete accounts that have associated transactions. Requires write access to the account's book.
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Account ID to delete
+ *     responses:
+ *       204:
+ *         description: Account deleted successfully (no content)
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       428:
+ *         description: Cannot delete account with transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               status: error
+ *               message: Cannot delete account with transactions
+ *               code: PRECONDITION_REQUIRED
+ *       500:
+ *         description: Failed to delete account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', async (req, res) => {
   try {

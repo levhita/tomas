@@ -34,13 +34,13 @@ This reads JSDoc comments with @swagger annotations from:
 - `./src/routes/*.js` - API route definitions with Swagger annotations
 - `./src/middleware/*.js` - Middleware documentation
 
-**Current Status**: ✅ **Successfully converted 20 endpoints to @swagger format**
+**Current Status**: ✅ **Successfully converted 23 endpoints to @swagger format**
 
 **Documented Endpoints**:
 - 🔐 **Authentication**: User login ✅
 - 💊 **Health**: API health checks and admin statistics ✅ (3 endpoints)
 - 📊 **Transactions**: Complete CRUD operations ✅ (4 endpoints)
-- 🏦 **Accounts**: Account details and balance queries ✅ (2 endpoints)
+- 🏦 **Accounts**: Complete CRUD operations and balance queries ✅ (5 endpoints)
 - 📚 **Books**: Book details, accounts, categories, and transactions ✅ (4 endpoints)
 - 📖 **Categories**: Category details and creation ✅ (2 endpoints)
 - 👥 **Users**: User search and listing ✅ (2 endpoints)
