@@ -60,18 +60,21 @@ export const useTransactionsStore = defineStore('transactions', () => {
     }
   }
   
-async function fetchTransactionsByWorkspace(workspaceId) {
+async function fetchTransactionsByWorkspace(workspaceId, { page = 1, limit = 20, sortKey = 'date', sortDirection = 'desc', accountId = null, search = '' } = {}) {
   try {
+    const params = new URLSearchParams({ page, limit, sortKey, sortDirection });
+    if (accountId) params.append('accountId', accountId);
+    if (search) params.append('search', search);
     if (!workspaceId) throw new Error('workspaceId is required');
-    const url = `/api/transactions/${workspaceId}/all`;
+    const url = `/api/transactions/${workspaceId}/all?${params.toString()}`;
     const response = await fetchWithAuth(url);
     if (!response.ok) {
       const json = await response.json();
       throw new Error(json.error);
     }
     const data = await response.json();
-    transactions.value = data;
-    return { transactions: data };
+    transactions.value = data.transactions;
+    return { transactions: data.transactions, total: data.total };
   } catch (error) {
     console.error('Error fetching transactions by workspace:', error);
     throw error;
