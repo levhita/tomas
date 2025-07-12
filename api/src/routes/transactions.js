@@ -139,7 +139,8 @@ router.get('/:workspaceId/all', async (req, res) => {
       SELECT 
         t.*, 
         c.name as category_name, 
-        a.name as account_name
+        a.name as account_name,
+        a.type as account_type
       FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
