@@ -104,7 +104,23 @@ router.get('/:workspaceId/all', async (req, res) => {
   limit = parseInt(limit, 10);
   const offset = (page - 1) * limit;
   // Allowed sort keys and directions
-  const allowedSortKeys = ['date', 'amount', 'description', 'category_name', 'type', 'note', 'id'];
+
+  // allowedSortKeys type references the transaction type: Expense, Income, Payment, Charge
+  // and the account_name references debit account or credit account
+  // so we can sort by date, amount, description, account_name, category_name,
+  // type (Expense, Income, Payment, Charge), note, id
+  // but we need to ensure the sortKey is valid and the sortDirection is either asc or desc
+  sortKey = sortKey.toLowerCase();
+  sortDirection = sortDirection.toLowerCase();
+  if (isNaN(page) || page < 1) page = 1;
+  if (isNaN(limit) || limit < 1) limit = 20;
+  if (limit > 100) limit = 100; // Limit to a maximum of 100 items per page
+  if (offset < 0) offset = 0;
+  // Validate sortKey and sortDirection
+  // We only allow certain keys to prevent SQL injection attacks
+  // and we only allow asc or desc for sortDirection
+  // We also need to ensure the sortKey is a valid column in the transaction table
+  const allowedSortKeys = ['date', 'amount', 'description','account_name','category_name', 'type', 'note', 'id'];
   const allowedDirections = ['asc', 'desc'];
   if (!allowedSortKeys.includes(sortKey)) sortKey = 'date';
   if (!allowedDirections.includes(sortDirection)) sortDirection = 'desc';
@@ -114,9 +130,34 @@ router.get('/:workspaceId/all', async (req, res) => {
       return res.status(403).json({ error: message });
     }
     // Compose ORDER BY clause
-    let orderBy = 't.' + sortKey;
-    if (sortKey === 'category_name') orderBy = 'c.name';
-    if (sortKey === 'account_name') orderBy = 'a.name';
+    let orderBy;
+    switch (sortKey) {
+      case 'category_name':
+        orderBy = 'c.name';
+        break;
+      case 'account_name':
+        orderBy = 'a.name';
+        break;
+      case 'type':
+          orderBy = `CASE 
+            WHEN a.type = 'debit' AND t.amount > 0 THEN 'Income'
+            WHEN a.type = 'debit' AND t.amount <= 0 THEN 'Expense'
+            WHEN a.type = 'credit' AND t.amount < 0 THEN 'Payment'
+            WHEN a.type = 'credit' AND t.amount >= 0 THEN 'Charge'
+            ELSE 'Unknown'
+          END`;
+         break;
+      case 'date':
+      case 'amount':
+      case 'description':
+      case 'note':
+      case 'id':
+        orderBy = 't.' + sortKey;
+        break;
+      default:
+        orderBy = 't.date'; // fallback to date if somehow an invalid key gets through
+    }
+    
     // Build WHERE clause
     let where = 'a.workspace_id = ?';
     const params = [workspaceId];
