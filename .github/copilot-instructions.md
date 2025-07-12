@@ -67,8 +67,8 @@ For running any frontend test, code changes or install packages you need to cd i
 Only stories that are tagged as `stable` or `testable` will be run during the tests, this is to avoid running stories that are not ready for testing.
 
 # API Testing
- We run test using the `/api/test.sh` script, inside the test we use `supertest` and run the tests directly against the API that in turn directly uses the database, effectively testing the API and the database together.
+We run test using the `cd api && npm run test` script, inside the test we use `jest` and run the tests directly against the API that in turn directly uses the database, effectively testing the API and the database together.
 
- We have  a test database that is used for testing, this database is created and populated with test data when the tests are run.
+we have  a test database that is used for testing, this database is created and populated with test data when the tests are run.
 
 For running any api test, code changes or install packages you need to cd into api folder.

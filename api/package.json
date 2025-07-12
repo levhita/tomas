@@ -5,13 +5,13 @@
   "scripts": {
     "start": "node ./bin/www",
     "dev": "nodemon ./bin/www",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --forceExit",
-    "test:integration": "jest tests/integration",
-    "test:unit": "jest --config jest.unit.config.js",
-    "test:validate": "node tests/validate.js",
-    "test:errors": "jest -f",
+    "test": "dotenv -e .env.test -- jest",
+    "test:watch": "dotenv -e .env.test -- jest --watch",
+    "test:coverage": "dotenv -e .env.test -- jest --coverage --forceExit",
+    "test:integration": "dotenv -e .env.test -- jest tests/integration",
+    "test:unit": "dotenv -e .env.test -- jest --config jest.unit.config.js",
+    "test:validate": "dotenv -e .env.test -- node tests/validate.js",
+    "test:errors": "dotenv -e .env.test -- jest -f",
     "build-docs": "swagger-jsdoc -d swagger.config.js ./src/routes/*.js ./src/middleware/*.js -o ./docs/swagger.json"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "pinia": "^2.3.0"
   },
   "devDependencies": {
+    "dotenv-cli": "^8.0.0",
     "jest": "^30.0.0",
     "nodemon": "^3.1.9",
     "supertest": "^7.1.1",

@@ -104,27 +104,6 @@ npm install
 
 ### 3. Run Tests
 
-#### Using the Test Script (Recommended)
-```bash
-# Complete setup and run all tests
-./test.sh setup
-
-# Run all tests
-./test.sh all
-
-# Run only integration tests
-./test.sh integration
-
-# Run only unit tests
-./test.sh unit
-
-# Run tests with coverage report
-./test.sh coverage
-
-# Run tests in watch mode for development
-./test.sh watch
-```
-
 #### Using NPM Scripts Directly
 ```bash
 # Run all tests
