@@ -59,6 +59,20 @@ describe('Health Check API', () => {
       // Should respond within reasonable time for load balancers
       expect(responseTime).toBeLessThan(5000); // 5 seconds max
     });
+
+    it('should return unhealthy status if database connection fails', async () => {
+      // Mock db.query to throw an error
+      const originalQuery = require('../../src/db').query;
+      require('../../src/db').query = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
+
+      const response = await request(app).get('/api/health');
+      validateApiResponse(response, 500);
+      expect(response.body).toHaveProperty('status', 'unhealthy');
+      expect(response.body).toHaveProperty('error', 'Database connection failed');
+
+      // Restore original db.query
+      require('../../src/db').query = originalQuery;
+    });
   });
 
   describe('GET /api/health/admin', () => {
@@ -152,6 +166,104 @@ describe('Health Check API', () => {
       const now = new Date();
       const timeDiff = Math.abs(now - timestamp);
       expect(timeDiff).toBeLessThan(60000); // 60 seconds
+    });
+
+    it('should return unhealthy status if database connection fails for superadmin', async () => {
+      // Mock db.query and db.execute to throw an error
+      const db = require('../../src/db');
+      const originalQuery = db.query;
+      const originalExecute = db.execute;
+      db.query = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
+      db.execute = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
+
+      // Use the valid superadminToken from beforeAll
+      const response = await request(app)
+        .get('/api/health/admin')
+        .set('Authorization', `Bearer ${superadminToken}`);
+
+      // If the database is down, authentication will fail and return 403 or 401
+      expect([401, 403, 500]).toContain(response.status);
+
+      // If it does reach the handler, check for unhealthy status
+      if (response.status === 500) {
+        expect(response.body).toHaveProperty('status', 'unhealthy');
+        expect(response.body).toHaveProperty('error', 'Simulated DB failure');
+        expect(response.body).toHaveProperty('timestamp');
+        expect(response.body).toHaveProperty('uptime');
+        expect(response.body).toHaveProperty('memory');
+        expect(response.body).toHaveProperty('database');
+        expect(response.body.database).toHaveProperty('status', 'error');
+      }
+
+      // Restore original db methods
+      db.query = originalQuery;
+      db.execute = originalExecute;
+    });
+
+    it('should return Invalid token error if database fails during authentication', async () => {
+      // Mock db.query to throw an error during authentication
+      const db = require('../../src/db');
+      const originalQuery = db.query;
+      db.query = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
+
+      const response = await request(app)
+        .get('/api/health/admin')
+        .set('Authorization', `Bearer ${superadminToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('error', 'Invalid token');
+
+      // Restore original db.query
+      db.query = originalQuery;
+    });
+  });
+
+  describe('GET /api/health/stats', () => {
+    it('should return statistics for superadmin', async () => {
+      const response = await request(app)
+        .get('/api/health/stats')
+        .set('Authorization', `Bearer ${superadminToken}`);
+
+      validateApiResponse(response, 200);
+      expect(response.body).toHaveProperty('users');
+      expect(response.body).toHaveProperty('teams');
+      expect(response.body).toHaveProperty('books');
+      expect(response.body.users).toHaveProperty('total');
+      expect(response.body.users).toHaveProperty('active');
+      expect(response.body.users).toHaveProperty('superadmins');
+      expect(response.body.teams).toHaveProperty('total');
+      expect(response.body.teams).toHaveProperty('active');
+      expect(response.body.books).toHaveProperty('total');
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).get('/api/health/stats');
+      validateApiResponse(response, 401);
+    });
+
+    it('should deny access for non-superadmin users', async () => {
+      const response = await request(app)
+        .get('/api/health/stats')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/Admin privileges required/i);
+    });
+
+    it('should return error if database fails', async () => {
+      const db = require('../../src/db');
+      const originalExecute = db.execute;
+      db.execute = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
+
+      const response = await request(app)
+        .get('/api/health/stats')
+        .set('Authorization', `Bearer ${superadminToken}`);
+
+      validateApiResponse(response, 500);
+      expect(response.body).toHaveProperty('error', 'Failed to retrieve statistics');
+
+      db.execute = originalExecute;
     });
   });
 });

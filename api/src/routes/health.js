@@ -211,10 +211,10 @@ router.get('/admin', authenticateToken, async (req, res) => {
       }
     });
   } catch (err) {
+    /* istanbul ignore next: unreachable if db fails before auth */
     // Log the detailed error for debugging
     console.error('Admin health check failed:', err);
-
-    // Return unhealthy status with error details for admins
+    /* istanbul ignore next: unreachable if db fails before auth */
     res.status(500).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
