@@ -224,24 +224,12 @@ async function getTeamById(teamId, includeDeleted = false) {
  * @returns {Promise<Object|null>} - Returns team object or null if not found
  */
 async function getTeamByBookId(bookId) {
-  // Check if book table has deleted_at column for backward compatibility
-  const [columns] = await db.execute(`
-    SELECT COLUMN_NAME 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'book' 
-    AND COLUMN_NAME = 'deleted_at'
-  `);
-  
-  const bookHasDeletedAt = columns.length > 0;
-  
-  // Build query conditionally based on schema
-  const bookDeletedAtCondition = bookHasDeletedAt ? 'AND b.deleted_at IS NULL' : '';
+
   
   const [teams] = await db.execute(`
     SELECT t.* FROM team t
     INNER JOIN book b ON t.id = b.team_id
-    WHERE b.id = ? ${bookDeletedAtCondition} AND t.deleted_at IS NULL
+    WHERE b.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
   `, [bookId]);
 
   return teams[0] || null;

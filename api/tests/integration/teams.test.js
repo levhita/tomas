@@ -1238,7 +1238,7 @@ describe('Teams Management API', () => {
       expect(noTeam).toBeNull();
     });
 
-    it('should test schema compatibility functions', async () => {
+    it('should return null for soft-deleted book', async () => {
       // This tests the schema checking code in utils/team.js
       const { getTeamByBookId } = require('../../src/utils/team');
       
