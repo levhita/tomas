@@ -165,13 +165,61 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /teams/all
- * Get all teams (superadmin only)
- * 
- * @permission Super admin only
- * @query {boolean} deleted - If 'true', return only soft-deleted teams (recycle bin). Default: 'false'
- * @returns {Array} List of all teams with user counts
- * @deprecated Use /teams/search instead for better performance
+ * @swagger
+ * /teams/all:
+ *   get:
+ *     summary: Get all teams with statistics (superadmin only)
+ *     description: |
+ *       Retrieve all teams with comprehensive statistics including user counts and book counts.
+ *       Can filter to show only soft-deleted teams (recycle bin).
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: deleted
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, return only soft-deleted teams (recycle bin). Default returns active teams.
+ *     responses:
+ *       200:
+ *         description: List of all teams with statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Team'
+ *                   - type: object
+ *                     properties:
+ *                       user_count:
+ *                         type: integer
+ *                         example: 5
+ *                       admin_count:
+ *                         type: integer
+ *                         example: 2
+ *                       collaborator_count:
+ *                         type: integer
+ *                         example: 2
+ *                       viewer_count:
+ *                         type: integer
+ *                         example: 1
+ *                       book_count:
+ *                         type: integer
+ *                         example: 3
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *     deprecated: true
  */
 router.get('/all', requireSuperAdmin, async (req, res) => {
   try {
@@ -223,12 +271,40 @@ router.get('/all', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /teams/:id
- * Get details for a single team
- * 
- * @param {number} id - Team ID
- * @permission Read access to the team (admin, collaborator, viewer) or superadmin
- * @returns {Object} Team details
+ * @swagger
+ * /teams/{id}:
+ *   get:
+ *     summary: Get details for a single team
+ *     description: Retrieve details for a specific team by ID. Requires read access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: Team details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Team'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -255,12 +331,45 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * POST /teams
- * Create a new team
- * 
- * @body {string} name - Required team name
- * @permission Any authenticated user
- * @returns {Object} Created team details
+ * @swagger
+ * /teams:
+ *   post:
+ *     summary: Create a new team
+ *     description: Create a new team with the authenticated user as admin. Any authenticated user can create teams.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 1
+ *                 example: "Family Budget Team"
+ *                 description: Team name (required)
+ *     responses:
+ *       201:
+ *         description: Team created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Team'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to create team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
   const { name } = req.body;
@@ -301,13 +410,56 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /teams/:id
- * Update a team
- * 
- * @param {number} id - Team ID
- * @body {string} name - Team name
- * @permission Admin access to the team or superadmin
- * @returns {Object} Updated team details
+ * @swagger
+ * /teams/{id}:
+ *   put:
+ *     summary: Update a team
+ *     description: Update team details. Requires admin access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 1
+ *                 example: "Updated Team Name"
+ *                 description: New team name
+ *     responses:
+ *       200:
+ *         description: Team updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Team'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to update team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   const { name } = req.body;
@@ -346,14 +498,75 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * POST /teams/:id/users
- * Add a user to a team
- * 
- * @param {number} id - Team ID
- * @body {number} userId - User ID to add
- * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Admin access to the team or superadmin
- * @returns {Array} Updated list of team users
+ * @swagger
+ * /teams/{id}/users:
+ *   post:
+ *     summary: Add a user to a team
+ *     description: Add a user to a team with a specified role. Requires admin access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - role
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 example: 123
+ *                 description: ID of the user to add to the team
+ *               role:
+ *                 type: string
+ *                 enum: [admin, collaborator, viewer]
+ *                 example: "collaborator"
+ *                 description: Role to assign to the user
+ *     responses:
+ *       201:
+ *         description: User added to team successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: User already in team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to add user to team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/:id/users', async (req, res) => {
   const { userId, role } = req.body;
@@ -417,14 +630,80 @@ router.post('/:id/users', async (req, res) => {
 });
 
 /**
- * POST /teams/:id/users/add-by-username
- * Add a user to a team by username
- * 
- * @param {number} id - Team ID
- * @body {string} username - Username of the user to add
- * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Admin access to the team or superadmin
- * @returns {Array} Updated list of team users
+ * @swagger
+ * /teams/{id}/users/add-by-username:
+ *   post:
+ *     summary: Add a user to a team by username
+ *     description: Add a user to a team by their username with a specified role. Requires admin access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - role
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 1
+ *                 example: "john_doe"
+ *                 description: Username of the user to add to the team
+ *               role:
+ *                 type: string
+ *                 enum: [admin, collaborator, viewer]
+ *                 example: "collaborator"
+ *                 description: Role to assign to the user
+ *     responses:
+ *       201:
+ *         description: User added to team successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         description: User not found or team not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: User already in team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to add user to team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/:id/users/add-by-username', async (req, res) => {
   const { username, role } = req.body;
@@ -490,13 +769,48 @@ router.post('/:id/users/add-by-username', async (req, res) => {
 });
 
 /**
- * DELETE /teams/:id/users/:userId
- * Remove a user from a team
- * 
- * @param {number} id - Team ID
- * @param {number} userId - User ID to remove
- * @permission Admin access to the team or superadmin
- * @returns {void}
+ * @swagger
+ * /teams/{id}/users/{userId}:
+ *   delete:
+ *     summary: Remove a user from a team
+ *     description: Remove a user from a team. Prevents removing the last admin unless performed by superadmin. Requires admin access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to remove from the team
+ *     responses:
+ *       204:
+ *         description: User removed from team successfully (no content)
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Cannot remove the last admin from the team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to remove user from team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
@@ -555,14 +869,76 @@ router.delete('/:id/users/:userId', async (req, res) => {
 });
 
 /**
- * PUT /teams/:id/users/:userId
- * Update a user's role in a team
- * 
- * @param {number} id - Team ID
- * @param {number} userId - User ID to update
- * @body {string} role - New role to assign (admin, collaborator, viewer)
- * @permission Admin access to the team or superadmin
- * @returns {Array} Updated list of team users
+ * @swagger
+ * /teams/{id}/users/{userId}:
+ *   put:
+ *     summary: Update a user's role in a team
+ *     description: Update a user's role within a team. Prevents removing the last admin unless performed by superadmin. Requires admin access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [admin, collaborator, viewer]
+ *                 example: "collaborator"
+ *                 description: New role to assign to the user
+ *     responses:
+ *       200:
+ *         description: User role updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Cannot remove the last admin from the team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to update user role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/users/:userId', async (req, res) => {
   const { role } = req.body;
@@ -630,12 +1006,49 @@ router.put('/:id/users/:userId', async (req, res) => {
 });
 
 /**
- * GET /teams/:id/users
- * List all users in a team
- * 
- * @param {number} id - Team ID
- * @permission Read access to the team (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of team users
+ * @swagger
+ * /teams/{id}/users:
+ *   get:
+ *     summary: List all users in a team
+ *     description: Retrieve all users who are members of a specific team, including their roles. Requires read access to the team or superadmin privileges.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: List of team users with their roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch team users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/users', async (req, res) => {
   try {
@@ -663,12 +1076,53 @@ router.get('/:id/users', async (req, res) => {
 });
 
 /**
- * GET /teams/:id/books
- * List all books for a specific team
- * 
- * @param {number} id - Team ID
- * @permission Read access to the team (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of books for the specified team
+ * @swagger
+ * /teams/{id}/books:
+ *   get:
+ *     summary: List all books for a specific team
+ *     description: Retrieve all books belonging to a specific team. Requires read access to the team.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: List of books for the team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Book'
+ *                   - type: object
+ *                     properties:
+ *                       team_name:
+ *                         type: string
+ *                         example: "Family Budget Team"
+ *                         description: Name of the team that owns the book
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch books
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/books', async (req, res) => {
   try {
@@ -709,12 +1163,36 @@ router.get('/:id/books', async (req, res) => {
 });
 
 /**
- * DELETE /teams/:id
- * Soft-delete a team
- * 
- * @param {number} id - Team ID
- * @permission Admin access to the team
- * @returns {void}
+ * @swagger
+ * /teams/{id}:
+ *   delete:
+ *     summary: Soft-delete a team
+ *     description: Mark a team as deleted (soft delete). The team can be restored later. Requires admin access to the team.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       204:
+ *         description: Team soft-deleted successfully (no content)
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to delete team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', async (req, res) => {
   try {
@@ -745,12 +1223,46 @@ router.delete('/:id', async (req, res) => {
 });
 
 /**
- * POST /teams/:id/restore
- * Restore a soft-deleted team
- * 
- * @param {number} id - Team ID
- * @permission Super admin only
- * @returns {Object} Restored team details
+ * @swagger
+ * /teams/{id}/restore:
+ *   post:
+ *     summary: Restore a soft-deleted team
+ *     description: Restore a previously soft-deleted team to active status. Superadmin only.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       200:
+ *         description: Team restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Team'
+ *       400:
+ *         description: Team is not deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to restore team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
   try {
@@ -779,12 +1291,46 @@ router.post('/:id/restore', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * DELETE /teams/:id/permanent
- * Permanently delete a team and all associated data
- * 
- * @param {number} id - Team ID
- * @permission Super admin only
- * @returns {void}
+ * @swagger
+ * /teams/{id}/permanent:
+ *   delete:
+ *     summary: Permanently delete a team and all associated data
+ *     description: |
+ *       Permanently delete a team and all its associated data. This action cannot be undone.
+ *       Superadmin only.
+ *       
+ *       **Cascade deletion includes:**
+ *       - All transactions in team books
+ *       - All accounts in team books
+ *       - All categories in team books
+ *       - All books belonging to the team
+ *       - All team user relationships
+ *       - The team itself
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Team ID
+ *     responses:
+ *       204:
+ *         description: Team permanently deleted successfully (no content)
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to permanently delete team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id/permanent', requireSuperAdmin, async (req, res) => {
   try {
