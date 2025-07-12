@@ -228,6 +228,37 @@ describe('Teams Management API', () => {
 
       validateApiResponse(response, 403);
     });
+
+    it('should return all teams when search term is empty', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/teams/search?q=');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+      // Should include known teams
+      const teamIds = response.body.map(t => t.id);
+      expect(teamIds).toContain(1);
+      expect(teamIds).toContain(2);
+    });
+
+    it('should include deleted teams when includeDeleted=true', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      // Soft-delete team 1
+      await auth.delete('/api/teams/1');
+
+      // Search with includeDeleted=true
+      const response = await auth.get('/api/teams/search?q=Test&includeDeleted=true');
+      validateApiResponse(response, 200);
+
+      // Should include team 1 with deleted_at not null
+      const deletedTeam = response.body.find(t => t.id === 1);
+      expect(deletedTeam).toBeDefined();
+      expect(deletedTeam.deleted_at).not.toBeNull();
+
+      // Restore team for other tests
+      await auth.post('/api/teams/1/restore');
+    });
   });
 
   describe('GET /api/teams/:id', () => {
@@ -368,6 +399,15 @@ describe('Teams Management API', () => {
       expect(response.body.name).toBe(newName);
     });
 
+    it('should reject update if name is missing', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.put('/api/teams/1')
+        .send({});
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error', 'Team name is required');
+    });
+
     it('should deny access for non-admin user', async () => {
       const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1
 
@@ -494,7 +534,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for collaborator', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
       const userData = {
         userId: TEST_USERS.VIEWER.id,
         role: 'viewer'
@@ -546,6 +586,24 @@ describe('Teams Management API', () => {
       validateApiResponse(response, 400);
       expect(response.body.error).toMatch(/role/i);
     });
+
+    it('should reject if userId is missing when adding user to team', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/1/users')
+        .send({ role: 'viewer' });
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error', 'User ID is required');
+    });
+
+    it('should return 404 when adding user to a non-existent team', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/99999/users')
+        .send({ userId: TEST_USERS.VIEWER.id, role: 'viewer' });
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Team not found');
+    });
   });
 
   describe('PUT /api/teams/:id/users/:userId', () => {
@@ -567,6 +625,17 @@ describe('Teams Management API', () => {
       expect(updatedUser.role).toBe(updateData.role);
     });
 
+    it('should prevent non-superadmin from changing last admin to non-admin role', async () => {
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+
+      // Try to change self (last admin) to viewer
+      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.ADMIN.id}`)
+        .send({ role: 'viewer' });
+
+      validateApiResponse(response, 409);
+      expect(response.body.error).toMatch(/last admin/i);
+    });
+
     it('should deny access for collaborator', async () => {
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
       const updateData = { role: 'admin' };
@@ -582,6 +651,16 @@ describe('Teams Management API', () => {
       const updateData = { role: 'admin' };
 
       const response = await auth.put('/api/teams/1/users/99999')
+        .send(updateData);
+
+      validateApiResponse(response, 404);
+    });
+
+    it('should return 404 for non-existent team', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const updateData = { role: 'admin' };
+
+      const response = await auth.put('/api/teams/99999/users/3')
         .send(updateData);
 
       validateApiResponse(response, 404);
@@ -627,6 +706,14 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(adminToken);
 
       const response = await auth.delete('/api/teams/1/users/99999');
+
+      validateApiResponse(response, 404);
+    });
+
+    it('should return 404 for non-existent team', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      const response = await auth.delete('/api/teams/99999/users/3');
 
       validateApiResponse(response, 404);
     });
@@ -1260,6 +1347,121 @@ describe('Teams Management API', () => {
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(0); // New team has no books yet
+    });
+  });
+
+  describe('POST /api/teams/:id/users/add-by-username', () => {
+    beforeEach(resetBeforeTest);
+
+    it('should add a user to a team by username as admin', async () => {
+      const auth = authenticatedRequest(adminToken);
+      // Create a new user to add
+      const username = `testuser_addbyusername_${Date.now()}`;
+      await authenticatedRequest(superadminToken)
+        .post('/api/users')
+        .send({ username, password: 'testpassword123' });
+
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username, role: 'viewer' });
+
+      validateApiResponse(response, 201);
+      expect(Array.isArray(response.body)).toBe(true);
+      const addedUser = response.body.find(u => u.username === username);
+      expect(addedUser).toBeDefined();
+      expect(addedUser.role).toBe('viewer');
+    });
+
+    it('should reject if username is missing', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ role: 'viewer' });
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error', 'Username is required');
+    });
+
+    it('should reject if role is missing or invalid', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username: 'someuser', role: 'invalid_role' });
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/Valid role is required/);
+    });
+
+    it('should return 404 if team does not exist', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/99999/users/add-by-username')
+        .send({ username: 'someuser', role: 'viewer' });
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Team not found');
+    });
+
+    it('should return 404 if user does not exist or is inactive', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username: 'nonexistentuser', role: 'viewer' });
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/not found/i);
+    });
+
+    it('should return 409 if user is already in team', async () => {
+      const auth = authenticatedRequest(adminToken);
+      // Add user by username first
+      const username = `testuser_alreadyinteam_${Date.now()}`;
+      const createUserResponse = await authenticatedRequest(superadminToken)
+        .post('/api/users')
+        .send({ username, password: 'testpassword123' });
+      await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username, role: 'viewer' });
+
+      // Try to add again
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username, role: 'viewer' });
+
+      validateApiResponse(response, 409);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/already a member/);
+    });
+
+    it('should deny access for collaborator', async () => {
+      const auth = authenticatedRequest(collaboratorToken);
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username: 'someuser', role: 'viewer' });
+
+      validateApiResponse(response, 403);
+    });
+
+    it('should prevent adding user to deleted team for non-superadmin', async () => {
+      const auth = authenticatedRequest(adminToken);
+      // Soft-delete team 1
+      await auth.delete('/api/teams/1');
+      const response = await auth.post('/api/teams/1/users/add-by-username')
+        .send({ username: 'someuser', role: 'viewer' });
+
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+    });
+
+    it('should allow superadmin to add user to deleted team', async () => {
+      const superAuth = authenticatedRequest(superadminToken);
+      // Soft-delete team 1
+      await superAuth.delete('/api/teams/1');
+      // Create a new user
+      const username = `testuser_superadmin_add_${Date.now()}`;
+      await superAuth.post('/api/users').send({ username, password: 'testpassword123' });
+
+      const response = await superAuth.post('/api/teams/1/users/add-by-username')
+        .send({ username, role: 'viewer' });
+
+      validateApiResponse(response, 201);
+      const addedUser = response.body.find(u => u.username === username);
+      expect(addedUser).toBeDefined();
+      expect(addedUser.role).toBe('viewer');
     });
   });
 });
