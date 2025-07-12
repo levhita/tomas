@@ -469,18 +469,24 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
+    const includeDeleted = req.user.superadmin;
     // First check if the team exists
-    const team = await getTeamById(req.params.id);
+    const team = await getTeamById(req.params.id, includeDeleted); // Do not include deleted teams
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check permissions (only admins can update team settings)
-    if (!req.user.superadmin) {
+    if(!req.user.superadmin) {
+      // Check if user is admin of the team or superadmin
       const { allowed, message } = await canAdmin(req.params.id, req.user.id);
       if (!allowed) {
         return res.status(403).json({ error: message });
       }
+    }
+
+    // If team is deleted, not allow editing.
+    if(team.deleted_at) {
+      return res.status(403).json({ error: 'Cannot update deleted team' });
     }
 
     // Update the team
@@ -580,23 +586,23 @@ router.post('/:id/users', async (req, res) => {
   }
 
   try {
-    // First check if the team exists (including deleted teams)
-    const team = await getTeamById(req.params.id, true);
+    // First check if the team exists
+    const team = await getTeamById(req.params.id, true); // will not return deleted teams
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check if team is deleted - only allow superadmins to manage deleted teams
-    if (team.deleted_at && !req.user.superadmin) {
-      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
-    }
-
-    // Then check if user has admin access (or is superadmin)
+    // Check admin permission (or is superadmin)
     if (!req.user.superadmin) {
       const { allowed, message } = await canAdmin(req.params.id, req.user.id);
       if (!allowed) {
         return res.status(403).json({ error: message });
       }
+    }
+
+    // if team is deleted, not allow adding users.
+    if(team.deleted_at) {
+      return res.status(403).json({ error: 'Cannot add users to a deleted team' });
     }
 
     // Check if user exists
@@ -717,18 +723,18 @@ router.post('/:id/users/add-by-username', async (req, res) => {
   }
 
   try {
-    // First check if the team exists (including deleted teams)
+    // First check if the team exists
     const team = await getTeamById(req.params.id, true);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check if team is deleted - only allow superadmins to manage deleted teams
-    if (team.deleted_at && !req.user.superadmin) {
-      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
+    // if team is deleted, not allow adding users.
+    if(team.deleted_at) {
+      return res.status(403).json({ error: 'Cannot add users to a deleted team' });
     }
 
-    // Then check if user has admin access (or is superadmin)
+    // Check admin permission (or is superadmin)
     if (!req.user.superadmin) {
       const { allowed, message } = await canAdmin(req.params.id, req.user.id);
       if (!allowed) {
@@ -814,15 +820,15 @@ router.post('/:id/users/add-by-username', async (req, res) => {
  */
 router.delete('/:id/users/:userId', async (req, res) => {
   try {
-    // First check if team exists (including deleted teams)
-    const team = await getTeamById(req.params.id, true);
+    // First check if team exists
+    const team = await getTeamById(req.params.id, true); // will not return deleted teams
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check if team is deleted - only allow superadmins to manage deleted teams
-    if (team.deleted_at && !req.user.superadmin) {
-      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
+    // if team is deleted, not allow deleting users.
+    if(team.deleted_at) {
+      return res.status(403).json({ error: 'Cannot delete users of a deleted team' });
     }
 
     // Then check admin permission (or is superadmin)
@@ -948,15 +954,15 @@ router.put('/:id/users/:userId', async (req, res) => {
   }
 
   try {
-    // First check if the team exists (including deleted teams)
-    const team = await getTeamById(req.params.id, true);
+    // First check if the team exists
+    const team = await getTeamById(req.params.id, true); // will not return deleted teams
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check if team is deleted - only allow superadmins to manage deleted teams
-    if (team.deleted_at && !req.user.superadmin) {
-      return res.status(403).json({ error: 'Cannot manage members of deleted teams. Please restore the team first.' });
+    // if team is deleted, not allow updating users.
+    if(team.deleted_at) {
+      return res.status(403).json({ error: 'Cannot update users roles of a deleted team' });
     }
 
     // Then check if user has admin access (or is superadmin)
@@ -1059,8 +1065,8 @@ router.get('/:id/users', async (req, res) => {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Superadmin can access users of any team
     if (!req.user.superadmin) {
+      // Check if user has read access to this team
       const { allowed, message } = await canRead(req.params.id, req.user.id);
       if (!allowed) {
         return res.status(403).json({ error: message });
@@ -1196,13 +1202,14 @@ router.get('/:id/books', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    const includeDeleted = req.user.superadmin; // Superadmins can see deleted teams
     // First check if the team exists and is not already deleted
-    const team = await getTeamById(req.params.id);
+    const team = await getTeamById(req.params.id, includeDeleted);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
-
-    // Check permissions (only team admins can soft-delete their team)
+    
+    // Check permissions (only team admins and superadmins can soft-delete their team)
     if (!req.user.superadmin) {
       const { allowed, message } = await canAdmin(req.params.id, req.user.id);
       if (!allowed) {

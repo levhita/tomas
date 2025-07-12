@@ -325,6 +325,7 @@ describe('Teams Management API', () => {
       const response = await memberAuth.get('/api/teams/1');
       
       validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Team not found');
       
       // Restore team for other tests
       await superAuth.post('/api/teams/1/restore');
@@ -387,7 +388,7 @@ describe('Teams Management API', () => {
     beforeEach(resetBeforeTest);
 
     it('should update team as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(adminToken);
       const newName = `Updated Team ${Date.now()}`;
 
       const response = await auth.put('/api/teams/1')
@@ -429,10 +430,25 @@ describe('Teams Management API', () => {
 
       validateApiResponse(response, 404);
     });
+
+    it('should prevent editing soft-deleted team by superadmin', async () => {
+      const auth = authenticatedRequest(superadminToken);
+
+      // Soft-delete the team first
+      await auth.delete('/api/teams/1');
+
+      // Try to update team details as superadmin
+      const response = await auth.put('/api/teams/1')
+        .send({ name: 'Should Not Update' });
+
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot update deleted team');
+    });
   });
 
   describe('GET /api/teams/:id/users', () => {
     it('should return team users for admin', async () => {
+      await resetBeforeTest(); // Ensure team is not deleted
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       const response = await auth.get('/api/teams/1/users');
@@ -450,6 +466,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return team users for collaborator', async () => {
+      await resetBeforeTest(); // Ensure team is not deleted
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
 
       const response = await auth.get('/api/teams/1/users');
@@ -544,6 +561,7 @@ describe('Teams Management API', () => {
         .send(userData);
 
       validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error', 'Admin privileges required for this operation');
     });
 
     it('should return 409 for user already in team', async () => {
@@ -772,7 +790,7 @@ describe('Teams Management API', () => {
       });
 
       validateApiResponse(response, 403);
-      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+      expect(response.body.error).toBe('Access denied to this team');
     });
 
     it('should prevent removing users from deleted teams for non-superadmin', async () => {
@@ -785,7 +803,7 @@ describe('Teams Management API', () => {
       const response = await auth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
 
       validateApiResponse(response, 403);
-      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+      expect(response.body.error).toBe('Cannot delete users of a deleted team');
     });
 
     it('should prevent changing user roles in deleted teams for non-superadmin', async () => {
@@ -800,10 +818,36 @@ describe('Teams Management API', () => {
       });
 
       validateApiResponse(response, 403);
-      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+      expect(response.body.error).toBe('Cannot update users roles of a deleted team');
     });
 
-    it('should allow superadmin to manage deleted team members', async () => {
+    it('should prevent admin from modifying deleted team details', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      // Soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Try to update team details
+      const response = await auth.put('/api/teams/1').send({ name: 'Should Not Update' });
+
+      validateApiResponse(response, 404);
+      expect(response.body.error).toBe('Team not found');
+    });
+
+    it('should prevent admin from creating books in deleted teams', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      // Soft-delete the team
+      await auth.delete('/api/teams/1');
+
+      // Try to create a book in the deleted team
+      const response = await auth.post('/api/books').send({ name: 'Should Not Create', team_id: 1 });
+
+      validateApiResponse(response, 404);
+      expect(response.body.error).toBe('Team not found');
+    });
+
+    it('should not allow superadmin to manage deleted team members', async () => {
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
       const superAuth = authenticatedRequest(superadminToken);
 
@@ -815,17 +859,20 @@ describe('Teams Management API', () => {
         userId: TEST_USERS.NOACCESS.id,
         role: 'viewer'
       });
-      validateApiResponse(addResponse, 201);
+      validateApiResponse(addResponse, 403);
+      expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
 
       // Superadmin should be able to change roles in deleted teams
       const updateResponse = await superAuth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`).send({
         role: 'collaborator'
       });
-      validateApiResponse(updateResponse, 200);
+      validateApiResponse(updateResponse, 403);
+      expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
 
       // Superadmin should be able to remove users from deleted teams
       const removeResponse = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.NOACCESS.id}`);
-      validateApiResponse(removeResponse, 204);
+      validateApiResponse(removeResponse, 403);
+      expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
     });
 
     it('should restore team member management after restoration', async () => {
@@ -1444,10 +1491,10 @@ describe('Teams Management API', () => {
         .send({ username: 'someuser', role: 'viewer' });
 
       validateApiResponse(response, 403);
-      expect(response.body.error).toBe('Cannot manage members of deleted teams. Please restore the team first.');
+      expect(response.body.error).toBe('Cannot add users to a deleted team');
     });
 
-    it('should allow superadmin to add user to deleted team', async () => {
+    it('should not allow superadmin to add user to deleted team', async () => {
       const superAuth = authenticatedRequest(superadminToken);
       // Soft-delete team 1
       await superAuth.delete('/api/teams/1');
@@ -1458,10 +1505,8 @@ describe('Teams Management API', () => {
       const response = await superAuth.post('/api/teams/1/users/add-by-username')
         .send({ username, role: 'viewer' });
 
-      validateApiResponse(response, 201);
-      const addedUser = response.body.find(u => u.username === username);
-      expect(addedUser).toBeDefined();
-      expect(addedUser.role).toBe('viewer');
+      validateApiResponse(response, 403);
+      expect(response.body.error).toBe('Cannot add users to a deleted team');
     });
   });
 });

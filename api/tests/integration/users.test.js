@@ -127,6 +127,68 @@ describe('User Management API', () => {
 
       validateApiResponse(response, 401);
     });
+
+    it('should filter users by status active', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/users?status=active');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body.users)).toBe(true);
+      // All returned users should be active
+      response.body.users.forEach(user => {
+        expect(user.active).toBe(true);
+      });
+    });
+
+    it('should filter users by status inactive', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/users?status=inactive');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body.users)).toBe(true);
+      // All returned users should be inactive
+      response.body.users.forEach(user => {
+        expect(user.active).toBe(false);
+      });
+    });
+
+    it('should filter users by role superadmin', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/users?role=superadmin');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body.users)).toBe(true);
+      // All returned users should be superadmin
+      response.body.users.forEach(user => {
+        expect(user.superadmin).toBe(true);
+      });
+    });
+
+    it('should filter users by role user', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get('/api/users?role=user');
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body.users)).toBe(true);
+      // All returned users should not be superadmin
+      response.body.users.forEach(user => {
+        expect(user.superadmin).toBe(false);
+      });
+    });
+
+    it('should filter users by username search', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      // Use a known username from TEST_USERS
+      const searchUsername = TEST_USERS.TESTUSER1.username;
+      const response = await auth.get(`/api/users?search=${searchUsername}`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body.users)).toBe(true);
+      // All returned users should match the search term
+      response.body.users.forEach(user => {
+        expect(user.username).toContain(searchUsername);
+      });
+    });
   });
 
   describe('GET /api/users/:id', () => {
@@ -143,9 +205,9 @@ describe('User Management API', () => {
     it('should return 404 for non-existent user', async () => {
       const auth = authenticatedRequest(superadminToken);
       const response = await auth.get('/api/users/99999');
-
       validateApiResponse(response, 404);
       expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/user not found/i);
     });
 
     it('should deny access for non-superadmin', async () => {
@@ -411,6 +473,21 @@ describe('User Management API', () => {
       expect(response.body.error).toMatch(/current password.*incorrect/i);
     });
 
+    it('should reject missing current password', async () => {
+      // Get a fresh token to avoid cache issues
+      const freshToken = await loginUser(TEST_USERS.TESTUSER1);
+      const auth = authenticatedRequest(freshToken);
+
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({
+          password: 'newpassword123',
+        });
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/Current password is required to change password/i);
+    });
+
     it('should allow superadmin to change password without current password', async () => {
       const auth = authenticatedRequest(superadminToken);
       const newPassword = 'adminsetpassword123';
@@ -507,6 +584,15 @@ describe('User Management API', () => {
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toMatch(/username.*exists/i);
     });
+
+    it('should reject update when no fields are provided', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.put(`/api/users/${TEST_USERS.TESTUSER1.id}`)
+        .send({});
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/no fields to update/i);
+    });
   });
 
   describe('DELETE /api/users/:id', () => {
@@ -561,6 +647,7 @@ describe('User Management API', () => {
       expect(response.body.error).toMatch(/cannot delete.*own account/i);
     });
 
+    // Keep only one cascade delete test
     it('should delete user and cascade delete team memberships (ON DELETE CASCADE)', async () => {
       const auth = authenticatedRequest(superadminToken);
 
@@ -838,30 +925,6 @@ describe('User Management API', () => {
       });
     });
 
-    describe('DELETE /api/users/:id - cascade behavior', () => {
-      it('should successfully delete user and cascade delete team memberships', async () => {
-        // Create a new user first, then add them to a team
-        const auth = authenticatedRequest(superadminToken);
-        const createResponse = await auth.post('/api/users')
-          .send({
-            username: `testdelete_${Date.now()}`,
-            password: 'password123'
-          });
-
-        validateApiResponse(createResponse, 201);
-        const userId = createResponse.body.id;
-
-        // Delete the user - should succeed with cascade
-        const response = await auth.delete(`/api/users/${userId}`);
-
-        validateApiResponse(response, 204);
-        
-        // Verify user is deleted
-        const verifyResponse = await auth.get(`/api/users/${userId}`);
-        validateApiResponse(verifyResponse, 404);
-      });
-    });
-
     describe('GET /api/users/:id/teams', () => {
       it('should return teams for existing user as superadmin', async () => {
         const auth = authenticatedRequest(superadminToken);
@@ -900,6 +963,170 @@ describe('User Management API', () => {
         validateApiResponse(response, 403);
         expect(response.body).toHaveProperty('error');
       });
+    });
+
+    describe('GET /api/users/search', () => {
+      it('should search users by username as superadmin', async () => {
+        const auth = authenticatedRequest(superadminToken);
+        const searchUsername = TEST_USERS.TESTUSER1.username.slice(0, 3); // partial match
+        const response = await auth.get(`/api/users/search?q=${searchUsername}&limit=10`);
+
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        // All returned users should have username containing the search term
+        response.body.forEach(user => {
+          expect(user.username).toContain(searchUsername);
+          expect(user.active).toBe(true);
+        });
+      });
+
+      it('should include team membership info when team_id is provided', async () => {
+        const auth = authenticatedRequest(superadminToken);
+        // Use a known team and user
+        const teamId = 1;
+        const response = await auth.get(`/api/users/search?q=${TEST_USERS.TESTUSER1.username}&team_id=${teamId}`);
+
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        response.body.forEach(user => {
+          expect(user).toHaveProperty('is_team_member');
+          expect(user).toHaveProperty('team_role');
+        });
+      });
+
+      it('should limit results to specified limit', async () => {
+        const auth = authenticatedRequest(superadminToken);
+        const response = await auth.get('/api/users/search?q=a&limit=1');
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBeLessThanOrEqual(1);
+      });
+
+      it('should return 400 if search query is missing', async () => {
+        const auth = authenticatedRequest(superadminToken);
+        const response = await auth.get('/api/users/search');
+        validateApiResponse(response, 400);
+        expect(response.body).toHaveProperty('error');
+        expect(response.body.error).toMatch(/search query is required/i);
+      });
+
+      it('should deny access for non-superadmin', async () => {
+        const auth = authenticatedRequest(adminToken);
+        const response = await auth.get('/api/users/search?q=test');
+        validateApiResponse(response, 403);
+      });
+    });
+
+    describe('GET /api/users/me/teams', () => {
+      it('should return teams for authenticated user', async () => {
+        const auth = authenticatedRequest(adminToken);
+        const response = await auth.get('/api/users/me/teams');
+
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        // If user has teams, check structure
+        response.body.forEach(team => {
+          expect(team).toHaveProperty('id');
+          expect(team).toHaveProperty('name');
+          expect(team).toHaveProperty('role');
+          expect(['viewer', 'collaborator', 'admin']).toContain(team.role);
+        });
+      });
+
+      it('should return empty array for user with no teams', async () => {
+        // Create a new user with no team access
+        const userData = generateRandomData();
+        const createResponse = await authenticatedRequest(superadminToken)
+          .post('/api/users')
+          .send({
+            username: userData.username,
+            password: userData.password
+          });
+        const newUserToken = await loginUser({
+          username: userData.username,
+          password: userData.password,
+          id: createResponse.body.id
+        });
+        const newUserAuth = authenticatedRequest(newUserToken);
+        const response = await newUserAuth.get('/api/users/me/teams');
+        validateApiResponse(response, 200);
+        expect(Array.isArray(response.body)).toBe(true);
+        expect(response.body.length).toBe(0);
+      });
+
+      it('should deny access without authentication', async () => {
+        const response = await request(app).get('/api/users/me/teams');
+        validateApiResponse(response, 401);
+      });
+    });
+  });
+
+  describe('POST /api/users/select-team', () => {
+    it('should select a team and return a new token with team info', async () => {
+      const auth = authenticatedRequest(adminToken);
+      // Use a team the admin user is a member of
+      const teamId = 1;
+      const response = await auth.post('/api/users/select-team')
+        .send({ team_id: teamId });
+
+      validateApiResponse(response, 200);
+      expect(response.body).toHaveProperty('token');
+      expect(response.body.token).toHaveValidJWT();
+      expect(response.body).toHaveProperty('team');
+      expect(response.body.team).toHaveProperty('id', teamId);
+      expect(response.body.team).toHaveProperty('name');
+      expect(['admin', 'collaborator', 'viewer']).toContain(response.body.team.role);
+    });
+
+    it('should return 400 if team_id is missing', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.post('/api/users/select-team').send({});
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/team id is required/i);
+    });
+
+    it('should return 403 if user does not have access to team', async () => {
+      // Use a user with no access to team 1
+      const noAccessToken = await loginUser({
+        username: 'noaccess',
+        password: 'noaccess',
+        id: TEST_USERS.NOACCESS.id
+      });
+      const auth = authenticatedRequest(noAccessToken);
+      const response = await auth.post('/api/users/select-team').send({ team_id: 1 });
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/access denied/i);
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).post('/api/users/select-team').send({ team_id: 1 });
+      validateApiResponse(response, 401);
+    });
+  });
+
+  describe('POST /api/users/exit-team', () => {
+    it('should exit team mode and return a new token without team info', async () => {
+      const auth = authenticatedRequest(adminToken);
+      // First select a team to get a token with team info
+      const selectResponse = await auth.post('/api/users/select-team').send({ team_id: 1 });
+      validateApiResponse(selectResponse, 200);
+      const teamToken = selectResponse.body.token;
+      const teamAuth = authenticatedRequest(teamToken);
+
+      // Now exit team mode
+      const response = await teamAuth.post('/api/users/exit-team').send();
+      validateApiResponse(response, 200);
+      expect(response.body).toHaveProperty('token');
+      expect(response.body.token).toHaveValidJWT();
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toMatch(/exited team mode/i);
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app).post('/api/users/exit-team').send();
+      validateApiResponse(response, 401);
     });
   });
 });
