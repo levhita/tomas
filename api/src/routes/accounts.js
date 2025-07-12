@@ -17,12 +17,40 @@ const db = require('../db');
 const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team');
 
 /**
- * GET /accounts/:id
- * Get details for a single account
- * 
- * @param {number} id - Account ID
- * @permission Read access to the account's book (via team membership)
- * @returns {Object} Account details
+ * @swagger
+ * /accounts/{id}:
+ *   get:
+ *     summary: Get details for a single account
+ *     description: Retrieve details for a specific account by ID. Requires read access to the account's book.
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Account ID
+ *     responses:
+ *       200:
+ *         description: Account details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Account'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -56,13 +84,66 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * GET /accounts/:id/balance
- * Get current balance for an account, optionally up to a specific date
- * 
- * @param {number} id - Account ID
- * @query {string} up_to_date - Optional date string in ISO format (e.g. 2023-04-30)
- * @permission Read access to the account's book (via team membership)
- * @returns {Object} Account balance information with exercised and projected totals
+ * @swagger
+ * /accounts/{id}/balance:
+ *   get:
+ *     summary: Get current balance for an account, optionally up to a specific date
+ *     description: Calculate account balance with exercised and projected totals, optionally filtered by date.
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Account ID
+ *       - in: query
+ *         name: up_to_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Optional date filter in YYYY-MM-DD format
+ *         example: '2024-04-30'
+ *     responses:
+ *       200:
+ *         description: Account balance information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account_id:
+ *                   type: integer
+ *                   example: 123
+ *                 exercised_balance:
+ *                   type: number
+ *                   format: float
+ *                   example: 1500.50
+ *                   description: Balance from exercised transactions only
+ *                 projected_balance:
+ *                   type: number
+ *                   format: float
+ *                   example: 1200.75
+ *                   description: Balance including all transactions
+ *                 up_to_date:
+ *                   type: string
+ *                   format: date
+ *                   nullable: true
+ *                   example: '2024-04-30'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to calculate balance
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/balance', async (req, res) => {
   const { id } = req.params;

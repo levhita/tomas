@@ -30,11 +30,31 @@ const {
 } = require('../utils/team');
 
 /**
- * GET /teams
- * List all teams accessible to the current user
- * 
- * @permission Requires authentication, returns only teams the user is a member of
- * @returns {Array} List of teams the user has access to
+ * @swagger
+ * /teams:
+ *   get:
+ *     summary: List all teams accessible to the current user
+ *     description: Retrieve all teams that the authenticated user is a member of, including their role in each team.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of teams the user has access to
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Team'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/', async (req, res) => {
   try {
@@ -54,13 +74,54 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /teams/search
- * Search teams by name
- * 
- * @query {string} q - Search query
- * @query {number} limit - Maximum number of results (default: 20, max: 100)
- * @permission Super admin only
- * @returns {Array} List of teams matching the search criteria
+ * @swagger
+ * /teams/search:
+ *   get:
+ *     summary: Search teams by name
+ *     description: Search for teams by name. Admin only endpoint for team management.
+ *     tags: [Teams]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search query for team names
+ *         example: 'budget'
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Maximum number of results
+ *       - in: query
+ *         name: includeDeleted
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Include deleted teams in results
+ *     responses:
+ *       200:
+ *         description: List of teams matching the search criteria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Team'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to search teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/search', requireSuperAdmin, async (req, res) => {
   try {

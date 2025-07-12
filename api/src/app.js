@@ -21,6 +21,10 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const { authenticateToken } = require('./middleware/auth');
 
+// Swagger documentation setup
+const swaggerUi = require('swagger-ui-express');
+const fs = require('fs');
+
 // Import route handlers
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
@@ -92,6 +96,23 @@ app.use('/api/accounts', accountsRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/books', booksRouter);
 app.use('/api/teams', teamsRouter);
+
+/**
+ * API Documentation
+ * 
+ * Serve Swagger UI documentation at /api-docs
+ * This loads the generated swagger.json file and presents it in an interactive UI
+ */
+try {
+  const swaggerDocument = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/swagger.json'), 'utf8'));
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "Tomas API Documentation"
+  }));
+} catch (error) {
+  console.log('Swagger documentation not available. Run "npm run build-docs" to generate it.');
+}
 
 /**
  * Static File Serving

@@ -26,13 +26,56 @@ const { authenticateToken, requireSuperAdmin } = require('../middleware/auth');
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
 
 /**
- * POST /users/login
- * Authenticate a user and generate a JWT token
- * 
- * @body {string} username - Required username
- * @body {string} password - Required password
- * @permission Public - available to unauthenticated users
- * @returns {Object} User data and JWT token for authentication
+ * @swagger
+ * /users/login:
+ *   post:
+ *     summary: Authenticate a user and generate a JWT token
+ *     description: Login endpoint for user authentication. Returns user data and JWT token for subsequent API calls.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: admin
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: secretpassword
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Authentication failed due to server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', async (req, res) => {
   try {
@@ -106,14 +149,60 @@ router.post('/login', async (req, res) => {
 });
 
 /**
- * GET /users/search
- * Search users by username (for adding to teams)
- * 
- * @query {string} q - Search query (username partial match)
- * @query {number} limit - Maximum number of results (default 10)
- * @query {number} teamId - Optional team ID to check membership status
- * @permission SuperAdmin only
- * @returns {Array} List of matching users with membership status
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Search users by username (for adding to teams)
+ *     description: Search for users by username with optional team membership status. Admin only endpoint.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query (username partial match)
+ *         example: 'john'
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Maximum number of results
+ *       - in: query
+ *         name: teamId
+ *         schema:
+ *           type: integer
+ *         description: Optional team ID to check membership status
+ *     responses:
+ *       200:
+ *         description: List of matching users with membership status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       is_member:
+ *                         type: boolean
+ *                         description: Whether user is member of specified team
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to search users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/search', requireSuperAdmin, async (req, res) => {
   try {
@@ -172,11 +261,80 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users
- * Get list of all users with team statistics
- * 
- * @permission SuperAdmin only
- * @returns {Array} List of all users (excluding password data) with team counts
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get list of all users with team statistics
+ *     description: Retrieve a paginated list of all users with search and filtering capabilities. Admin only endpoint.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of users per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search query for username
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: ['superadmin', 'regular']
+ *         description: Filter by user role
+ *     responses:
+ *       200:
+ *         description: List of users with pagination info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/User'
+ *                       - type: object
+ *                         properties:
+ *                           team_count:
+ *                             type: integer
+ *                             description: Number of teams user belongs to
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {

@@ -19,12 +19,40 @@ const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
 
 /**
- * GET /transactions/:id
- * Get details for a single transaction
- * 
- * @param {number} id - Transaction ID
- * @permission Read access to the account's book (via team membership)
- * @returns {Object} Transaction details
+ * @swagger
+ * /transactions/{id}:
+ *   get:
+ *     summary: Get details for a single transaction
+ *     description: Retrieve details for a specific transaction by ID. Requires read access to the account's book.
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch transaction
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -85,18 +113,39 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * POST /transactions
- * Create a new transaction
- * 
- * @body {string} description - Required transaction description
- * @body {string} note - Optional transaction note
- * @body {number} amount - Required transaction amount
- * @body {string} date - Required transaction date (ISO format)
- * @body {boolean} exercised - Whether transaction is exercised/cleared
- * @body {number} account_id - Required account ID
- * @body {number} category_id - Optional category ID
- * @permission Write access to the account's book
- * @returns {Object} Newly created transaction
+ * @swagger
+ * /transactions:
+ *   post:
+ *     summary: Create a new transaction
+ *     description: Create a new transaction within an account. Requires write access to the account's book.
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TransactionInput'
+ *     responses:
+ *       201:
+ *         description: Transaction created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to create transaction
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
   const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
@@ -200,19 +249,48 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /transactions/:id
- * Update an existing transaction
- * 
- * @param {number} id - Transaction ID to update
- * @body {string} description - Required transaction description
- * @body {string} note - Optional transaction note
- * @body {number} amount - Required transaction amount
- * @body {string} date - Required transaction date (ISO format)
- * @body {boolean} exercised - Whether transaction is exercised/cleared
- * @body {number} account_id - Required account ID
- * @body {number} category_id - Optional category ID
- * @permission Write access to the transaction's account book
- * @returns {Object} Updated transaction
+ * @swagger
+ * /transactions/{id}:
+ *   put:
+ *     summary: Update an existing transaction
+ *     description: Update all fields of an existing transaction. Requires write access to the transaction's account book.
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Transaction ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TransactionInput'
+ *     responses:
+ *       200:
+ *         description: Transaction updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to update transaction
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
@@ -325,12 +403,36 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /transactions/:id
- * Delete a transaction
- * 
- * @param {number} id - Transaction ID to delete
- * @permission Write access to the transaction's account book
- * @returns {null} 204 No Content on success
+ * @swagger
+ * /transactions/{id}:
+ *   delete:
+ *     summary: Delete a transaction
+ *     description: Permanently delete a transaction. Requires write access to the transaction's account book.
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Transaction ID to delete
+ *     responses:
+ *       204:
+ *         description: Transaction deleted successfully (no content)
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to delete transaction
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', async (req, res) => {
   try {

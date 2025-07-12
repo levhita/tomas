@@ -25,6 +25,12 @@ Personal and Home finance projection and expense tracking application.
 
 We use automated testing to ensure code quality. See [TESTING.md](TESTING.md) for details on running tests and our CI/CD pipeline.
 
+## API Documentation
+You can view the interactive Swagger UI documentation by:
+1. Installing dependencies: `cd api && npm install`
+2. Running: `npm run docs`
+3. Opening http://localhost:3000/api-docs in your browser
+
 ## Installation
 
 ### 1.- Clone the repository:

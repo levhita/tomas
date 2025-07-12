@@ -10,7 +10,8 @@
     "test:coverage": "jest --coverage --forceExit",
     "test:integration": "jest tests/integration",
     "test:unit": "jest --config jest.unit.config.js",
-    "test:validate": "node tests/validate.js"
+    "test:validate": "node tests/validate.js",
+    "build-docs": "swagger-jsdoc -d swagger.config.js ./src/routes/*.js ./src/middleware/*.js -o ./docs/swagger.json"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -27,6 +28,8 @@
   "devDependencies": {
     "jest": "^30.0.0",
     "nodemon": "^3.1.9",
-    "supertest": "^7.1.1"
+    "supertest": "^7.1.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }

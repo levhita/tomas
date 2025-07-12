@@ -25,12 +25,40 @@ const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
 
 /**
- * GET /categories/:id
- * Get details for a single category
- * 
- * @param {number} id - Category ID
- * @permission Read access to the category's book (via team membership)
- * @returns {Object} Category details
+ * @swagger
+ * /categories/{id}:
+ *   get:
+ *     summary: Get details for a single category
+ *     description: Retrieve details for a specific category by ID. Requires read access to the category's book via team membership.
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Category ID
+ *     responses:
+ *       200:
+ *         description: Category details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -62,21 +90,46 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * POST /categories
- * Create a new category
- * 
- * @body {string} name - Required category name
- * @body {string} note - Optional category description
- * @body {number} parent_category_id - Optional parent category ID for hierarchical categories
- * @body {number} book_id - Required book ID
- * @body {string} type - Category type (expense or income), defaults to expense. Ignored if parent_category_id is provided.
- * @permission Write access to the book (admin, collaborator)
- * @returns {Object} Newly created category
- * 
- * Hierarchy constraints:
- * - If parent_category_id is provided, that category must not have a parent itself
- * - Parent category must belong to the same book
- * - Child categories automatically inherit parent type (type parameter is ignored)
+ * @swagger
+ * /categories:
+ *   post:
+ *     summary: Create a new category
+ *     description: |
+ *       Create a new category within a book. Supports hierarchical categories with parent-child relationships.
+ *       
+ *       **Hierarchy constraints:**
+ *       - If parent_category_id is provided, that category must not have a parent itself
+ *       - Parent category must belong to the same book
+ *       - Child categories automatically inherit parent type (type parameter is ignored)
+ *       - Categories can only be nested two levels deep
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CategoryInput'
+ *     responses:
+ *       201:
+ *         description: Category created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to create category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
   let { name, note = null, parent_category_id = null, book_id, type = 'expense' } = req.body;

@@ -17,23 +17,36 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
 /**
- * GET /health
- * Performs a health check of the API and database connection
- * 
- * @permission Public endpoint - no authentication required
- * @returns {Object} Health status with 200 status code when healthy
- * @returns {Object} Error details with 500 status code when unhealthy
- * 
- * Example success response:
- * {
- *   "status": "healthy"
- * }
- * 
- * Example error response:
- * {
- *   "status": "unhealthy",
- *   "error": "Error message details"
- * }
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Performs a health check of the API and database connection
+ *     description: Public endpoint for load balancers and basic monitoring. Checks API server availability and database connectivity.
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API and database are healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: healthy
+ *       500:
+ *         description: API or database are unhealthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: unhealthy
+ *                 error:
+ *                   type: string
+ *                   example: Database connection failed
  */
 router.get('/', async (req, res) => {
   try {
@@ -57,20 +70,101 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /health/admin
- * Detailed health check with system information for administrators
- * 
- * @permission Superadmin only
- * @returns {Object} Detailed health status with system metrics
- * 
- * Example response:
- * {
- *   "status": "healthy",
- *   "timestamp": "2024-12-18T10:30:00.000Z",
- *   "uptime": 3600,
- *   "memory": { ... },
- *   "database": { ... }
- * }
+ * @swagger
+ * /health/admin:
+ *   get:
+ *     summary: Detailed health check with system information for administrators
+ *     description: Provides comprehensive system metrics including memory usage, database statistics, and environment information.
+ *     tags: [Health]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Detailed health status with system metrics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: healthy
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: '2024-12-18T10:30:00.000Z'
+ *                 uptime:
+ *                   type: number
+ *                   example: 3600
+ *                 memory:
+ *                   type: object
+ *                   properties:
+ *                     used:
+ *                       type: number
+ *                       example: 150
+ *                     total:
+ *                       type: number
+ *                       example: 200
+ *                     free:
+ *                       type: number
+ *                       example: 50
+ *                     rss:
+ *                       type: number
+ *                       example: 180
+ *                 database:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: connected
+ *                     response_time:
+ *                       type: string
+ *                       example: '5ms'
+ *                     connections:
+ *                       type: string
+ *                       example: '10'
+ *                     tables:
+ *                       type: number
+ *                       example: 15
+ *                 environment:
+ *                   type: object
+ *                   properties:
+ *                     node_version:
+ *                       type: string
+ *                       example: 'v18.17.0'
+ *                     platform:
+ *                       type: string
+ *                       example: 'linux'
+ *                     arch:
+ *                       type: string
+ *                       example: 'x64'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         description: Health check failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: unhealthy
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 uptime:
+ *                   type: number
+ *                 memory:
+ *                   type: object
+ *                 database:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: error
+ *                 error:
+ *                   type: string
  */
 router.get('/admin', authenticateToken, async (req, res) => {
   try {
@@ -140,27 +234,57 @@ router.get('/admin', authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /health/stats
- * Get dashboard statistics for administrators
- * 
- * @permission Superadmin only
- * @returns {Object} Statistics for the admin dashboard
- * 
- * Example response:
- * {
- *   "users": {
- *     "total": 150,
- *     "active": 120,
- *     "superadmins": 5
- *   },
- *   "teams": {
- *     "total": 25,
- *     "active": 20
- *   },
- *   "books": {
- *     "total": 45
- *   }
- * }
+ * @swagger
+ * /health/stats:
+ *   get:
+ *     summary: Get dashboard statistics for administrators
+ *     description: Provides comprehensive statistics about users, teams, and books for the admin dashboard.
+ *     tags: [Health]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistics for the admin dashboard
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: number
+ *                       example: 150
+ *                     active:
+ *                       type: number
+ *                       example: 120
+ *                     superadmins:
+ *                       type: number
+ *                       example: 5
+ *                 teams:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: number
+ *                       example: 25
+ *                     active:
+ *                       type: number
+ *                       example: 20
+ *                 books:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: number
+ *                       example: 45
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         description: Failed to retrieve statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/stats', authenticateToken, async (req, res) => {
   try {

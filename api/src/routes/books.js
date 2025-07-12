@@ -34,12 +34,34 @@ const {
 } = require('../utils/team');
 
 /**
- * GET /books/:id
- * Get details for a single book
- * 
- * @param {number} id - Book ID
- * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
- * @returns {Object} Book details
+ * @swagger
+ * /books/{id}:
+ *   get:
+ *     summary: Get details for a single book
+ *     description: Retrieve details for a specific book by ID. Requires read access via team membership.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       200:
+ *         description: Book details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Book'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -68,12 +90,42 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * GET /books/:id/accounts
- * Get all accounts for a specific book
- * 
- * @param {number} id - Book ID
- * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of accounts for the book
+ * @swagger
+ * /books/{id}/accounts:
+ *   get:
+ *     summary: Get all accounts for a specific book
+ *     description: Retrieve all accounts belonging to a specific book. Requires read access via team membership.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       200:
+ *         description: List of accounts for the book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Account'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/accounts', async (req, res) => {
   try {
@@ -111,12 +163,42 @@ router.get('/:id/accounts', async (req, res) => {
 });
 
 /**
- * GET /books/:id/categories
- * Get all categories for a specific book
- * 
- * @param {number} id - Book ID
- * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of categories for the book ordered alphabetically by name
+ * @swagger
+ * /books/{id}/categories:
+ *   get:
+ *     summary: Get all categories for a specific book
+ *     description: Retrieve all categories belonging to a specific book, ordered alphabetically by name. Requires read access via team membership.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       200:
+ *         description: List of categories for the book ordered alphabetically by name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/categories', async (req, res) => {
   try {
@@ -154,15 +236,61 @@ router.get('/:id/categories', async (req, res) => {
 });
 
 /**
- * GET /books/:id/transactions
- * Get all transactions for accounts in a specific book
- * 
- * @param {number} id - Book ID
- * @query {number} account_id - Optional filter by specific account ID within the book
- * @query {string} start_date - Optional start date filter (ISO format)
- * @query {string} end_date - Optional end date filter (ISO format)
- * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
- * @returns {Array} List of transactions for the book ordered by date
+ * @swagger
+ * /books/{id}/transactions:
+ *   get:
+ *     summary: Get all transactions for accounts in a specific book
+ *     description: Retrieve all transactions for accounts within a book with optional filtering by account, date range.
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *       - in: query
+ *         name: account_id
+ *         schema:
+ *           type: integer
+ *         description: Optional filter by specific account ID within the book
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Optional start date filter (YYYY-MM-DD format)
+ *         example: '2024-01-01'
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Optional end date filter (YYYY-MM-DD format)
+ *         example: '2024-12-31'
+ *     responses:
+ *       200:
+ *         description: List of transactions for the book ordered by date
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Transaction'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/transactions', async (req, res) => {
   try {
