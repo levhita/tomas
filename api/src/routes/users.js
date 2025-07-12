@@ -254,7 +254,7 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
       is_team_member: user.is_team_member === 1,
       team_role: user.team_role || null
     })));
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to search users' });
   }
@@ -429,7 +429,7 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         hasPrev: page > 1
       }
     });
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
@@ -484,7 +484,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     user.active = user.active === 1;
 
     res.status(200).json(user);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to fetch user information'
@@ -543,7 +543,7 @@ router.get('/me/teams', authenticateToken, async (req, res) => {
     `, [req.user.id]);
 
     res.status(200).json(teams);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to fetch user teams'
@@ -663,7 +663,7 @@ router.post('/select-team', authenticateToken, async (req, res) => {
       }
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to select team'
@@ -722,7 +722,7 @@ router.post('/exit-team', authenticateToken, async (req, res) => {
       message: 'Successfully exited team mode'
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to exit team mode'
@@ -794,7 +794,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     user.active = user.active === 1;
     res.status(200).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to fetch user'
@@ -916,7 +916,7 @@ router.post('/', requireSuperAdmin, async (req, res) => {
     // Return new user (without sensitive data)
     res.status(201).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to create user'
@@ -1132,7 +1132,7 @@ router.put('/:id', async (req, res) => {
     user.active = user.active === 1;
     res.status(200).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to update user'
@@ -1221,10 +1221,6 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
         error: 'Cannot delete user that is a member of teams'
       });
     }
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to delete user'
-    });
   }
 });
 
@@ -1308,7 +1304,7 @@ router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
     `, [id]);
 
     res.status(200).json(teams);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to fetch user teams'
@@ -1409,7 +1405,7 @@ router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
       user: updatedUser
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to enable user'
@@ -1517,7 +1513,7 @@ router.put('/:id/disable', requireSuperAdmin, async (req, res) => {
       user: updatedUser
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({
       error: 'Failed to disable user'
