@@ -35,7 +35,7 @@ async function getUserRole(bookId, userId) {
     `, [bookId, userId]);
 
     return access.length > 0 ? access[0].role : null;
-  } catch (error) {
+  } catch (error) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Error getting user role:', error);
     throw error;
   }

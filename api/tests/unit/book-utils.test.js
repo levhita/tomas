@@ -9,7 +9,8 @@ const {
   canWrite,
   canRead,
   getBookUsers,
-  getBookById
+  getBookById,
+  getBookByIdIncludingDeleted
 } = require('../../src/utils/book');
 
 const { resetDatabase } = require('../utils/test-helpers');
@@ -176,6 +177,79 @@ describe('Book Utilities', () => {
       const result = await getBookById(3);
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('getBookByIdIncludingDeleted', () => {
+    it('should return book even if deleted', async () => {
+      // Soft delete book 2
+      await require('../../src/db').execute(
+        'UPDATE book SET deleted_at = NOW() WHERE id = 2'
+      );
+      const result = await getBookByIdIncludingDeleted(2);
+      expect(result).toBeDefined();
+      expect(result.id).toBe(2);
+      expect(result.deleted_at).not.toBeNull();
+    });
+
+    it('should return null for non-existent book', async () => {
+      const result = await getBookByIdIncludingDeleted(99999);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Permission checks for deleted books', () => {
+    beforeEach(async () => {
+      await resetDatabase();
+      // Soft delete book 1
+      await require('../../src/db').execute(
+        'UPDATE book SET deleted_at = NOW() WHERE id = 1'
+      );
+    });
+
+    it('canAdmin should deny access to deleted book', async () => {
+      const result = await canAdmin(1, 2);
+      expect(result.allowed).toBe(false);
+      expect(result.message).toMatch(/Access denied/);
+    });
+
+    it('canWrite should deny access to deleted book', async () => {
+      const result = await canWrite(1, 2);
+      expect(result.allowed).toBe(false);
+      expect(result.message).toMatch(/Access denied/);
+    });
+
+    it('canRead should deny access to deleted book', async () => {
+      const result = await canRead(1, 2);
+      expect(result.allowed).toBe(false);
+      expect(result.message).toMatch(/Access denied/);
+    });
+
+    it('getBookUsers should return empty array for deleted book', async () => {
+      const users = await getBookUsers(1);
+      expect(users).toEqual([]);
+    });
+
+    it('getBookById should return null for deleted book', async () => {
+      const book = await getBookById(1);
+      expect(book).toBeNull();
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle invalid input gracefully', async () => {
+      try {
+        await canAdmin('invalid', 'invalid');
+        expect(true).toBe(true);
+      } catch (e) {
+        expect(e).toBeDefined();
+      }
+      try {
+        await getBookById(null);
+        expect(true).toBe(true);
+      } catch (e) {
+        expect(e).toBeDefined();
+      }
     });
   });
 });

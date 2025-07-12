@@ -1,29 +1,8 @@
 /**
  * Global Test Setup
  * 
- * This file runs before all tests an    console.log(`Found ${seedStatements.length} seed statements to execute`);
-
-    // Execute all statements in sequence: schema first, then seeds
-    const allStatements = [...schemaStatements, ...seedStatements];
-
-    for (let i = 0; i < allStatements.length; i++) {
-      const statement = allStatements[i];
-      try {
-        await connection.execute(statement);
-        if (statement.toLowerCase().startsWith('create table') ||
-          statement.toLowerCase().startsWith('drop table')) {
-          console.log(`✓ Executed: ${statement.substring(0, 50)}...`);
-        }
-      } catch (error) {
-        // Log but don't fail on non-critical errors
-        if (!error.message.includes("doesn't exist") &&
-          !error.message.includes("Unknown table")) {
-          console.warn(`Warning on statement ${i + 1}: ${error.message}`);
-          console.warn(`Statement: ${statement.substring(0, 100)}...`);
-        }
-      }
-    }database environment.
- * It creates a separate test database and applies the test schema.
+ * This file runs before all tests and it creates a separate test
+ * database and applies the test schema.
  */
 
 const mysql = require('mysql2/promise');
