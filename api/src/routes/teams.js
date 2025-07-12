@@ -387,18 +387,18 @@ router.post('/', async (req, res) => {
       INSERT INTO team (name) VALUES (?)
     `, [name.trim()]);
 
-    const teamId = result.insertId;
+    const team_id = result.insertId;
 
     // Add the creator as admin
     await connection.query(`
       INSERT INTO team_user (team_id, user_id, role) 
       VALUES (?, ?, 'admin')
-    `, [teamId, req.user.id]);
+    `, [team_id, req.user.id]);
 
     await connection.commit();
 
     // Fetch the created team
-    const team = await getTeamById(teamId);
+    const team = await getTeamById(team_id);
     res.status(201).json(team);
   } catch (err) {
     await connection.rollback();

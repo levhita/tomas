@@ -1118,7 +1118,7 @@ describe('Teams Management API', () => {
       // Create a new book and then soft delete it
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Schema',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
       

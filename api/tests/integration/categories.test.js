@@ -677,7 +677,7 @@ describe('Categories Management API', () => {
         const bookData = {
           name: 'Empty Book',
           currency_symbol: '$',
-          teamId: 1 // superadmin is admin of team 1
+          team_id: 1 // superadmin is admin of team 1
         };
         const bookResponse = await auth.post('/api/books').send(bookData);
 

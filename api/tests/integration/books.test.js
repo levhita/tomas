@@ -123,7 +123,7 @@ describe('Book Management API', () => {
       const response = await auth.post('/api/books')
         .send({
           name: bookData.bookName,
-          teamId: 1, // Team 1
+          team_id: 1, // Team 1
           note: 'Test book description',
           currency_symbol: '€',
           week_start: 'sunday'
@@ -144,7 +144,7 @@ describe('Book Management API', () => {
       const response = await auth.post('/api/books')
         .send({
           name: bookData.bookName,
-          teamId: 1 // Team 1
+          team_id: 1 // Team 1
         });
 
       validateApiResponse(response, 201);
@@ -173,7 +173,7 @@ describe('Book Management API', () => {
       const response = await auth.post('/api/books')
         .send({
           name: bookData.bookName,
-          teamId: 1
+          team_id: 1
         });
 
       validateApiResponse(response, 403);
@@ -187,7 +187,7 @@ describe('Book Management API', () => {
       const response = await auth.post('/api/books')
         .send({
           name: bookData.bookName,
-          teamId: 1
+          team_id: 1
         });
 
       validateApiResponse(response, 403);
@@ -415,7 +415,7 @@ describe('Book Management API', () => {
       const createResponse = await auth.post('/api/books')
         .send({
           name: 'Deletable Book',
-          teamId: 1, // Team 1 where user 2 is admin
+          team_id: 1, // Team 1 where user 2 is admin
           note: 'Book for deletion testing'
         });
 
@@ -504,7 +504,7 @@ describe('Book Management API', () => {
       // Mock database error by providing invalid data that would cause a database constraint violation
       const teamData = {
         name: 'A'.repeat(300), // Exceed varchar(255) limit to trigger database error
-        teamId: 1
+        team_id: 1
       };
 
       const response = await auth.post('/api/books').send(teamData);
@@ -520,7 +520,7 @@ describe('Book Management API', () => {
       // First create a book to update
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Update Error',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
 
@@ -545,7 +545,7 @@ describe('Book Management API', () => {
       // Create a book first
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Delete Error',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
 
@@ -563,7 +563,7 @@ describe('Book Management API', () => {
       // Create and soft-delete a book first
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Restore Error',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
       
@@ -582,7 +582,7 @@ describe('Book Management API', () => {
       // Create a book, then soft-delete it
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for No Rows Update',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
       
@@ -607,7 +607,7 @@ describe('Book Management API', () => {
       // Create a book and soft-delete it
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Double Delete',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
       
@@ -627,7 +627,7 @@ describe('Book Management API', () => {
       // Create a book
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Double Restore',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
       
@@ -658,7 +658,7 @@ describe('Book Management API', () => {
       // Create a book first
       const createResponse = await auth.post('/api/books').send({
         name: 'Test Book for Missing Name Update',
-        teamId: 1
+        team_id: 1
       });
       const bookId = createResponse.body.id;
 
@@ -707,7 +707,7 @@ describe('Book Management API', () => {
       // Test creating a book with non-existent teamId
       const bookData = {
         name: 'Test Book for Non-existent Team',
-        teamId: 99999
+        team_id: 99999
       };
 
       const response = await auth.post('/api/books').send(bookData);

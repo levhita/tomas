@@ -11,6 +11,7 @@
     "test:integration": "jest tests/integration",
     "test:unit": "jest --config jest.unit.config.js",
     "test:validate": "node tests/validate.js",
+    "test:errors": "jest -f",
     "build-docs": "swagger-jsdoc -d swagger.config.js ./src/routes/*.js ./src/middleware/*.js -o ./docs/swagger.json"
   },
   "dependencies": {

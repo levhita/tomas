@@ -174,7 +174,7 @@ router.post('/login', async (req, res) => {
  *           default: 10
  *         description: Maximum number of results
  *       - in: query
- *         name: teamId
+ *         name: team_id
  *         schema:
  *           type: integer
  *         description: Optional team ID to check membership status
@@ -206,7 +206,7 @@ router.post('/login', async (req, res) => {
  */
 router.get('/search', requireSuperAdmin, async (req, res) => {
   try {
-    const { q, limit = 10, teamId } = req.query;
+    const { q, limit = 10, team_id } = req.query;
     
     if (!q || q.trim().length < 1) {
       return res.status(400).json({ error: 'Search query is required' });
@@ -228,16 +228,16 @@ router.get('/search', requireSuperAdmin, async (req, res) => {
         END as is_team_member,
         tu.role as team_role
       FROM user u
-      LEFT JOIN team_user tu ON u.id = tu.user_id ${teamId ? 'AND tu.team_id = ?' : ''}
+      LEFT JOIN team_user tu ON u.id = tu.user_id ${team_id ? 'AND tu.team_id = ?' : ''}
       WHERE u.username LIKE ? 
         AND u.active = 1
     `;
     
     const queryParams = [];
     
-    // Add teamId parameter if provided (for the LEFT JOIN)
-    if (teamId) {
-      queryParams.push(parseInt(teamId));
+    // Add team_id parameter if provided (for the LEFT JOIN)
+    if (team_id) {
+      queryParams.push(parseInt(team_id));
     }
     
     queryParams.push(searchTerm);
@@ -436,11 +436,31 @@ router.get('/', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users/me
- * Get current user's information
- * 
- * @permission Authenticated user
- * @returns {Object} Current user data (excluding password)
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: Get current user's information
+ *     description: Retrieve the authenticated user's profile information (excluding password).
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
@@ -473,11 +493,38 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /users/me/teams
- * Get current user's teams
- * 
- * @permission Authenticated user
- * @returns {Array} List of teams the user has access to with their roles
+ * @swagger
+ * /users/me/teams:
+ *   get:
+ *     summary: Get current user's teams
+ *     description: Retrieve all teams that the authenticated user is a member of, including their roles in each team.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of teams the user has access to with their roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Team'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch user teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/me/teams', authenticateToken, async (req, res) => {
   try {
@@ -505,18 +552,70 @@ router.get('/me/teams', authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /users/select-team
- * Select a team and generate new JWT token with team information
- * 
- * @body {number} teamId - Team ID to select
- * @permission Authenticated user
- * @returns {Object} New JWT token with team information
+ * @swagger
+ * /users/select-team:
+ *   post:
+ *     summary: Select a team and generate new JWT token with team information
+ *     description: Select a team context and receive a new JWT token that includes team information for subsequent API calls.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - team_id
+ *             properties:
+ *               team_id:
+ *                 type: integer
+ *                 example: 123
+ *                 description: ID of the team to select
+ *     responses:
+ *       200:
+ *         description: Team selected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   description: New JWT token with team information
+ *                 team:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 123
+ *                     name:
+ *                       type: string
+ *                       example: "Family Budget Team"
+ *                     role:
+ *                       type: string
+ *                       enum: [admin, collaborator, viewer]
+ *                       example: "admin"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         description: Failed to select team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/select-team', authenticateToken, async (req, res) => {
   try {
-    const { teamId } = req.body;
+    const { team_id } = req.body;
 
-    if (!teamId) {
+    if (!team_id) {
       return res.status(400).json({
         error: 'Team ID is required'
       });
@@ -531,7 +630,7 @@ router.post('/select-team', authenticateToken, async (req, res) => {
       FROM team t
       INNER JOIN team_user tu ON t.id = tu.team_id
       WHERE tu.user_id = ? AND t.id = ?
-    `, [req.user.id, teamId]);
+    `, [req.user.id, team_id]);
 
     if (teamAccess.length === 0) {
       return res.status(403).json({
@@ -573,11 +672,37 @@ router.post('/select-team', authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /users/exit-team
- * Exit team mode and return to admin mode (remove team information from JWT)
- * 
- * @permission Authenticated user
- * @returns {Object} New JWT token without team information
+ * @swagger
+ * /users/exit-team:
+ *   post:
+ *     summary: Exit team mode and return to admin mode
+ *     description: Remove team information from JWT token and return to general user mode without team context.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully exited team mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   description: New JWT token without team information
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully exited team mode"
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to exit team mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/exit-team', authenticateToken, async (req, res) => {
   try {
@@ -606,12 +731,40 @@ router.post('/exit-team', authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /users/:id
- * Get a single user by ID
- * 
- * @param {number} id - User ID
- * @permission User can access their own data, superadmins can access any user
- * @returns {Object} User data (excluding password)
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get a single user by ID
+ *     description: Retrieve user information by ID. Users can access their own data, superadmins can access any user.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -650,15 +803,70 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /users
- * Create a new user
- * 
- * @body {string} username - Required unique username
- * @body {string} password - Required password
- * @body {boolean} superadmin - Optional admin flag, defaults to false
- * @body {boolean} active - Optional active flag, defaults to true
- * @permission Superadmin only
- * @returns {Object} Newly created user (excluding password)
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Create a new user
+ *     description: Create a new user account. Only superadmins can create users and assign admin privileges.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 1
+ *                 example: "john_doe"
+ *                 description: Unique username for the new user
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 1
+ *                 example: "securepassword123"
+ *                 description: Password for the new user
+ *               superadmin:
+ *                 type: boolean
+ *                 default: false
+ *                 example: false
+ *                 description: Whether the user should have superadmin privileges
+ *               active:
+ *                 type: boolean
+ *                 default: true
+ *                 example: true
+ *                 description: Whether the user account should be active
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: Username already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to create user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', requireSuperAdmin, async (req, res) => {
   try {
@@ -717,23 +925,84 @@ router.post('/', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * PUT /users/:id
- * Update an existing user
- * 
- * @param {number} id - User ID to update
- * @body {string} username - Optional new username
- * @body {string} password - Optional new password
- * @body {boolean} superadmin - Optional superadmin status flag
- * @permission User can update their own data (except superadmin flag), superadmins can update any user
- * @returns {Object} Updated user data (excluding password)
- * 
- * Note: Only superadmins can modify the superadmin flag. Regular users can only update
- * their own account information and cannot change their superadmin status.
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update an existing user
+ *     description: |
+ *       Update user information. Users can update their own data (except superadmin flag), 
+ *       superadmins can update any user. Password changes for own account require current password.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "new_username"
+ *                 description: New username (must be unique)
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "newpassword123"
+ *                 description: New password
+ *               current_password:
+ *                 type: string
+ *                 format: password
+ *                 example: "currentpassword"
+ *                 description: Current password (required when user updates own password)
+ *               superadmin:
+ *                 type: boolean
+ *                 example: false
+ *                 description: Superadmin status (superadmin only)
+ *               active:
+ *                 type: boolean
+ *                 example: true
+ *                 description: Account active status (superadmin only)
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Username already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to update user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, currentPassword, superadmin, active } = req.body;
+    const { username, password, current_password, superadmin, active } = req.body;
 
     // Check if user exists
     const [existingUsers] = await db.query(
@@ -779,13 +1048,13 @@ router.put('/:id', async (req, res) => {
 
     // Verify current password if user is updating their own password
     if (password && isOwnAccount && !req.user.superadmin) {
-      if (!currentPassword) {
+      if (!current_password) {
         return res.status(400).json({
           error: 'Current password is required to change password'
         });
       }
 
-      const isValidCurrentPassword = await bcrypt.compare(currentPassword, existingUser.password_hash);
+      const isValidCurrentPassword = await bcrypt.compare(current_password, existingUser.password_hash);
       if (!isValidCurrentPassword) {
         return res.status(401).json({
           error: 'Current password is incorrect'
@@ -872,15 +1141,50 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /users/:id
- * Delete a user
- * 
- * @param {number} id - User ID to delete
- * @permission superAdmin only, cannot delete own account
- * @returns {null} 204 No Content on success
- * 
- * Note: Users cannot delete their own accounts as a safety measure.
- * This prevents superadmins from accidentally removing their own access.
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     description: |
+ *       Permanently delete a user account. Superadmin only. Users cannot delete their own accounts 
+ *       as a safety measure to prevent accidental loss of admin access.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to delete
+ *     responses:
+ *       204:
+ *         description: User deleted successfully (no content)
+ *       400:
+ *         description: Cannot delete own account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Cannot delete user that is a member of teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to delete user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
@@ -925,12 +1229,53 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * GET /users/:id/teams
- * Get team access for a specific user
- * 
- * @param {number} id - User ID
- * @permission Superadmins only
- * @returns {Array} List of teams the user has access to with their roles
+ * @swagger
+ * /users/{id}/teams:
+ *   get:
+ *     summary: Get team access for a specific user
+ *     description: Retrieve all teams that a specific user is a member of, including their roles. Superadmin only.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: List of teams the user has access to with their roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Team'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When the user was added to the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
   try {
@@ -972,12 +1317,52 @@ router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * PUT /users/:id/enable
- * Enable a user account
- * 
- * @permission SuperAdmin only
- * @param {number} id - User ID
- * @returns {Object} Updated user data
+ * @swagger
+ * /users/{id}/enable:
+ *   put:
+ *     summary: Enable a user account
+ *     description: Activate a disabled user account. Superadmin only.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User enabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User enabled successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: User is already enabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to enable user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
   try {
@@ -1033,12 +1418,52 @@ router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * PUT /users/:id/disable
- * Disable a user account
- * 
- * @permission SuperAdmin only
- * @param {number} id - User ID
- * @returns {Object} Updated user data
+ * @swagger
+ * /users/{id}/disable:
+ *   put:
+ *     summary: Disable a user account
+ *     description: Deactivate a user account. Superadmin only. Users cannot disable their own accounts.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User disabled successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: User is already disabled or cannot disable own account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to disable user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/disable', requireSuperAdmin, async (req, res) => {
   try {

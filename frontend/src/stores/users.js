@@ -231,7 +231,7 @@ export const useUsersStore = defineStore('users', () => {
           'Authorization': `Bearer ${token.value}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ teamId }),
+        body: JSON.stringify({ team_id: teamId }),
       });
 
       if (!response.ok) {
@@ -366,7 +366,7 @@ export const useUsersStore = defineStore('users', () => {
       });
       
       if (teamId) {
-        searchParams.append('teamId', teamId.toString());
+        searchParams.append('team_id', teamId.toString());
       }
       
       const response = await fetch(`/api/users/search?${searchParams}`, {

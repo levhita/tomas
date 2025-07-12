@@ -399,14 +399,16 @@ router.get('/:id/transactions', async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
-  const { name, teamId, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
+  const { name, team_id, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  if (!teamId) {
-    return res.status(400).json({ error: 'Team ID is required' });
+  if (!team_id) {
+    return res.status(400).json({
+      error: 'Team ID is required'
+    });
   }
 
   try {
@@ -414,13 +416,13 @@ router.post('/', async (req, res) => {
     const { canWrite: canWriteTeam, getTeamById } = require('../utils/team');
 
     // Check if team exists
-    const team = await getTeamById(teamId);
+    const team = await getTeamById(team_id);
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
     }
 
     // Check if user has write access to the team
-    const { allowed, message } = await canWriteTeam(teamId, req.user.id);
+    const { allowed, message } = await canWriteTeam(team_id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
@@ -428,7 +430,7 @@ router.post('/', async (req, res) => {
     // Create the book
     const [result] = await db.query(
       'INSERT INTO book (name, note, currency_symbol, week_start, team_id) VALUES (?, ?, ?, ?, ?)',
-      [name, note, currency_symbol, week_start, teamId]
+      [name, note, currency_symbol, week_start, team_id]
     );
 
     const book = await getBookById(result.insertId);
