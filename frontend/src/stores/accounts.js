@@ -133,7 +133,7 @@ export const useAccountsStore = defineStore('accounts', () => {
    */
   async function fetchAccountBalance(id, upToDate) {
     try {
-      const response = await fetchWithAuth(`/api/accounts/${id}/balance?upToDate=${upToDate}`);
+      const response = await fetchWithAuth(`/api/accounts/${id}/balance?up_to_date=${upToDate}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message);

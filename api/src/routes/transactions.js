@@ -1,9 +1,10 @@
 /**
  * Transactions API Router
- * Handles all transaction-related operations including:
- * - Listing transactions with filters (by account, date range)
+ * Handles individual transaction operations including:
  * - Retrieving single transaction details
  * - Creating, updating and deleting transactions
+ * 
+ * Note: Transaction listing is handled by /books/:id/transactions endpoint
  * 
  * Permission model:
  * - READ operations: Any team member (admin, collaborator, viewer)
@@ -15,81 +16,7 @@ const router = express.Router();
 const db = require('../db');
 const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
-/**
- * GET /transactions
- * List transactions with optional filtering
- * 
- * @query {number} accountId - Optional filter by account ID
- * @query {string} startDate - Optional start date (ISO format)
- * @query {string} endDate - Optional end date (ISO format)
- * @permission Read access to the account's book (via team membership)
- * @returns {Array} List of transactions
- */
-router.get('/', async (req, res) => {
-  const { accountId, startDate, endDate } = req.query;
 
-  if (!accountId) {
-    return res.status(400).json({ error: 'accountId is required' });
-  }
-
-  try {
-    // First get the account to determine its book
-    const [accounts] = await db.query(`
-      SELECT book_id FROM account WHERE id = ?
-    `, [accountId]);
-
-    if (accounts.length === 0) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
-
-    // Check if user has access to the account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    const { allowed, message } = await canRead(team.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
-    // Build query with filters
-    let query = `
-      SELECT 
-        t.*,
-        c.name as category_name,
-        a.name as account_name
-      FROM transaction AS t
-      LEFT JOIN category c ON t.category_id = c.id 
-      LEFT JOIN account a ON t.account_id = a.id
-      WHERE 1=1
-    `;
-    const params = [];
-
-    if (accountId) {
-      query += ` AND t.account_id = ?`;
-      params.push(accountId);
-    }
-
-    if (startDate && endDate) {
-      query += ` AND t.date BETWEEN ? AND ?`;
-      params.push(startDate, endDate);
-    }
-
-    query += ` ORDER BY t.date ASC`;
-
-    const [transactions] = await db.query(query, params);
-
-    // Convert exercised from 0/1 to boolean
-    transactions.forEach(t => t.exercised = !!t.exercised);
-    res.status(200).json(transactions);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch transactions' });
-  }
-});
 
 /**
  * GET /transactions/:id

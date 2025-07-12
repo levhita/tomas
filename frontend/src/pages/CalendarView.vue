@@ -163,10 +163,10 @@ async function validateAndSetBook() {
 watch(
   [() => accountId.value, startDate, endDate],
   async ([accountId, start, end]) => {
-    if (accountId && start && end) {
+    if (accountId && start && end && booksStore.currentBook) {
       const extendedStart = moment(start).subtract(1, 'week').format('YYYY-MM-DD')
       const extendedEnd = moment(end).add(1, 'week').format('YYYY-MM-DD')
-      await transactionsStore.fetchTransactions(accountId, extendedStart, extendedEnd)
+      await transactionsStore.fetchTransactions(booksStore.currentBook.id, accountId, extendedStart, extendedEnd)
     }
   }
 )

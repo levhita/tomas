@@ -801,4 +801,140 @@ describe('Book Management API', () => {
       expect([400, 404]).toContain(response.status);
     });
   });
+
+  describe('GET /api/books/:id/transactions', () => {
+    it('should return transactions for book with read access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      if (response.body.length > 0) {
+        const transaction = response.body[0];
+        expect(transaction).toHaveProperty('id');
+        expect(transaction).toHaveProperty('description');
+        expect(transaction).toHaveProperty('amount');
+        expect(transaction).toHaveProperty('date');
+        expect(transaction).toHaveProperty('exercised');
+        expect(transaction).toHaveProperty('account_id');
+        expect(transaction).toHaveProperty('account_name');
+        expect(typeof transaction.exercised).toBe('boolean');
+      }
+    });
+
+    it('should return transactions filtered by account_id parameter', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`)
+        .query({ account_id: 1 }); // Account 1 is in book 1
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      // All transactions should belong to the specified account
+      response.body.forEach(transaction => {
+        expect(transaction.account_id).toBe(1);
+      });
+    });
+
+    it('should return transactions filtered by date range', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`)
+        .query({
+          start_date: '2024-12-01',
+          end_date: '2024-12-31'
+        });
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      // All returned transactions should be within the date range
+      response.body.forEach(transaction => {
+        const transactionDate = new Date(transaction.date);
+        expect(transactionDate >= new Date('2024-12-01')).toBe(true);
+        expect(transactionDate <= new Date('2024-12-31')).toBe(true);
+      });
+    });
+
+    it('should return transactions ordered by date', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      // Check that transactions are returned in date order (ASC)
+      if (response.body.length > 1) {
+        for (let i = 0; i < response.body.length - 1; i++) {
+          const currentDate = new Date(response.body[i].date);
+          const nextDate = new Date(response.body[i + 1].date);
+          expect(currentDate <= nextDate).toBe(true);
+        }
+      }
+    });
+
+    it('should return 404 for account_id not in the specified book', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`)
+        .query({ account_id: 3 }); // Account 3 is in book 2, not book 1
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Account not found in this book');
+    });
+
+    it('should deny access to book transactions without permission', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(superadminToken); // Superadmin has no team membership
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access to books they are not a member of', async () => {
+      const auth = authenticatedRequest(superadminToken);
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app)
+        .get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
+
+      validateApiResponse(response, 401);
+      expect(response.body).toHaveProperty('error', 'Access token required');
+    });
+
+    it('should return 404 for non-existent book transactions', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.get('/api/books/99999/transactions');
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Book not found');
+    });
+
+    it('should handle malformed book_id parameter', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.get('/api/books/invalid/transactions');
+
+      // Should return 404 for invalid book ID format
+      expect([400, 404]).toContain(response.status);
+    });
+  });
 });

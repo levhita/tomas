@@ -60,13 +60,13 @@ router.get('/:id', async (req, res) => {
  * Get current balance for an account, optionally up to a specific date
  * 
  * @param {number} id - Account ID
- * @query {string} upToDate - Optional date string in ISO format (e.g. 2023-04-30)
+ * @query {string} up_to_date - Optional date string in ISO format (e.g. 2023-04-30)
  * @permission Read access to the account's book (via team membership)
  * @returns {Object} Account balance information with exercised and projected totals
  */
 router.get('/:id/balance', async (req, res) => {
   const { id } = req.params;
-  const { upToDate } = req.query;
+  const { up_to_date } = req.query;
 
   try {
     // First get the account to determine its book
@@ -92,13 +92,13 @@ router.get('/:id/balance', async (req, res) => {
     }
 
     // Validate date format if provided
-    const dateTimestamp = new Date(upToDate).getTime();
-    if (upToDate && isNaN(dateTimestamp)) {
+    const dateTimestamp = new Date(up_to_date).getTime();
+    if (up_to_date && isNaN(dateTimestamp)) {
       return res.status(400).json({ error: 'Invalid date format' });
     }
 
     // Get balance up to the specified date or current date if not specified
-    const balanceDate = upToDate || new Date().toISOString().split('T')[0];
+    const balanceDate = up_to_date || new Date().toISOString().split('T')[0];
 
     const [result] = await db.query(`
       SELECT 

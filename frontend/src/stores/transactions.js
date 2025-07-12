@@ -19,14 +19,18 @@ export const useTransactionsStore = defineStore('transactions', () => {
   }
 
   // Actions
-  async function fetchTransactions(accountId, startDate, endDate) {
+  async function fetchTransactions(bookId, accountId, startDate, endDate) {
     try {
-      const params = new URLSearchParams();
-      if (accountId) params.append('accountId', accountId);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+      if (!bookId) {
+        throw new Error('bookId is required');
+      }
 
-      const url = `/api/transactions${params.toString() ? '?' + params.toString() : ''}`;
+      const params = new URLSearchParams();
+      if (accountId) params.append('account_id', accountId);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+
+      const url = `/api/books/${bookId}/transactions${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetchWithAuth(url);
       const data = await response.json();
       transactions.value = data;

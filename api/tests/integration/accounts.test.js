@@ -134,7 +134,7 @@ describe('Accounts Management API', () => {
       const upToDate = '2024-12-01';
 
       const response = await auth.get(`/api/accounts/${testAccountId}/balance`)
-        .query({ upToDate });
+        .query({ up_to_date: upToDate });
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('exercised_balance');
@@ -146,7 +146,7 @@ describe('Accounts Management API', () => {
       const testAccountId = 1;
 
       const response = await auth.get(`/api/accounts/${testAccountId}/balance`)
-        .query({ upToDate: 'invalid-date' });
+        .query({ up_to_date: 'invalid-date' });
 
       validateApiResponse(response, 400);
       expect(response.body).toHaveProperty('error');

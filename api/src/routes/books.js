@@ -154,6 +154,86 @@ router.get('/:id/categories', async (req, res) => {
 });
 
 /**
+ * GET /books/:id/transactions
+ * Get all transactions for accounts in a specific book
+ * 
+ * @param {number} id - Book ID
+ * @query {number} account_id - Optional filter by specific account ID within the book
+ * @query {string} start_date - Optional start date filter (ISO format)
+ * @query {string} end_date - Optional end date filter (ISO format)
+ * @permission Read access via team membership (admin, collaborator, viewer) or superadmin
+ * @returns {Array} List of transactions for the book ordered by date
+ */
+router.get('/:id/transactions', async (req, res) => {
+  try {
+    const bookId = req.params.id;
+    const { account_id, start_date, end_date } = req.query;
+
+    // First check if the book exists
+    const book = await getBookById(bookId);
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    // Check team-based access for all users including superadmin
+    const team = await getTeamByBookId(bookId);
+    if (!team) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const { allowed, message } = await canRead(team.id, req.user.id);
+    if (!allowed) {
+      return res.status(403).json({ error: message });
+    }
+
+    // Build query with optional filters
+    let query = `
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as account_name
+      FROM transaction AS t
+      LEFT JOIN category c ON t.category_id = c.id 
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE a.book_id = ?
+    `;
+    const params = [bookId];
+
+    // Add account filter if specified
+    if (account_id) {
+      // First verify the account belongs to this book
+      const [accountCheck] = await db.query(
+        'SELECT id FROM account WHERE id = ? AND book_id = ?', 
+        [account_id, bookId]
+      );
+      
+      if (accountCheck.length === 0) {
+        return res.status(404).json({ error: 'Account not found in this book' });
+      }
+      
+      query += ` AND t.account_id = ?`;
+      params.push(account_id);
+    }
+
+    if (start_date && end_date) {
+      query += ` AND t.date BETWEEN ? AND ?`;
+      params.push(start_date, end_date);
+    }
+
+    query += ` ORDER BY t.date ASC`;
+
+    const [transactions] = await db.query(query, params);
+
+    // Convert exercised from 0/1 to boolean
+    transactions.forEach(t => t.exercised = !!t.exercised);
+    res.status(200).json(transactions);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+/**
  * POST /books
  * Create a new book within a team
  * 
@@ -277,13 +357,13 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    // First check if the book exists
+    // First check if book exists
     const book = await getBookById(req.params.id);
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Check team-based admin permissions for all users including superadmin
+    // Check if user has admin access to the team that owns this book
     const team = await getTeamByBookId(req.params.id);
     if (!team) {
       return res.status(404).json({ error: 'Book not found' });
@@ -294,9 +374,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: message });
     }
 
+    // Soft delete the book
     const [result] = await db.query(`
       UPDATE book 
-      SET deleted_at = CURRENT_TIMESTAMP 
+      SET deleted_at = NOW() 
       WHERE id = ? AND deleted_at IS NULL
     `, [req.params.id]);
 
@@ -316,7 +397,7 @@ router.delete('/:id', async (req, res) => {
  * Restore a soft-deleted book
  * 
  * @param {number} id - Book ID
- * @permission Team admin only
+ * @permission Admin access via team membership or superadmin
  * @returns {Object} Restored book details
  */
 router.post('/:id/restore', async (req, res) => {
