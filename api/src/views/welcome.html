@@ -4,25 +4,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yamo API</title>
+  <title>Tomas API</title>
   <link rel="stylesheet" href="/css/welcome.css">
 </head>
 
 <body>
   <header>
-    <h1>Yamo API</h1>
+    <h1>Tomas API</h1>
     <div class="version">v{{apiVersion}}</div>
-    <p class="tagline">Your Advanced Money Organizer</p>
+    <p class="tagline">Personal and Home Finance Management</p>
   </header>
 
   <div class="card">
     <h2>Overview</h2>
-    <p>Welcome to the Yamo API! This RESTful API provides financial management capabilities including:</p>
+    <p>Welcome to the Tomas API! This RESTful API provides comprehensive personal and home finance management capabilities including:</p>
     <ul>
-      <li>Multi-book financial management</li>
-      <li>Account and transaction tracking</li>
-      <li>Categorization of income and expenses</li>
-      <li>Collaborative access for teams</li>
+      <li>Multi-book financial management with team collaboration</li>
+      <li>Account and transaction tracking with hierarchical categories</li>
+      <li>Income and expense categorization with two-level nesting</li>
+      <li>Role-based team access (admin, collaborator, viewer)</li>
+      <li>Soft delete functionality for data integrity</li>
+      <li>Balance calculations and financial reporting</li>
     </ul>
   </div>
 
@@ -31,54 +33,56 @@
     <p>All API endpoints (except <code>/health</code> and this page) require authentication using JWT tokens.</p>
     <p>To authenticate:</p>
     <ol>
-      <li>Get a token by sending your credentials to <code>POST /users/login</code></li>
+      <li>Get a token by sending your credentials to <code>POST /api/users/login</code></li>
       <li>Include the token in the <code>Authorization</code> header as <code>Bearer &lt;token&gt;</code></li>
     </ol>
+    <p><strong>Note:</strong> All API endpoints use <code>snake_case</code> for parameters (e.g., <code>account_id</code>, <code>start_date</code>, <code>end_date</code>).</p>
   </div>
 
   <div class="card">
     <h2>Key Endpoints</h2>
+    <p>The API follows RESTful conventions with hierarchical endpoints. Here are some key endpoints:</p>
     <div class="endpoints">
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method post">POST</span>/users/login
+          <span class="method post">POST</span>/api/users/login
         </div>
         <p>Authenticate and get an access token</p>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method get">GET</span>/books
+          <span class="method get">GET</span>/api/books
         </div>
         <p>List all accessible books</p>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method get">GET</span>/accounts
+          <span class="method get">GET</span>/api/books/{id}/accounts
         </div>
-        <p>List accounts for a book</p>
+        <p>List accounts for a specific book</p>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method get">GET</span>/transactions
+          <span class="method get">GET</span>/api/books/{id}/transactions
         </div>
-        <p>Get transactions with filtering options</p>
+        <p>Get transactions for a book with filtering options</p>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method get">GET</span>/categories
+          <span class="method get">GET</span>/api/books/{id}/categories
         </div>
-        <p>List categories for a book</p>
+        <p>List categories for a specific book</p>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-path">
-          <span class="method get">GET</span>/health
+          <span class="method get">GET</span>/api/health
         </div>
-        <p>Check API service health</p>
+        <p>Check API service health and statistics</p>
       </div>
     </div>
   </div>
@@ -87,13 +91,25 @@
     <h2>Documentation</h2>
     <p>For detailed API documentation, please refer to:</p>
     <ul>
-      <li>API Documentation: <a href="/docs" target="_blank">/docs</a> (if enabled)</li>
-      <li>GitHub Repository: <a href="https://github.com/levhita/yamo" target="_blank">github.com/levhita/yamo</a></li>
+      <li><strong>Interactive API Documentation:</strong> <a href="/api-docs" target="_blank">/api-docs</a> 
+        <br><span style="color: #e74c3c; font-size: 0.9em;">⚠️ Note: Swagger UI is only available in development/staging environments for security reasons</span>
+      </li>
+      <li><strong>API Reference:</strong> See the <code>API_REFERENCE.md</code> file in the project repository</li>
+      <li><strong>GitHub Repository:</strong> <a href="https://github.com/levhita/tomas" target="_blank">github.com/levhita/tomas</a></li>
+      <li><strong>OpenAPI Specification:</strong> <code>/api/docs/swagger.json</code> (generated documentation)</li>
+    </ul>
+    <p><strong>API Version 2.0.0 Features:</strong></p>
+    <ul>
+      <li>✅ RESTful hierarchical endpoints (e.g., <code>/books/{id}/transactions</code>)</li>
+      <li>✅ Standardized <code>snake_case</code> parameters</li>
+      <li>✅ Comprehensive OpenAPI/Swagger documentation</li>
+      <li>✅ Interactive API testing via Swagger UI</li>
+      <li>✅ Role-based permissions and team collaboration</li>
     </ul>
   </div>
 
   <footer>
-    <p>Yamo API • {{currentYear}} • Running in {{environment}} mode</p>
+    <p>Tomas API • {{currentYear}} • Running in {{environment}} mode</p>
   </footer>
 </body>
 

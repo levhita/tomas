@@ -1,11 +1,12 @@
 const swaggerJSDoc = require('swagger-jsdoc');
+const packageInfo = require('./package.json');
 
 const options = {
   definition: {
     openapi: '3.0.3',
     info: {
       title: 'Tomas API',
-      version: '2.0.0',
+      version: packageInfo.version,
       description: `
         Personal and Home finance projection and expense tracking application API.
         

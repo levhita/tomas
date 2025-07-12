@@ -215,25 +215,81 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /categories/:id
- * Update an existing category
- * 
- * @param {number} id - Category ID to update
- * @body {string} name - Category name
- * @body {string} note - Category description
- * @body {string} type - Category type (expense or income)
- * @body {number} parent_category_id - Parent category ID for hierarchical categories
- * @permission Write access to the category's book (admin, collaborator)
- * @returns {Object} Updated category
- * 
- * Hierarchy constraints:
- * - A category cannot be its own parent
- * - A category with children cannot become a child of another category
- * - Parent category must belong to the same book
- * - If parent_category_id is provided, that category must not have a parent itself
- * - Child categories must have the same type as their parent
- * - When a parent category type changes, all child categories inherit the new type
- * - When moving a category to a different parent, type is inherited from new parent
+ * @swagger
+ * /categories/{id}:
+ *   put:
+ *     summary: Update an existing category
+ *     description: |
+ *       Update an existing category. Supports hierarchical category management with strict constraints.
+ *       
+ *       **Hierarchy constraints:**
+ *       - A category cannot be its own parent
+ *       - A category with children cannot become a child of another category
+ *       - Parent category must belong to the same book
+ *       - If parent_category_id is provided, that category must not have a parent itself
+ *       - Child categories must have the same type as their parent
+ *       - When a parent category type changes, all child categories inherit the new type
+ *       - When moving a category to a different parent, type is inherited from new parent
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Category ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 255
+ *                 description: Category name
+ *               note:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Category description or notes
+ *               type:
+ *                 type: string
+ *                 enum: [expense, income]
+ *                 description: Category type (note - may be overridden by parent inheritance)
+ *               parent_category_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Parent category ID for hierarchical categories
+ *     responses:
+ *       200:
+ *         description: Category updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       428:
+ *         description: Precondition Failed - Hierarchy constraint violation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to update category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   let { name, note, type, parent_category_id } = req.body;
@@ -429,15 +485,54 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /categories/:id
- * Delete a category
- * 
- * @param {number} id - Category ID to delete
- * @permission Write access to the category's book (admin, collaborator)
- * @returns {null} 204 No Content on success
- * @throws {Error} 428 Precondition Required if category has transactions
- * 
- * Note: Categories with child categories or referenced by transactions cannot be deleted
+ * @swagger
+ * /categories/{id}:
+ *   delete:
+ *     summary: Delete a category (soft delete)
+ *     description: |
+ *       Mark a category as deleted (soft delete). The category will be marked as deleted 
+ *       and excluded from future queries but preserved in the database for data integrity.
+ *       
+ *       **Constraints:**
+ *       - Cannot delete categories that have child categories
+ *       - Cannot delete categories that are referenced by transactions
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Category ID to delete
+ *     responses:
+ *       204:
+ *         description: Category deleted successfully (No Content)
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       428:
+ *         description: Precondition Failed - Category has dependencies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Cannot delete category with subcategories or referenced by transactions
+ *       500:
+ *         description: Failed to delete category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', async (req, res) => {
   try {

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Tomas API",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "description": "\n        Personal and Home finance projection and expense tracking application API.\n        \n        ## Authentication\n        Most endpoints require JWT authentication. Include the token in the Authorization header:\n        ```\n        Authorization: Bearer <your-jwt-token>\n        ```\n        \n        ## Parameter Naming Convention\n        All API endpoints use `snake_case` for query parameters and request body fields.\n        \n        ## Breaking Changes (v2.0.0)\n        - Removed legacy `/transactions?book_id=...` endpoint - use `/books/{id}/transactions` instead\n        - All parameters now use `snake_case` (e.g., `account_id`, `start_date`, `end_date`, `up_to_date`)\n      ",
     "contact": {
       "name": "Tomas API Support",
@@ -1543,6 +1543,174 @@
             }
           }
         }
+      },
+      "put": {
+        "summary": "Update an existing category",
+        "description": "Update an existing category. Supports hierarchical category management with strict constraints.\n\n**Hierarchy constraints:**\n- A category cannot be its own parent\n- A category with children cannot become a child of another category\n- Parent category must belong to the same book\n- If parent_category_id is provided, that category must not have a parent itself\n- Child categories must have the same type as their parent\n- When a parent category type changes, all child categories inherit the new type\n- When moving a category to a different parent, type is inherited from new parent\n",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Category ID to update"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "description": "Category name"
+                  },
+                  "note": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Category description or notes"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "expense",
+                      "income"
+                    ],
+                    "description": "Category type (note - may be overridden by parent inheritance)"
+                  },
+                  "parent_category_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Parent category ID for hierarchical categories"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "428": {
+            "description": "Precondition Failed - Hierarchy constraint violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to update category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a category (soft delete)",
+        "description": "Mark a category as deleted (soft delete). The category will be marked as deleted \nand excluded from future queries but preserved in the database for data integrity.\n\n**Constraints:**\n- Cannot delete categories that have child categories\n- Cannot delete categories that are referenced by transactions\n",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Category ID to delete"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Category deleted successfully (No Content)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "428": {
+            "description": "Precondition Failed - Category has dependencies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Cannot delete category with subcategories or referenced by transactions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/categories": {
@@ -1861,6 +2029,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "API home page",
+        "description": "Renders the API home page with basic information about the application",
+        "tags": [
+          "General"
+        ],
+        "responses": {
+          "200": {
+            "description": "API home page",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string",
+                  "description": "HTML page with API information"
                 }
               }
             }
