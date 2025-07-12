@@ -561,7 +561,7 @@ describe('User Management API', () => {
       expect(response.body.error).toMatch(/cannot delete.*own account/i);
     });
 
-    it('should delete user and cascade delete team memberships (ON DELETE CASCADE)', async () => {
+    it('should return 409 if user is a member of teams (foreign key constraint)', async () => {
       const auth = authenticatedRequest(superadminToken);
 
       // Create a user and add to a team
@@ -578,18 +578,16 @@ describe('User Management API', () => {
       await auth.post('/api/teams/1/users')
         .send({ userId: newUserId, role: 'viewer' });
 
-      // Delete user (should succeed with 204)
+      // Try to delete user (should fail with 409)
       const response = await auth.delete(`/api/users/${newUserId}`);
-      validateApiResponse(response, 204);
 
-      // Verify user is deleted
-      const getResponse = await auth.get(`/api/users/${newUserId}`);
-      validateApiResponse(getResponse, 404);
+      validateApiResponse(response, 409);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/member of teams/i);
 
-      // Verify team membership is deleted
-      const teamUsersResponse = await auth.get('/api/teams/1/users');
-      const stillMember = teamUsersResponse.body.find(u => u.id === newUserId);
-      expect(stillMember).toBeUndefined();
+      // Clean up: remove user from team and delete user
+      await auth.delete(`/api/teams/1/users/${newUserId}`);
+      await auth.delete(`/api/users/${newUserId}`);
     });
   });
 
@@ -850,6 +848,10 @@ describe('User Management API', () => {
 
         validateApiResponse(createResponse, 201);
         const userId = createResponse.body.id;
+
+        // Add user to a team
+        await auth.post('/api/teams/1/users')
+          .send({ userId: userId, role: 'viewer' });
 
         // Delete the user - should succeed with cascade
         const response = await auth.delete(`/api/users/${userId}`);
