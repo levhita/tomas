@@ -362,16 +362,41 @@ router.get('/:id/transactions', async (req, res) => {
 });
 
 /**
- * POST /books
- * Create a new book within a team
- * 
- * @body {string} name - Required book name
- * @body {number} teamId - Required team ID where the book will be created
- * @body {string} note - Optional book note
- * @body {string} currency_symbol - Currency symbol, defaults to '$'
- * @body {string} week_start - First day of the week, defaults to 'monday'
- * @permission Admin or collaborator access to the specified team
- * @returns {Object} Newly created book
+ * @swagger
+ * /books:
+ *   post:
+ *     summary: Create a new book within a team
+ *     description: Create a new financial book within a specified team. Requires admin or collaborator access to the team.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BookInput'
+ *     responses:
+ *       201:
+ *         description: Book created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Book'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to create book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
   const { name, teamId, note = null, currency_symbol = '$', week_start = 'monday' } = req.body;
@@ -415,16 +440,64 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /books/:id
- * Update book details
- * 
- * @param {number} id - Book ID
- * @body {string} name - Required book name
- * @body {string} note - Optional book note
- * @body {string} currency_symbol - Currency symbol
- * @body {string} week_start - First day of the week
- * @permission Write access via team membership (admin or collaborator) or superadmin
- * @returns {Object} Updated book details
+ * @swagger
+ * /books/{id}:
+ *   put:
+ *     summary: Update book details
+ *     description: Update all fields of an existing book. Requires write access via team membership (admin or collaborator).
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ['name']
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 'Updated Book Name'
+ *               note:
+ *                 type: string
+ *                 nullable: true
+ *                 example: 'Updated book description'
+ *               currency_symbol:
+ *                 type: string
+ *                 example: '€'
+ *               week_start:
+ *                 type: string
+ *                 enum: ['sunday', 'monday']
+ *                 example: 'sunday'
+ *     responses:
+ *       200:
+ *         description: Book updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Book'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to update book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   const { name, note, currency_symbol, week_start } = req.body;
@@ -476,12 +549,44 @@ router.put('/:id', async (req, res) => {
 });
 
 /**
- * DELETE /books/:id
- * Soft delete a book
- * 
- * @param {number} id - Book ID
- * @permission Admin access via team membership or superadmin
- * @returns {void}
+ * @swagger
+ * /books/{id}:
+ *   delete:
+ *     summary: Soft delete a book
+ *     description: Mark a book as deleted (soft delete). The book can be restored later. Requires admin access via team membership.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       200:
+ *         description: Book deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: 'Book deleted successfully'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to delete book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', async (req, res) => {
   try {
@@ -521,12 +626,50 @@ router.delete('/:id', async (req, res) => {
 });
 
 /**
- * POST /books/:id/restore
- * Restore a soft-deleted book
- * 
- * @param {number} id - Book ID
- * @permission Admin access via team membership or superadmin
- * @returns {Object} Restored book details
+ * @swagger
+ * /books/{id}/restore:
+ *   post:
+ *     summary: Restore a soft-deleted book
+ *     description: Restore a previously soft-deleted book to active status. Requires admin access via team membership.
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       200:
+ *         description: Book restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Book'
+ *       400:
+ *         description: Book is already active
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               status: error
+ *               message: Book is already active
+ *               code: BAD_REQUEST
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to restore book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/:id/restore', async (req, res) => {
   try {
@@ -566,20 +709,58 @@ router.post('/:id/restore', async (req, res) => {
 });
 
 /**
- * DELETE /books/:id/permanent
- * Permanently delete a book and cascade delete all related data
- * 
- * @param {number} id - Book ID
- * @permission Team admin only
- * @returns {void}
- * 
- * Note: This will cascade delete ALL related data including:
- * - All transactions in book accounts
- * - All account totals 
- * - All categories (including hierarchical categories)
- * - All accounts
- * - All book users
- * - The book itself
+ * @swagger
+ * /books/{id}/permanent:
+ *   delete:
+ *     summary: Permanently delete a book and cascade delete all related data
+ *     description: |
+ *       Permanently delete a book and all its related data. This action cannot be undone.
+ *       
+ *       **Prerequisites:**
+ *       - Book must be soft-deleted first
+ *       - Requires team admin access
+ *       
+ *       **Cascade deletion includes:**
+ *       - All transactions in book accounts
+ *       - All account totals
+ *       - All categories (including hierarchical categories)
+ *       - All accounts
+ *       - The book itself
+ *     tags: [Books]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Book ID
+ *     responses:
+ *       204:
+ *         description: Book permanently deleted successfully (no content)
+ *       400:
+ *         description: Book must be soft-deleted before permanent deletion
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               status: error
+ *               message: Book must be soft-deleted before permanent deletion
+ *               code: BAD_REQUEST
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to permanently delete book
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id/permanent', async (req, res) => {
   try {

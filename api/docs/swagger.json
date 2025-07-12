@@ -384,6 +384,42 @@
           }
         }
       },
+      "BookInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "teamId"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Personal Budget"
+          },
+          "teamId": {
+            "type": "integer",
+            "example": 1
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Main personal budget book"
+          },
+          "currency_symbol": {
+            "type": "string",
+            "default": "$",
+            "example": "$"
+          },
+          "week_start": {
+            "type": "string",
+            "enum": [
+              "sunday",
+              "monday"
+            ],
+            "default": "monday",
+            "example": "monday"
+          }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -900,6 +936,159 @@
             "$ref": "#/components/responses/NotFound"
           }
         }
+      },
+      "put": {
+        "summary": "Update book details",
+        "description": "Update all fields of an existing book. Requires write access via team membership (admin or collaborator).",
+        "tags": [
+          "Books"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Book ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Updated Book Name"
+                  },
+                  "note": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "Updated book description"
+                  },
+                  "currency_symbol": {
+                    "type": "string",
+                    "example": "€"
+                  },
+                  "week_start": {
+                    "type": "string",
+                    "enum": [
+                      "sunday",
+                      "monday"
+                    ],
+                    "example": "sunday"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Book updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to update book",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete a book",
+        "description": "Mark a book as deleted (soft delete). The book can be restored later. Requires admin access via team membership.",
+        "tags": [
+          "Books"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Book ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Book deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to delete book",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/books/{id}/accounts": {
@@ -1096,6 +1285,199 @@
           },
           "500": {
             "description": "Failed to fetch transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/books": {
+      "post": {
+        "summary": "Create a new book within a team",
+        "description": "Create a new financial book within a specified team. Requires admin or collaborator access to the team.",
+        "tags": [
+          "Books"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Book created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to create book",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/books/{id}/restore": {
+      "post": {
+        "summary": "Restore a soft-deleted book",
+        "description": "Restore a previously soft-deleted book to active status. Requires admin access via team membership.",
+        "tags": [
+          "Books"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Book ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book restored successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Book is already active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Book is already active",
+                  "code": "BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to restore book",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/books/{id}/permanent": {
+      "delete": {
+        "summary": "Permanently delete a book and cascade delete all related data",
+        "description": "Permanently delete a book and all its related data. This action cannot be undone.\n\n**Prerequisites:**\n- Book must be soft-deleted first\n- Requires team admin access\n\n**Cascade deletion includes:**\n- All transactions in book accounts\n- All account totals\n- All categories (including hierarchical categories)\n- All accounts\n- The book itself\n",
+        "tags": [
+          "Books"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Book ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Book permanently deleted successfully (no content)"
+          },
+          "400": {
+            "description": "Book must be soft-deleted before permanent deletion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "status": "error",
+                  "message": "Book must be soft-deleted before permanent deletion",
+                  "code": "BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "description": "Failed to permanently delete book",
             "content": {
               "application/json": {
                 "schema": {

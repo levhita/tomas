@@ -102,16 +102,22 @@ app.use('/api/teams', teamsRouter);
  * 
  * Serve Swagger UI documentation at /api-docs
  * This loads the generated swagger.json file and presents it in an interactive UI
+ * Only available in development and staging environments for security
  */
-try {
-  const swaggerDocument = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/swagger.json'), 'utf8'));
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Tomas API Documentation"
-  }));
-} catch (error) {
-  console.log('Swagger documentation not available. Run "npm run build-docs" to generate it.');
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const swaggerDocument = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/swagger.json'), 'utf8'));
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "Tomas API Documentation"
+    }));
+    console.log('📚 API Documentation available at /api-docs');
+  } catch (error) {
+    console.log('Swagger documentation not available. Run "npm run build-docs" to generate it.');
+  }
+} else {
+  console.log('📚 API Documentation disabled in production environment');
 }
 
 /**

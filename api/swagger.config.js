@@ -156,6 +156,17 @@ const options = {
             role: { type: 'string', enum: ['admin', 'collaborator', 'viewer'], example: 'admin', description: 'User role in the team (included when listing user teams)' }
           }
         },
+        BookInput: {
+          type: 'object',
+          required: ['name', 'teamId'],
+          properties: {
+            name: { type: 'string', example: 'Personal Budget' },
+            teamId: { type: 'integer', example: 1 },
+            note: { type: 'string', nullable: true, example: 'Main personal budget book' },
+            currency_symbol: { type: 'string', default: '$', example: '$' },
+            week_start: { type: 'string', enum: ['sunday', 'monday'], default: 'monday', example: 'monday' }
+          }
+        },
         Error: {
           type: 'object',
           properties: {
