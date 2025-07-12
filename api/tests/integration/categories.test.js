@@ -26,57 +26,7 @@ describe('Categories Management API', () => {
     noaccessToken = tokens.noaccess;
   });
 
-  describe('GET /api/categories', () => {
-    it('should return categories for book with read access', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const response = await auth.get('/api/categories?book_id=1');
 
-      validateApiResponse(response, 200);
-      expect(response.body).toBeInstanceOf(Array);
-      expect(response.body.length).toBeGreaterThan(0);
-
-      // Validate category structure
-      if (response.body.length > 0) {
-        const category = response.body[0];
-        expect(category).toHaveProperty('id');
-        expect(category).toHaveProperty('name');
-        expect(category).toHaveProperty('book_id');
-        expect(category.book_id).toBe(1);
-      }
-    });
-
-    it('should deny access without book_id parameter', async () => {
-      const auth = authenticatedRequest(adminToken);
-      const response = await auth.get('/api/categories');
-
-      validateApiResponse(response, 400);
-      expect(response.body).toHaveProperty('error');
-    });
-
-    it('should deny access to book without permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
-      const response = await auth.get('/api/categories?book_id=1');
-
-      validateApiResponse(response, 403);
-      expect(response.body).toHaveProperty('error');
-    });
-
-    it('should deny superadmin access without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
-      const response = await auth.get('/api/categories?book_id=1');
-
-      validateApiResponse(response, 403);
-      expect(response.body).toHaveProperty('error');
-    });
-
-    it('should deny access without authentication', async () => {
-      const response = await request(app)
-        .get('/api/categories?book_id=1');
-
-      validateApiResponse(response, 401);
-      expect(response.body).toHaveProperty('error', 'Access token required');
-    });
-  });
 
   describe('GET /api/categories/:id', () => {
     it('should return category details for valid category', async () => {
@@ -646,11 +596,6 @@ describe('Categories Management API', () => {
         // Test that superadmin cannot access book 1 (where they are not a member)
         const superadminAuth = authenticatedRequest(superadminToken);
 
-        // Try to get categories from book 1
-        const getResponse = await superadminAuth.get('/api/categories?book_id=1');
-        validateApiResponse(getResponse, 403);
-        expect(getResponse.body).toHaveProperty('error');
-
         // Try to create a category in book 1
         const createResponse = await superadminAuth.post('/api/categories').send({
           name: 'Superadmin Unauthorized Category',
@@ -723,27 +668,7 @@ describe('Categories Management API', () => {
     });
 
     describe('Category Filtering and Querying', () => {
-      it('should return categories ordered alphabetically by name', async () => {
-        const auth = authenticatedRequest(adminToken);
-        const response = await auth.get('/api/categories?book_id=1');
-
-        validateApiResponse(response, 200);
-        expect(response.body).toBeInstanceOf(Array);
-
-        // Check that categories are returned in alphabetical order
-        if (response.body.length > 1) {
-          const names = response.body.map(cat => cat.name);
-          const sortedNames = [...names].sort((a, b) => a.localeCompare(b));
-          expect(names).toEqual(sortedNames);
-
-          // Also verify each category has the required fields
-          response.body.forEach(category => {
-            expect(category).toHaveProperty('id');
-            expect(category).toHaveProperty('name');
-            expect(category).toHaveProperty('book_id', 1);
-          });
-        }
-      });
+      // Note: Category listing by book is now tested in books.test.js via /api/books/:id/categories endpoint
 
       it('should return empty array for book with no categories', async () => {
         const auth = authenticatedRequest(adminToken);
@@ -760,7 +685,8 @@ describe('Categories Management API', () => {
         expect(bookResponse.status).toBe(201);
         const bookId = bookResponse.body.id;
 
-        const response = await auth.get(`/api/categories?book_id=${bookId}`);
+        // Test via new endpoint in books router
+        const response = await auth.get(`/api/books/${bookId}/categories`);
 
         validateApiResponse(response, 200);
         expect(response.body).toEqual([]);
@@ -806,21 +732,7 @@ describe('Categories Management API', () => {
     });
 
     describe('Error Handling', () => {
-      it('should handle database connection errors gracefully', async () => {
-        // This test would require mocking the database, which we're avoiding
-        // But we can test invalid book IDs which might cause DB errors
-        const auth = authenticatedRequest(adminToken);
-        const response = await auth.get('/api/categories?book_id=99999');
-
-        validateApiResponse(response, 404); // Should be book not found, not crash
-      });
-
-      it('should handle malformed book_id parameter', async () => {
-        const auth = authenticatedRequest(adminToken);
-        const response = await auth.get('/api/categories?book_id=invalid');
-
-        expect([400, 403, 404]).toContain(response.status);
-      });
+      // Note: Book access error handling for categories is now tested in books.test.js via /api/books/:id/categories endpoint
     });
 
     describe('Error Handling and Edge Cases', () => {
@@ -998,9 +910,8 @@ describe('Categories Management API', () => {
       it('should handle database connection errors in get categories', async () => {
         const auth = authenticatedRequest(adminToken);
 
-        // Mock a database error by using an invalid book_id format that could cause DB issues
-        // This tests the catch block in the GET /categories endpoint
-        const response = await auth.get('/api/categories?book_id=1');
+        // Test via new endpoint in books router to verify error handling
+        const response = await auth.get('/api/books/1/categories');
 
         // This should work normally, but we're testing that the endpoint has proper error handling
         validateApiResponse(response, 200);

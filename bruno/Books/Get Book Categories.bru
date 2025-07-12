@@ -1,0 +1,42 @@
+meta {
+  name: Get Book Categories
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{server_url}}/books/1/categories
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Status code is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is an array", function() {
+    expect(res.getBody()).to.be.an('array');
+  });
+
+  test("Categories have required properties", function() {
+    const categories = res.getBody();
+    if (categories.length > 0) {
+      const category = categories[0];
+      expect(category).to.have.property('id');
+      expect(category).to.have.property('name');
+      expect(category).to.have.property('type');
+      expect(category).to.have.property('book_id');
+      expect(category.book_id).to.equal(1);
+    }
+  });
+
+  test("Categories are ordered alphabetically", function() {
+    const categories = res.getBody();
+    if (categories.length > 1) {
+      for (let i = 1; i < categories.length; i++) {
+        expect(categories[i].name.localeCompare(categories[i-1].name)).to.be.at.least(0);
+      }
+    }
+  });
+}

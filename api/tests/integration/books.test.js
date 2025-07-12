@@ -717,5 +717,88 @@ describe('Book Management API', () => {
     });
   });
 
-  // ...existing tests...
+  describe('GET /api/books/:id/categories', () => {
+    it('should return categories for book with read access', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      if (response.body.length > 0) {
+        const category = response.body[0];
+        expect(category).toHaveProperty('id');
+        expect(category).toHaveProperty('name');
+        expect(category).toHaveProperty('type');
+        expect(category).toHaveProperty('book_id');
+        expect(category.book_id).toBe(TEST_BOOKS.BOOK1.id);
+      }
+    });
+
+    it('should return categories ordered alphabetically by name', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
+
+      validateApiResponse(response, 200);
+      expect(Array.isArray(response.body)).toBe(true);
+
+      // Check that categories are returned in alphabetical order
+      if (response.body.length > 1) {
+        const names = response.body.map(cat => cat.name);
+        const sortedNames = [...names].sort((a, b) => a.localeCompare(b));
+        expect(names).toEqual(sortedNames);
+
+        // Also verify each category has the required fields
+        response.body.forEach(category => {
+          expect(category).toHaveProperty('id');
+          expect(category).toHaveProperty('name');
+          expect(category).toHaveProperty('book_id', TEST_BOOKS.BOOK1.id);
+        });
+      }
+    });
+
+    it('should deny access to book categories without permission', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny superadmin access without team permission', async () => {
+      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      const auth = authenticatedRequest(superadminToken); // Superadmin has no team membership
+      const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
+
+      validateApiResponse(response, 403);
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('should deny access without authentication', async () => {
+      const response = await request(app)
+        .get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
+
+      validateApiResponse(response, 401);
+      expect(response.body).toHaveProperty('error', 'Access token required');
+    });
+
+    it('should return 404 for non-existent book categories', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.get('/api/books/99999/categories');
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error', 'Book not found');
+    });
+
+    it('should handle malformed book_id parameter', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.get('/api/books/invalid/categories');
+
+      // Should return 404 for invalid book ID format
+      expect([400, 404]).toContain(response.status);
+    });
+  });
 });

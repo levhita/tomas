@@ -71,7 +71,7 @@ export const useCategoriesStore = defineStore('categories', () => {
       }
 
       // Fetch categories for the specified book
-      const response = await fetchWithAuth(`/api/categories?book_id=${bookId}`);
+      const response = await fetchWithAuth(`/api/books/${bookId}/categories`);
 
       if (!response.ok) {
         const errorData = await response.json();

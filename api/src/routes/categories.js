@@ -1,10 +1,11 @@
 /**
  * Categories API Router
  * Handles all category-related operations including:
- * - Listing categories for a book
  * - Retrieving single category details
  * - Creating, updating and deleting categories
  * - Managing hierarchical category structure with parent-child relationships
+ * 
+ * Note: Category listing by book is now handled by /api/books/:id/categories endpoint
  * 
  * Permission model:
  * - READ operations: Any team member (admin, collaborator, viewer)
@@ -21,45 +22,7 @@ const router = express.Router();
 const db = require('../db');
 const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 
-/**
- * GET /categories
- * List all categories for a book in alphabetical order by name
- * 
- * @query {number} book_id - Required book ID
- * @permission Read access to book (via team membership)
- * @returns {Array} List of categories ordered alphabetically by name
- */
-router.get('/', async (req, res) => {
-  const bookId = req.query.book_id;
 
-  if (!bookId) {
-    return res.status(400).json({ error: 'book_id is required' });
-  }
-
-  try {
-    // Verify user has access to the book via team membership
-    const team = await getTeamByBookId(bookId);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
-    const { allowed, message } = await canRead(team.id, req.user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: message });
-    }
-
-    const [categories] = await db.query(`
-      SELECT * FROM category 
-      WHERE book_id = ?
-      ORDER BY name COLLATE utf8mb4_unicode_ci ASC
-    `, [bookId]);
-
-    res.status(200).json(categories);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ error: 'Failed to fetch categories' });
-  }
-});
 
 /**
  * GET /categories/:id
