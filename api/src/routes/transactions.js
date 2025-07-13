@@ -170,10 +170,19 @@ router.get('/:workspaceId/all', async (req, res) => {
         t.description LIKE ? OR
         t.note LIKE ? OR
         c.name LIKE ? OR
-        a.name LIKE ?
+        a.name LIKE ? OR
+        CAST(t.amount AS CHAR) LIKE ? OR
+        DATE_FORMAT(t.date, '%Y-%m-%d') LIKE ? OR
+        CASE 
+          WHEN a.type = 'debit' AND t.amount > 0 THEN 'Income'
+          WHEN a.type = 'debit' AND t.amount <= 0 THEN 'Expense'
+          WHEN a.type = 'credit' AND t.amount < 0 THEN 'Payment'
+          WHEN a.type = 'credit' AND t.amount >= 0 THEN 'Charge'
+          ELSE 'Unknown'
+        END LIKE ?
       )`;
       const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
     // Query paginated, sorted transactions
     const [transactions] = await db.query(`
