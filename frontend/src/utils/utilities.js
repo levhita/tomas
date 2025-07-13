@@ -24,19 +24,20 @@ export function formatCurrency(amount, currencySymbol = '$', locale = undefined)
   }).format(amount).replace('$', currencySymbol);
 }
 
-export function formatTransactionType({account_id, amount}) {
+export function formatTransactionType(transaction) {
   // type accountid 1 = debit_card
   // type accountid 2 = credit_card
+  const { amount, account_type } = transaction;
 
  
-  switch(account_id) {
-    case 1: // debit_card
+  switch(account_type) {
+    case 'debit': // debit_card
       return amount > 0 ? 'Income' : 'Expense';
       break;
-    case 2: // credit_card
+    case 'credit': // credit_card
       return amount < 0 ? 'Payment' : 'Charge';
     default:
-      return transaction.description || 'Unknown'; 
+      return transaction.account_type || 'Unknown'; 
     } 
 }
 
