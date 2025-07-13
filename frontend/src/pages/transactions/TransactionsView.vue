@@ -5,7 +5,11 @@
         <!-- Header -->
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
           <h2 class="mb-0 text-light-emphasis fs-4">Transactions</h2>
-          <button class="btn btn-info d-flex align-items-center gap-1" type="button">
+          <button 
+            class="btn btn-info d-flex align-items-center gap-1" 
+            type="button"
+            @click="showTransactionModal()"
+          >
             <i class="bi bi-plus-lg"></i>
             <span>Create</span>
           </button>
@@ -119,10 +123,18 @@
                     {{ transaction.note }}
                   </template>
                   <template v-else-if="col.key === 'actions'">
-                    <button class="btn btn-sm btn-info me-1" aria-label="Edit">
+                    <button 
+                      class="btn btn-sm btn-info me-1" 
+                      aria-label="Edit"
+                      @click="showTransactionModal({ transaction, editing: true })"
+                    >
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" aria-label="More">
+                    <button 
+                      class="btn btn-sm btn-outline-info" 
+                      aria-label="more actions"
+                      @click=""
+                    >
                       <i class="bi bi-three-dots-vertical"></i>
                     </button>
                   </template>
@@ -168,6 +180,15 @@
         </div>
       </div>
     </div>
+    <TransactionModal 
+      v-model="showModal"
+      :transaction="currentTransaction"
+      :is-editing="isEditing"
+      :focus-on="modalFocusTarget"
+      @save="saveTransaction"
+      @delete="deleteTransaction"
+      @duplicate="duplicateTransaction"
+    />
   </WorkspaceLayout>
 </template>
 
@@ -181,6 +202,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useWorkspacesStore } from '../../stores/workspaces';
 import { useTransactionsStore } from '../../stores/transactions';
 import { useAccountsStore } from '../../stores/accounts';
+import TransactionModal from '../../components/modals/TransactionModal.vue';
 
 // ----------------- use* Instances -----------------
 const router = useRouter();
@@ -200,6 +222,11 @@ const workspaceCurrencySymbol = workspacesStore?.currentWorkspace?.currency_symb
 
 const searchQuery = ref('');
 const selectedAccountId = ref(null);
+
+const showModal = ref(false);
+const currentTransaction = ref({});
+const isEditing = ref(false);
+const modalFocusTarget = ref('description');
 
 const defaultColumns = [
   { key: 'select', label: '', thClass: '', tdClass: '' },
@@ -338,6 +365,53 @@ function restoreSortPreferences() {
       if (savedKey) sortKey.value = savedKey;
       if (savedDir) sortDirection.value = savedDir;
     } catch {}
+  }
+}
+
+// ----------------- Transaction Modal Functions -----------------
+function showTransactionModal({ transaction = {}, editing = false, focusOn = 'description' } = {}) {
+  if (editing && !workspacesStore.hasWritePermission) {
+    editing = false; // Convert to readonly view
+  }
+  currentTransaction.value = transaction;
+  isEditing.value = editing;
+  modalFocusTarget.value = focusOn;
+  showModal.value = true;
+}
+
+async function saveTransaction(transaction) {
+  try {
+    if (isEditing.value) {
+      await transactionsStore.updateTransaction(transaction.id, transaction);
+    } else {
+      await transactionsStore.addTransaction(transaction);
+    }
+    showModal.value = false;
+    await fetchPaginatedTransactions(); // Refresh the list after save
+  } catch (error) {
+    console.error('Failed to save transaction:', error);
+  }
+}
+
+async function deleteTransaction(id) {
+  try {
+    await transactionsStore.deleteTransaction(id);
+    showModal.value = false;
+    await fetchPaginatedTransactions(); // Refresh the list after delete
+  } catch (error) {
+    console.error('Failed to delete transaction:', error);
+  }
+}
+
+async function duplicateTransaction(transaction) {
+ try {
+    const newTransaction = { ...transaction };
+    delete newTransaction.id; // Remove id for new transaction
+    await transactionsStore.addTransaction(newTransaction);
+    showModal.value = false;
+    await fetchPaginatedTransactions();
+  } catch (error) {
+    console.error('Failed to duplicate transaction:', error);
   }
 }
 
