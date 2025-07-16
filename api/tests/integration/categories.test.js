@@ -10,13 +10,15 @@ const {
   loginUser,
   initializeTokenCache,
   authenticatedRequest,
-  validateApiResponse
+  validateApiResponse,
+  resetDatabase
 } = require('../utils/test-helpers');
 
 describe('Categories Management API', () => {
   let superadminToken, adminToken, collaboratorToken, viewerToken, noaccessToken;
 
   beforeAll(async () => {
+    await resetDatabase(); // Ensure a clean state before tests
     // Use the new token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
