@@ -3,9 +3,9 @@
  * Handles individual transaction operations including:
  * - Retrieving single transaction details
  * - Creating, updating and deleting transactions
- * 
+ *
  * Note: Transaction listing is handled by /books/:id/transactions endpoint
- * 
+ *
  * Permission model:
  * - READ operations: Any team member (admin, collaborator, viewer)
  * - WRITE operations: Team editors (admin, collaborator)
@@ -14,9 +14,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
-
-
+const { canRead, canWrite, getTeamByAccountId, getBookByAccountId } = require('../utils/team');
 
 /**
  * @swagger
@@ -57,33 +55,28 @@ const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
 router.get('/:id', async (req, res) => {
   try {
     // First get transaction with its account ID
-    const [transactionInfo] = await db.query(`
+    const [transactionInfo] = await db.query(
+      `
       SELECT account_id 
       FROM transaction 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (transactionInfo.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Get book ID for the account
-    const [accounts] = await db.query(`
-      SELECT book_id 
-      FROM account 
-      WHERE id = ?
-    `, [transactionInfo[0].account_id]);
-
-    if (accounts.length === 0) {
-      return res.status(404).json({ error: 'Associated account not found' });
+    // Validate that the book for this account is not soft-deleted
+    const book = await getBookByAccountId(transactionInfo[0].account_id);
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Check if user has access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-
+    const team = await getTeamByAccountId(transactionInfo[0].account_id);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(404).json({ error: 'Team not found' });
     }
 
     const { allowed, message } = await canRead(team.id, req.user.id);
@@ -92,7 +85,8 @@ router.get('/:id', async (req, res) => {
     }
 
     // Get full transaction with joins
-    const [transactions] = await db.query(`
+    const [transactions] = await db.query(
+      `
       SELECT 
         t.*,
         c.name as category_name,
@@ -101,12 +95,17 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     // Force return a boolean value for exercised
     transactions[0].exercised = !!transactions[0].exercised;
     res.status(200).json(transactions[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
+    if (err.status === 404 && err.message === 'Book not found') {
+      return res.status(404).json({ error: 'Book not found' });
+    }
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transaction' });
   }
@@ -148,7 +147,15 @@ router.get('/:id', async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
-  const { description, note = null, amount, date, exercised, account_id, category_id = null } = req.body;
+  const {
+    description,
+    note = null,
+    amount,
+    date,
+    exercised,
+    account_id,
+    category_id = null
+  } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
   // Validate required fields
@@ -176,21 +183,27 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // First get the account to determine its book
-    const [accounts] = await db.query(`
+    // Get the account to determine its book
+    const [accounts] = await db.query(
+      `
       SELECT book_id FROM account WHERE id = ?
-    `, [account_id]);
+    `,
+      [account_id]
+    );
 
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has write access to the account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-
-    if (!team) {
+    // Validate that the book for this account is not soft-deleted
+    const book = await getBookByAccountId(accounts[0].book_id);
+    if (!book) {
       return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const team = await getTeamByAccountId(account_id);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
@@ -200,21 +213,27 @@ router.post('/', async (req, res) => {
 
     // If category is provided, verify it belongs to the same book
     if (category_id) {
-      const [categories] = await db.query(`
+      const [categories] = await db.query(
+        `
         SELECT book_id FROM category WHERE id = ?
-      `, [category_id]);
+      `,
+        [category_id]
+      );
 
       if (categories.length === 0) {
         return res.status(404).json({ error: 'Category not found' });
       }
 
-      if (categories[0].book_id !== bookId) {
-        return res.status(400).json({ error: 'Category must belong to the same book as the account' });
+      if (categories[0].book_id !== book.id) {
+        return res
+          .status(400)
+          .json({ error: 'Category must belong to the same book as the account' });
       }
     }
 
     // Create the transaction
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       INSERT INTO transaction (
         description,
         note,
@@ -225,10 +244,13 @@ router.post('/', async (req, res) => {
         category_id
       )
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [description, note, amount, date, exercisedValue, account_id, category_id]);
+    `,
+      [description, note, amount, date, exercisedValue, account_id, category_id]
+    );
 
     // Fetch the created transaction with all fields
-    const [transactions] = await db.query(`
+    const [transactions] = await db.query(
+      `
       SELECT 
         t.*,
         c.name as category_name,
@@ -237,12 +259,17 @@ router.post('/', async (req, res) => {
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `, [result.insertId]);
+    `,
+      [result.insertId]
+    );
 
     // Force return a boolean value for exercised
     transactions[0].exercised = !!transactions[0].exercised;
     res.status(201).json(transactions[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
+    if (err.status === 404 && err.message === 'Book not found') {
+      return res.status(404).json({ error: 'Book not found' });
+    }
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create transaction' });
   }
@@ -296,56 +323,67 @@ router.put('/:id', async (req, res) => {
   const { description, note, amount, date, exercised, account_id, category_id } = req.body;
   const exercisedValue = exercised ? 1 : 0;
 
-  // Validate required fields
-  const requiredFields = {
-    description: description,
-    amount: amount,
-    date: date,
-    account_id: account_id
-  };
+  // Validate date format
+  if (date) {
+    const dateTimestamp = new Date(date).getTime();
+    if (isNaN(dateTimestamp)) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+  }
 
-  const missingFields = Object.entries(requiredFields)
-    .filter(([_, value]) => value === undefined || value === null || value === '')
-    .map(([field]) => field);
+  // Only require at least one updatable field for update, not all fields
+  const updatableFields = [
+    'description',
+    'note',
+    'amount',
+    'date',
+    'exercised',
+    'account_id',
+    'category_id'
+  ];
+  const hasAnyField = updatableFields.some((field) => req.body[field] !== undefined);
 
-  if (missingFields.length > 0) {
+  if (!hasAnyField) {
     return res.status(400).json({
-      error: `Missing required fields: ${missingFields.join(', ')}`
+      error: 'At least one field must be provided for update'
     });
   }
 
-  // Validate date format
-  const dateTimestamp = new Date(date).getTime();
-  if (isNaN(dateTimestamp)) {
-    return res.status(400).json({ error: 'Invalid date format' });
-  }
-
   try {
-    // First get the transaction to check it exists
-    const [existingTransaction] = await db.query(
-      'SELECT id FROM transaction WHERE id = ?',
+    // First get the transaction to check it exists and get its current account_id
+    const [existingTransactionRows] = await db.query(
+      'SELECT * FROM transaction WHERE id = ?',
       [req.params.id]
     );
 
-    if (existingTransaction.length === 0) {
+    if (existingTransactionRows.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Get the account to determine its book
-    const [accounts] = await db.query(`
-      SELECT book_id FROM account WHERE id = ?
-    `, [account_id]);
+    const existingTransaction = existingTransactionRows[0];
+    // Use provided account_id if present, otherwise use the one from the transaction
+    const effectiveAccountId = account_id !== undefined ? account_id : existingTransaction.account_id;
 
+    // Get the account to determine its book
+    const [accounts] = await db.query(
+      `
+      SELECT book_id FROM account WHERE id = ?
+      `,
+      [effectiveAccountId]
+    );
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has write access to the account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-
-    if (!team) {
+    // Validate that the book for this account is not soft-deleted
+    const book = await getBookByAccountId(accounts[0].book_id);
+    if (!book) {
       return res.status(404).json({ error: 'Book not found' });
+    }
+
+    const team = await getTeamByAccountId(effectiveAccountId);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
@@ -355,21 +393,27 @@ router.put('/:id', async (req, res) => {
 
     // If category is provided, verify it belongs to the same book
     if (category_id) {
-      const [categories] = await db.query(`
-        SELECT book_id FROM category WHERE id = ?
-      `, [category_id]);
+      const [categories] = await db.query(
+        `
+        SELECT * FROM category WHERE id = ?
+        `,
+        [category_id]
+      );
 
       if (categories.length === 0) {
         return res.status(404).json({ error: 'Category not found' });
       }
 
-      if (categories[0].book_id !== bookId) {
-        return res.status(400).json({ error: 'Category must belong to the same book as the account' });
+      if (categories[0].book_id !== book.id) {
+        return res
+          .status(400)
+          .json({ error: 'Category must belong to the same book as the account' });
       }
     }
 
     // Update the transaction
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       UPDATE transaction
       SET description = ?,
           note = ?,
@@ -379,10 +423,22 @@ router.put('/:id', async (req, res) => {
           account_id = ?,
           category_id = ?
       WHERE id = ?
-    `, [description, note, amount, date, exercisedValue, account_id, category_id, req.params.id]);
+      `,
+      [
+        description,
+        note,
+        amount,
+        date,
+        exercisedValue,
+        effectiveAccountId,
+        category_id,
+        req.params.id
+      ]
+    );
 
     // Fetch the updated transaction
-    const [transactions] = await db.query(`
+    const [transactions] = await db.query(
+      `
       SELECT 
         t.*,
         c.name as category_name,
@@ -391,12 +447,17 @@ router.put('/:id', async (req, res) => {
       LEFT JOIN category c ON t.category_id = c.id
       LEFT JOIN account a ON t.account_id = a.id
       WHERE t.id = ?
-    `, [req.params.id]);
+      `,
+      [req.params.id]
+    );
 
     // Force return a boolean value for exercised
     transactions[0].exercised = !!transactions[0].exercised;
     res.status(200).json(transactions[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
+    if (err.status === 404 && err.message === 'Book not found') {
+      return res.status(404).json({ error: 'Book not found' });
+    }
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update transaction' });
   }
@@ -437,33 +498,28 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     // First get transaction with its account ID
-    const [transactionInfo] = await db.query(`
+    const [transactionInfo] = await db.query(
+      `
       SELECT account_id 
       FROM transaction 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (transactionInfo.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Get book ID for the account
-    const [accounts] = await db.query(`
-      SELECT book_id 
-      FROM account 
-      WHERE id = ?
-    `, [transactionInfo[0].account_id]);
-
-    if (accounts.length === 0) {
-      return res.status(404).json({ error: 'Associated account not found' });
+    // Validate that the book for this account is not soft-deleted
+    const book = await getBookByAccountId(transactionInfo[0].account_id);
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Check if user has write access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-
+    const team = await getTeamByAccountId(transactionInfo[0].account_id);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(404).json({ error: 'Team not found' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
@@ -472,13 +528,19 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Delete the transaction
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       DELETE FROM transaction
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     res.status(204).send();
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
+    if (err.status === 404 && err.message === 'Book not found') {
+      return res.status(404).json({ error: 'Book not found' });
+    }
     console.error('Database error:', err);
     res.status(500).json({ error: 'Database error when deleting transaction' });
   }

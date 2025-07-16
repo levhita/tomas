@@ -236,19 +236,42 @@ async function getTeamByBookId(bookId) {
 }
 
 /**
- * Get team by account ID (excludes deleted teams/books/accounts)
+ * Get team by account ID
  * 
- * @param {number} accountId - The account ID
- * @returns {Promise<Object|null>} - Returns team object or null if not found/deleted
+ * Retrieves the team that owns a specific account, via the account's book.
+ * Only returns active (non-deleted) teams.
+ * 
+ * @param {number} accountId - The account ID to get team for
+ * @returns {Promise<Object|null>} - Returns team object or null if not found
  */
 async function getTeamByAccountId(accountId) {
-  const [teams] = await db.execute(`
+  const [teams] = await db.query(
+    `
     SELECT t.* FROM team t
-    INNER JOIN book b ON b.team_id = t.id
+    INNER JOIN book b ON t.id = b.team_id
     INNER JOIN account a ON a.book_id = b.id
     WHERE a.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
-  `, [accountId]);
-  return teams[0] || null;
+    `,
+    [accountId]
+  );
+  return teams.length > 0 ? teams[0] : null;
+}
+
+/**
+ * Get the book for a given account, returns null if not found or soft-deleted.
+ * @param {number} accountId
+ * @returns {Promise<object|null>}
+ */
+async function getBookByAccountId(accountId) {
+  const [rows] = await db.query(
+    `
+    SELECT b.* FROM book b
+    INNER JOIN account a ON a.book_id = b.id
+    WHERE a.id = ? AND b.deleted_at IS NULL
+    `,
+    [accountId]
+  );
+  return rows.length > 0 ? rows[0] : null;
 }
 
 /**
@@ -272,5 +295,6 @@ module.exports = {
   getTeamById,
   getTeamByBookId,
   getUserRole,
-  getTeamByAccountId
+  getTeamByAccountId,
+  getBookByAccountId
 };
