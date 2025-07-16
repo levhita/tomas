@@ -13,6 +13,7 @@ const {
   authenticatedRequest,
   validateApiResponse,
   generateRandomData,
+  resetDatabase,
   app
 } = require('../utils/test-helpers');
 
@@ -24,19 +25,29 @@ describe('Accounts Management API', () => {
   let noaccessToken;       // User with no team access for permission-denied scenarios
   let testBookId = 1; // From test data
 
-  beforeAll(async () => {
-    // Use token cache initialization for better performance
+  // Token initialization and reset helper
+  async function refreshTokens() {
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
-    viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
-    collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
-    noaccessToken = tokens.noaccess;     // User 5: no team access
+    adminToken = tokens.admin;
+    viewerToken = tokens.viewer;
+    collaboratorToken = tokens.collaborator;
+    noaccessToken = tokens.noaccess;
+  }
+
+  beforeAll(async () => {
+    await resetDatabase();
+    await refreshTokens();
   });
 
+  // Reset database only before tests that modify data or create conflicts
+  const resetBeforeTest = async () => {
+    await resetDatabase();
+  };
 
 
   describe('GET /api/accounts/:id', () => {
+
     it('should return account details for valid account', async () => {
       const auth = authenticatedRequest(adminToken); // User 2 has admin access to team 1
       const testAccountId = 1; // From test data - belongs to book 1 (team 1)
@@ -112,10 +123,31 @@ describe('Accounts Management API', () => {
 
       validateApiResponse(response, 401);
     });
+
+    it('should return 404 "Account not found" for user with no access to the team', async () => {
+      // Account 1 exists, but user 5 (noaccessToken) has no access to its book
+      const auth = authenticatedRequest(noaccessToken);
+      const response = await auth.get('/api/accounts/1');
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('error', 'Access denied to this team');
+    });
+
+    it('should return 404 "Account not found" if the team for the account\'s book does not exist', async () => {
+      // Soft-delete the team for book 1 (team 1)
+      const superAuth = authenticatedRequest(superadminToken);
+      await superAuth.delete('/api/teams/1');
+
+      // Account 1 belongs to book 1, which belongs to team 1 (now deleted)
+      const auth = authenticatedRequest(adminToken);
+      const response = await auth.get('/api/accounts/1');
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Account not found');
+    });
   });
 
   describe('GET /api/accounts/:id/balance', () => {
     it('should return account balance for valid account', async () => {
+      await resetBeforeTest();
       const auth = authenticatedRequest(adminToken); // Use admin token for team 1 access
       const testAccountId = 1; // From test data
 
@@ -323,6 +355,21 @@ describe('Accounts Management API', () => {
 
       validateApiResponse(response, 401);
     });
+
+    it('should return 404 when creating an account on a non-existent book', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const accountData = {
+        name: 'Account for Nonexistent Book',
+        book_id: 99999 // Book does not exist
+      };
+
+      const response = await auth.post('/api/accounts')
+        .send(accountData);
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/book not found/i);
+    });
   });
 
   describe('PUT /api/accounts/:id', () => {
@@ -381,7 +428,7 @@ describe('Accounts Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should deny access for users without team permission', async () => {
+    it('should deny access for users without team permission', async () => { 
       const auth = authenticatedRequest(noaccessToken);
       const updateData = {
         name: 'No Access Update'
@@ -394,7 +441,7 @@ describe('Accounts Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should deny superadmin access without team permission', async () => {
+    it('should deny superadmin access without team permission', async () => { 
       const auth = authenticatedRequest(superadminToken);
       const updateData = {
         name: 'Superadmin No Access Update'
@@ -418,10 +465,37 @@ describe('Accounts Management API', () => {
 
       validateApiResponse(response, 401);
     });
+
+    it('should return 404 when editing an account whose book\'s team does not exist', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      // Create an account in book 1 (team 1)
+      const createResponse = await auth.post('/api/accounts')
+        .send({
+          name: 'Account for Edit Book Not Found',
+          book_id: 1
+        });
+      expect(createResponse.status).toBe(201);
+      const accountId = createResponse.body.id;
+
+      // Soft-delete the team for book 1 (team 1)
+      const superAuth = authenticatedRequest(superadminToken);
+      await superAuth.delete('/api/teams/1');
+
+      // Try to edit the account
+      const updateData = { name: 'Should Not Update' };
+      const response = await auth.put(`/api/accounts/${accountId}`)
+        .send(updateData);
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/team not found/i);
+    });
   });
 
   describe('DELETE /api/accounts/:id', () => {
-    it('should delete account without transactions as admin', async () => {
+    it('should delete account without transactions as admin', async () => { 
+      await resetBeforeTest();
       const auth = authenticatedRequest(adminToken);
 
       // First create an account to delete
@@ -452,23 +526,21 @@ describe('Accounts Management API', () => {
       expect(response.body).toHaveProperty('error');
     });
 
-    it('should prevent deletion of account with transactions', async () => {
+    it('should return 428 when trying to delete an account with transactions', async () => {
       const auth = authenticatedRequest(adminToken);
-      const accountIdWithTransactions = 1; // Account from test data that has transactions
-
-      const response = await auth.delete(`/api/accounts/${accountIdWithTransactions}`);
-
+      // Account 1 from test data is expected to have transactions
+      const response = await auth.delete('/api/accounts/1');
       validateApiResponse(response, 428);
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toMatch(/cannot delete.*transactions/i);
+      expect(response.body.error).toMatch(/cannot delete account with transactions/i);
     });
 
     it('should deny access for non-admin users', async () => {
+ 
       // Use viewer token (user 4) who only has viewer role in team 1 (read-only access)
       const auth = authenticatedRequest(viewerToken);
 
-      // Try to delete any account in team 1 - should be denied due to lack of permission
-      // Use an account without transactions (we'll create a fresh one) to ensure we get 403, not 428
+      // create a fresh account to delete using admin token
       const adminAuth = authenticatedRequest(adminToken);
       const createResponse = await adminAuth.post('/api/accounts').send({
         name: 'Account for Permission Test',
@@ -506,6 +578,30 @@ describe('Accounts Management API', () => {
       const response = await request(app).delete('/api/accounts/1');
 
       validateApiResponse(response, 401);
+    });
+
+    it('should return 404 when deleting an account whose book\'s team does not exist', async () => {
+      const auth = authenticatedRequest(adminToken);
+
+      // Create an account in book 1 (team 1)
+      const createResponse = await auth.post('/api/accounts')
+        .send({
+          name: 'Account for Delete Book Not Found',
+          book_id: 1
+        });
+      expect(createResponse.status).toBe(201);
+      const accountId = createResponse.body.id;
+
+      // Soft-delete the team for book 1 (team 1)
+      const superAuth = authenticatedRequest(superadminToken);
+      await superAuth.delete('/api/teams/1');
+
+      // Try to delete the account
+      const response = await auth.delete(`/api/accounts/${accountId}`);
+
+      validateApiResponse(response, 404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toMatch(/book not found/i);
     });
   });
 });

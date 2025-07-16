@@ -200,6 +200,22 @@ async function getBookByIdIncludingDeleted(bookId) {
 }
 
 /**
+ * Get book by account ID (excludes deleted books and books in deleted teams)
+ * 
+ * @param {number} accountId - The account ID
+ * @returns {Promise<Object|null>} - Returns book object or null if not found/deleted
+ */
+async function getBookByAccountId(accountId) {
+  const [books] = await db.execute(`
+    SELECT b.* FROM book b
+    INNER JOIN account a ON a.book_id = b.id
+    INNER JOIN team t ON b.team_id = t.id
+    WHERE a.id = ? AND b.deleted_at IS NULL AND t.deleted_at IS NULL
+  `, [accountId]);
+  return books[0] || null;
+}
+
+/**
  * Function exports
  * 
  * These utility functions enable consistent permission checking across the API.
@@ -218,5 +234,6 @@ module.exports = {
   canRead,
   getBookUsers,
   getBookById,
-  getBookByIdIncludingDeleted
+  getBookByIdIncludingDeleted,
+  getBookByAccountId
 };

@@ -1,6 +1,6 @@
 /**
  * Teams API Tests
- * 
+ *
  * Tests all team-related endpoints including CRUD operations,
  * user management, and role assignment functionality.
  */
@@ -20,19 +20,13 @@ const {
 
 describe('Teams Management API', () => {
   let superadminToken;
-  let adminToken;          // User with admin role in team 1
-  let viewerToken;         // User with viewer role in team 1  
-  let collaboratorToken;   // User with collaborator role in team 1
-  let noaccessToken;       // User with no team access for permission-denied scenarios
+  let adminToken; // User with admin role in team 1
+  let viewerToken; // User with viewer role in team 1
+  let collaboratorToken; // User with collaborator role in team 1
+  let noaccessToken; // User with no team access for permission-denied scenarios
 
   beforeAll(async () => {
-    // Use token cache initialization for better performance
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;           // User 2: admin in team 1, viewer in team 2
-    viewerToken = tokens.viewer;         // User 4: viewer in team 1, collaborator in team 2
-    collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
-    noaccessToken = tokens.noaccess;     // User 5: no team access
+    await refreshTokens();
   });
 
   afterAll(async () => {
@@ -40,9 +34,7 @@ describe('Teams Management API', () => {
     await resetDatabase();
   });
 
-  // Reset database only before tests that modify data or create conflicts
-  const resetBeforeTest = async () => {
-    await resetDatabase();
+  const refreshTokens = async () => {
     // Tokens should still be valid, but get them from cache or re-initialize if needed
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
@@ -50,6 +42,10 @@ describe('Teams Management API', () => {
     viewerToken = tokens.viewer;
     collaboratorToken = tokens.collaborator;
     noaccessToken = tokens.noaccess;
+  };
+  // Reset database only before tests that modify data or create conflicts
+  const resetBeforeTest = async () => {
+    await resetDatabase();
   };
 
   describe('GET /api/teams', () => {
@@ -72,10 +68,13 @@ describe('Teams Management API', () => {
     it('should return empty array for user with no teams', async () => {
       // Create a new user with no team access
       const userData = generateRandomData();
-      const newUser = await createTestUser({
-        username: userData.username,
-        password: userData.password
-      }, superadminToken);
+      const newUser = await createTestUser(
+        {
+          username: userData.username,
+          password: userData.password
+        },
+        superadminToken
+      );
 
       // Get token for the new user
       const newUserToken = await loginUser({
@@ -101,23 +100,21 @@ describe('Teams Management API', () => {
     it('should support team creation and user management', async () => {
       // This test validates the team-books integration workflow:
       // 1. Create a new team without books
-      // 2. Add a user to the team  
+      // 2. Add a user to the team
       // 3. Verify the user can access the team's books (empty list)
 
       const auth = authenticatedRequest(superadminToken);
-      const teamResponse = await auth.post('/api/teams')
-        .send({
-          name: 'Empty Team for Books Test'
-        });
+      const teamResponse = await auth.post('/api/teams').send({
+        name: 'Empty Team for Books Test'
+      });
 
       const teamId = teamResponse.body.id;
 
       // Add the collaborator user to this new team
-      await auth.post(`/api/teams/${teamId}/users`)
-        .send({
-          userId: 3, // collaborator user
-          role: 'viewer'
-        });
+      await auth.post(`/api/teams/${teamId}/users`).send({
+        userId: 3, // collaborator user
+        role: 'viewer'
+      });
 
       // Now test with the collaborator - verify they can access books for this team
       const userAuth = authenticatedRequest(collaboratorToken);
@@ -139,12 +136,12 @@ describe('Teams Management API', () => {
       expect(response.body.length).toBeGreaterThan(0);
 
       // Check that all test teams are included
-      const teamIds = response.body.map(t => t.id);
+      const teamIds = response.body.map((t) => t.id);
       expect(teamIds).toContain(1); // Team 1
       expect(teamIds).toContain(2); // Team 2
 
       // Verify structure
-      response.body.forEach(team => {
+      response.body.forEach((team) => {
         expect(team).toHaveProperty('id');
         expect(team).toHaveProperty('name');
         expect(team).toHaveProperty('created_at');
@@ -156,23 +153,23 @@ describe('Teams Management API', () => {
       // First, soft-delete a team
       const auth = authenticatedRequest(superadminToken);
       await auth.delete('/api/teams/1'); // Soft-delete team 1
-      
+
       // Now request only deleted teams
       const response = await auth.get('/api/teams/all?deleted=true');
-      
+
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
-      
+
       // All returned teams should be soft-deleted
-      response.body.forEach(team => {
+      response.body.forEach((team) => {
         expect(team.deleted_at).not.toBeNull();
       });
-      
+
       // Verify team 1 is in the results
-      const deletedTeamIds = response.body.map(t => t.id);
+      const deletedTeamIds = response.body.map((t) => t.id);
       expect(deletedTeamIds).toContain(1);
-      
+
       // Restore the team for other tests
       await auth.post('/api/teams/1/restore');
     });
@@ -197,7 +194,7 @@ describe('Teams Management API', () => {
       expect(response.body.length).toBeGreaterThan(0);
 
       // Verify all results contain "Test" in name
-      response.body.forEach(team => {
+      response.body.forEach((team) => {
         expect(team).toHaveProperty('id');
         expect(team).toHaveProperty('name');
         expect(team.name.toLowerCase()).toContain('test');
@@ -236,7 +233,7 @@ describe('Teams Management API', () => {
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
       // Should include known teams
-      const teamIds = response.body.map(t => t.id);
+      const teamIds = response.body.map((t) => t.id);
       expect(teamIds).toContain(1);
       expect(teamIds).toContain(2);
     });
@@ -252,7 +249,7 @@ describe('Teams Management API', () => {
       validateApiResponse(response, 200);
 
       // Should include team 1 with deleted_at not null
-      const deletedTeam = response.body.find(t => t.id === 1);
+      const deletedTeam = response.body.find((t) => t.id === 1);
       expect(deletedTeam).toBeDefined();
       expect(deletedTeam.deleted_at).not.toBeNull();
 
@@ -298,18 +295,18 @@ describe('Teams Management API', () => {
 
     it('should allow superadmin to view soft-deleted team', async () => {
       const auth = authenticatedRequest(superadminToken);
-      
+
       // First soft-delete team 1
       await auth.delete('/api/teams/1');
-      
+
       // Superadmin should still be able to view the soft-deleted team
       const response = await auth.get('/api/teams/1');
-      
+
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('id', 1);
       expect(response.body).toHaveProperty('name');
       expect(response.body.deleted_at).not.toBeNull();
-      
+
       // Restore team for other tests
       await auth.post('/api/teams/1/restore');
     });
@@ -317,24 +314,22 @@ describe('Teams Management API', () => {
     it('should deny regular team members access to soft-deleted team', async () => {
       const superAuth = authenticatedRequest(superadminToken);
       const memberAuth = authenticatedRequest(adminToken);
-      
+
       // First soft-delete team 1
       await superAuth.delete('/api/teams/1');
-      
+
       // Regular team member should not be able to view soft-deleted team
       const response = await memberAuth.get('/api/teams/1');
-      
+
       validateApiResponse(response, 404);
       expect(response.body).toHaveProperty('error', 'Team not found');
-      
+
       // Restore team for other tests
       await superAuth.post('/api/teams/1/restore');
     });
   });
 
   describe('POST /api/teams', () => {
-    beforeEach(resetBeforeTest);
-
     it('should create new team', async () => {
       const auth = authenticatedRequest(adminToken);
       const teamData = {
@@ -364,37 +359,31 @@ describe('Teams Management API', () => {
     it('should reject missing required fields', async () => {
       const auth = authenticatedRequest(adminToken);
 
-      const response = await auth.post('/api/teams')
-        .send({
-          note: 'Missing name'
-        });
+      const response = await auth.post('/api/teams').send({
+        note: 'Missing name'
+      });
 
       validateApiResponse(response, 400);
       expect(response.body).toHaveProperty('error');
     });
 
     it('should deny access without authentication', async () => {
-      const response = await request(app)
-        .post('/api/teams')
-        .send({
-          name: 'Test Team'
-        });
+      const response = await request(app).post('/api/teams').send({
+        name: 'Test Team'
+      });
 
       validateApiResponse(response, 401);
     });
   });
 
   describe('PUT /api/teams/:id', () => {
-    beforeEach(resetBeforeTest);
-
     it('should update team as admin', async () => {
       const auth = authenticatedRequest(adminToken);
       const newName = `Updated Team ${Date.now()}`;
 
-      const response = await auth.put('/api/teams/1')
-        .send({
-          name: newName
-        });
+      const response = await auth.put('/api/teams/1').send({
+        name: newName
+      });
 
       validateApiResponse(response, 200);
       expect(response.body.name).toBe(newName);
@@ -402,8 +391,7 @@ describe('Teams Management API', () => {
 
     it('should reject update if name is missing', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.put('/api/teams/1')
-        .send({});
+      const response = await auth.put('/api/teams/1').send({});
 
       validateApiResponse(response, 400);
       expect(response.body).toHaveProperty('error', 'Team name is required');
@@ -412,10 +400,9 @@ describe('Teams Management API', () => {
     it('should deny access for non-admin user', async () => {
       const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1
 
-      const response = await auth.put('/api/teams/1')
-        .send({
-          name: 'Hacked Name'
-        });
+      const response = await auth.put('/api/teams/1').send({
+        name: 'Hacked Name'
+      });
 
       validateApiResponse(response, 403);
     });
@@ -423,10 +410,9 @@ describe('Teams Management API', () => {
     it('should return 404 for non-existent team', async () => {
       const auth = authenticatedRequest(superadminToken);
 
-      const response = await auth.put('/api/teams/99999')
-        .send({
-          name: 'Updated'
-        });
+      const response = await auth.put('/api/teams/99999').send({
+        name: 'Updated'
+      });
 
       validateApiResponse(response, 404);
     });
@@ -438,8 +424,7 @@ describe('Teams Management API', () => {
       await auth.delete('/api/teams/1');
 
       // Try to update team details as superadmin
-      const response = await auth.put('/api/teams/1')
-        .send({ name: 'Should Not Update' });
+      const response = await auth.put('/api/teams/1').send({ name: 'Should Not Update' });
 
       validateApiResponse(response, 403);
       expect(response.body.error).toBe('Cannot update deleted team');
@@ -501,7 +486,6 @@ describe('Teams Management API', () => {
   });
 
   describe('POST /api/teams/:id/users', () => {
-    beforeEach(resetBeforeTest);
 
     it('should add user to team as admin', async () => {
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
@@ -513,15 +497,14 @@ describe('Teams Management API', () => {
       // First remove user 4 from team 1 to test adding
       await auth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
 
-      const response = await auth.post('/api/teams/1/users')
-        .send(userData);
+      const response = await auth.post('/api/teams/1/users').send(userData);
 
       validateApiResponse(response, 201);
       expect(Array.isArray(response.body)).toBe(true);
 
       // Verify user was added
       const usersResponse = await auth.get('/api/teams/1/users');
-      const addedUser = usersResponse.body.find(u => u.id === userData.userId);
+      const addedUser = usersResponse.body.find((u) => u.id === userData.userId);
       expect(addedUser).toBeDefined();
       expect(addedUser.role).toBe(userData.role);
     });
@@ -542,8 +525,7 @@ describe('Teams Management API', () => {
         const userId = createUserResponse.body.id;
         const userData = { userId: userId, role };
 
-        const response = await auth.post('/api/teams/1/users')
-          .send(userData);
+        const response = await auth.post('/api/teams/1/users').send(userData);
 
         validateApiResponse(response, 201);
         expect(Array.isArray(response.body)).toBe(true);
@@ -557,8 +539,7 @@ describe('Teams Management API', () => {
         role: 'viewer'
       };
 
-      const response = await auth.post('/api/teams/1/users')
-        .send(userData);
+      const response = await auth.post('/api/teams/1/users').send(userData);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error', 'Admin privileges required for this operation');
@@ -571,8 +552,7 @@ describe('Teams Management API', () => {
         role: 'viewer'
       };
 
-      const response = await auth.post('/api/teams/1/users')
-        .send(userData);
+      const response = await auth.post('/api/teams/1/users').send(userData);
 
       validateApiResponse(response, 409);
       expect(response.body.error).toMatch(/already/i);
@@ -585,8 +565,7 @@ describe('Teams Management API', () => {
         role: 'viewer'
       };
 
-      const response = await auth.post('/api/teams/1/users')
-        .send(userData);
+      const response = await auth.post('/api/teams/1/users').send(userData);
 
       validateApiResponse(response, 404);
     });
@@ -598,8 +577,7 @@ describe('Teams Management API', () => {
         role: 'invalid_role'
       };
 
-      const response = await auth.post('/api/teams/1/users')
-        .send(userData);
+      const response = await auth.post('/api/teams/1/users').send(userData);
 
       validateApiResponse(response, 400);
       expect(response.body.error).toMatch(/role/i);
@@ -607,8 +585,7 @@ describe('Teams Management API', () => {
 
     it('should reject if userId is missing when adding user to team', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/1/users')
-        .send({ role: 'viewer' });
+      const response = await auth.post('/api/teams/1/users').send({ role: 'viewer' });
 
       validateApiResponse(response, 400);
       expect(response.body).toHaveProperty('error', 'User ID is required');
@@ -616,7 +593,8 @@ describe('Teams Management API', () => {
 
     it('should return 404 when adding user to a non-existent team', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/99999/users')
+      const response = await auth
+        .post('/api/teams/99999/users')
         .send({ userId: TEST_USERS.VIEWER.id, role: 'viewer' });
 
       validateApiResponse(response, 404);
@@ -625,29 +603,31 @@ describe('Teams Management API', () => {
   });
 
   describe('PUT /api/teams/:id/users/:userId', () => {
-    beforeEach(resetBeforeTest);
 
     it('should update user role as admin', async () => {
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
       const updateData = { role: 'admin' };
 
-      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
+      const response = await auth
+        .put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 200);
       expect(Array.isArray(response.body)).toBe(true);
 
       // Verify role was updated
-      const updatedUser = response.body.find(u => u.id === TEST_USERS.VIEWER.id);
+      const updatedUser = response.body.find((u) => u.id === TEST_USERS.VIEWER.id);
       expect(updatedUser).toBeDefined();
       expect(updatedUser.role).toBe(updateData.role);
     });
 
     it('should prevent non-superadmin from changing last admin to non-admin role', async () => {
+      await resetBeforeTest(); // Ensure team is not deleted
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       // Try to change self (last admin) to viewer
-      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.ADMIN.id}`)
+      const response = await auth
+        .put(`/api/teams/1/users/${TEST_USERS.ADMIN.id}`)
         .send({ role: 'viewer' });
 
       validateApiResponse(response, 409);
@@ -658,7 +638,8 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
       const updateData = { role: 'admin' };
 
-      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
+      const response = await auth
+        .put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 403);
@@ -668,8 +649,7 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(adminToken);
       const updateData = { role: 'admin' };
 
-      const response = await auth.put('/api/teams/1/users/99999')
-        .send(updateData);
+      const response = await auth.put('/api/teams/1/users/99999').send(updateData);
 
       validateApiResponse(response, 404);
     });
@@ -678,8 +658,7 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(adminToken);
       const updateData = { role: 'admin' };
 
-      const response = await auth.put('/api/teams/99999/users/3')
-        .send(updateData);
+      const response = await auth.put('/api/teams/99999/users/3').send(updateData);
 
       validateApiResponse(response, 404);
     });
@@ -688,7 +667,8 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(adminToken);
       const updateData = { role: 'invalid_role' };
 
-      const response = await auth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
+      const response = await auth
+        .put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
         .send(updateData);
 
       validateApiResponse(response, 400);
@@ -697,7 +677,6 @@ describe('Teams Management API', () => {
   });
 
   describe('DELETE /api/teams/:id/users/:userId', () => {
-    beforeEach(resetBeforeTest);
 
     it('should remove user from team as admin', async () => {
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
@@ -708,7 +687,7 @@ describe('Teams Management API', () => {
 
       // Verify user was removed
       const usersResponse = await auth.get('/api/teams/1/users');
-      const removedUser = usersResponse.body.find(u => u.id === TEST_USERS.VIEWER.id);
+      const removedUser = usersResponse.body.find((u) => u.id === TEST_USERS.VIEWER.id);
       expect(removedUser).toBeUndefined();
     });
 
@@ -758,6 +737,7 @@ describe('Teams Management API', () => {
     });
 
     it('should remove user from team as superadmin', async () => {
+      await resetBeforeTest(); // Ensure team is not deleted
       const superAuth = authenticatedRequest(superadminToken);
 
       // Remove user 4 (viewer) from team 1
@@ -767,15 +747,12 @@ describe('Teams Management API', () => {
 
       // Verify user was removed
       const usersResponse = await superAuth.get('/api/teams/1/users');
-      const removedUser = usersResponse.body.find(u => u.id === TEST_USERS.VIEWER.id);
+      const removedUser = usersResponse.body.find((u) => u.id === TEST_USERS.VIEWER.id);
       expect(removedUser).toBeUndefined();
     });
   });
 
   describe('Deleted Team Member Management Restrictions', () => {
-    beforeEach(async () => {
-      await resetBeforeTest(); // Reset for clean state
-    });
 
     it('should prevent adding users to deleted teams for non-superadmin', async () => {
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
@@ -841,7 +818,9 @@ describe('Teams Management API', () => {
       await auth.delete('/api/teams/1');
 
       // Try to create a book in the deleted team
-      const response = await auth.post('/api/books').send({ name: 'Should Not Create', team_id: 1 });
+      const response = await auth
+        .post('/api/books')
+        .send({ name: 'Should Not Create', team_id: 1 });
 
       validateApiResponse(response, 404);
       expect(response.body.error).toBe('Team not found');
@@ -863,9 +842,11 @@ describe('Teams Management API', () => {
       expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
 
       // Superadmin should be able to change roles in deleted teams
-      const updateResponse = await superAuth.put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`).send({
-        role: 'collaborator'
-      });
+      const updateResponse = await superAuth
+        .put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
+        .send({
+          role: 'collaborator'
+        });
       validateApiResponse(updateResponse, 403);
       expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
 
@@ -896,9 +877,6 @@ describe('Teams Management API', () => {
 
   describe('Team Deletion Management', () => {
     describe('DELETE /api/teams/:id - Soft Delete', () => {
-      beforeEach(async () => {
-        await resetBeforeTest(); // Reset for clean state
-      });
 
       it('should allow team admin to soft-delete their team', async () => {
         const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
@@ -912,7 +890,7 @@ describe('Teams Management API', () => {
 
         // Verify team no longer appears in user's teams list
         const teamsResponse = await auth.get('/api/teams');
-        const deletedTeam = teamsResponse.body.find(t => t.id === 1);
+        const deletedTeam = teamsResponse.body.find((t) => t.id === 1);
         expect(deletedTeam).toBeUndefined();
       });
 
@@ -929,6 +907,7 @@ describe('Teams Management API', () => {
       });
 
       it('should deny collaborator from soft-deleting team', async () => {
+        await resetBeforeTest(); // Reset for clean state
         const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
 
         const response = await auth.delete('/api/teams/1');
@@ -964,7 +943,7 @@ describe('Teams Management API', () => {
     });
 
     describe('POST /api/teams/:id/restore - Restore Soft-deleted Team', () => {
-      beforeEach(async () => {
+      beforeAll(async () => {
         await resetBeforeTest();
         // Soft-delete team 1 for testing restore
         const auth = authenticatedRequest(superadminToken);
@@ -1001,7 +980,6 @@ describe('Teams Management API', () => {
       });
 
       it('should return 400 when trying to restore non-deleted team', async () => {
-        await resetBeforeTest(); // Reset to get non-deleted state
         const auth = authenticatedRequest(superadminToken);
 
         const response = await auth.post('/api/teams/1/restore');
@@ -1011,10 +989,6 @@ describe('Teams Management API', () => {
     });
 
     describe('DELETE /api/teams/:id/permanent - Permanent Delete', () => {
-      beforeEach(async () => {
-        await resetBeforeTest();
-      });
-
       it('should allow superadmin to permanently delete team', async () => {
         const auth = authenticatedRequest(superadminToken);
 
@@ -1026,12 +1000,15 @@ describe('Teams Management API', () => {
         validateApiResponse(teamResponse, 404);
 
         // Verify with includeDeleted flag in search (should still not find it)
-        const searchResponse = await auth.get('/api/teams/search?includeDeleted=true&q=Test Team 1');
-        const deletedTeam = searchResponse.body.find(t => t.id === 1);
+        const searchResponse = await auth.get(
+          '/api/teams/search?includeDeleted=true&q=Test Team 1'
+        );
+        const deletedTeam = searchResponse.body.find((t) => t.id === 1);
         expect(deletedTeam).toBeUndefined();
       });
 
       it('should permanently delete soft-deleted team', async () => {
+        await resetBeforeTest(); // Reset to get non-deleted state
         const auth = authenticatedRequest(superadminToken);
 
         // First soft-delete the team
@@ -1063,18 +1040,19 @@ describe('Teams Management API', () => {
     });
 
     describe('Search with deleted teams', () => {
-      beforeEach(async () => {
+      beforeAll(async () => {
         await resetBeforeTest();
         // Soft-delete team 1 for testing
         const auth = authenticatedRequest(superadminToken);
         await auth.delete('/api/teams/1');
       });
 
+      
       it('should exclude soft-deleted teams by default in search', async () => {
         const auth = authenticatedRequest(superadminToken);
 
         const response = await auth.get('/api/teams/search?q=Test');
-        const deletedTeam = response.body.find(t => t.id === 1);
+        const deletedTeam = response.body.find((t) => t.id === 1);
         expect(deletedTeam).toBeUndefined();
       });
 
@@ -1082,7 +1060,7 @@ describe('Teams Management API', () => {
         const auth = authenticatedRequest(superadminToken);
 
         const response = await auth.get('/api/teams/search?q=Test&includeDeleted=true');
-        const deletedTeam = response.body.find(t => t.id === 1);
+        const deletedTeam = response.body.find((t) => t.id === 1);
         expect(deletedTeam).toBeDefined();
         expect(deletedTeam.deleted_at).not.toBeNull();
       });
@@ -1092,217 +1070,24 @@ describe('Teams Management API', () => {
 
         // First check that the deleted team isn't in the default response
         const defaultResponse = await auth.get('/api/teams/all');
-        const deletedTeamInDefault = defaultResponse.body.find(t => t.id === 1);
+        const deletedTeamInDefault = defaultResponse.body.find((t) => t.id === 1);
         expect(deletedTeamInDefault).toBeUndefined();
-        
+
         // Now check it's in the deleted=true response
         const response = await auth.get('/api/teams/all?deleted=true');
-        const deletedTeam = response.body.find(t => t.id === 1);
+        const deletedTeam = response.body.find((t) => t.id === 1);
         expect(deletedTeam).toBeDefined();
         expect(deletedTeam.deleted_at).not.toBeNull();
       });
     });
   });
 
-  describe('Team Utilities Coverage', () => {
-    beforeEach(resetBeforeTest);
-
-    it('should test getUserRole utility function directly', async () => {
-      // This will test the getUserRole function used by the API
-      const { getUserRole } = require('../../src/utils/team');
-      
-      // Test valid user with role
-      const role1 = await getUserRole(1, 2); // User 2 is admin in team 1
-      expect(role1).toBe('admin');
-      
-      // Test valid user with different role
-      const role2 = await getUserRole(1, 4); // User 4 is viewer in team 1
-      expect(role2).toBe('viewer');
-      
-      // Test user with no access to team
-      const role3 = await getUserRole(1, 5); // User 5 has no team access
-      expect(role3).toBeNull();
-      
-      // Test non-existent team
-      const role4 = await getUserRole(99999, 2);
-      expect(role4).toBeNull();
-    });
-
-    it('should test permission functions with various scenarios', async () => {
-      const { canAdmin, canWrite, canRead } = require('../../src/utils/team');
-      
-      // Test admin permissions
-      const adminResult = await canAdmin(1, 2); // User 2 is admin in team 1
-      expect(adminResult.allowed).toBe(true);
-      expect(adminResult.message).toBe('Access granted');
-      
-      // Test non-admin trying admin operations
-      const nonAdminResult = await canAdmin(1, 4); // User 4 is viewer in team 1
-      expect(nonAdminResult.allowed).toBe(false);
-      expect(nonAdminResult.message).toMatch(/admin privileges required/i);
-      
-      // Test user with no team access
-      const noAccessAdmin = await canAdmin(1, 5); // User 5 has no team access
-      expect(noAccessAdmin.allowed).toBe(false);
-      expect(noAccessAdmin.message).toMatch(/access denied/i);
-      
-      // Test write permissions for collaborator
-      const collaboratorWrite = await canWrite(1, 3); // User 3 is collaborator in team 1
-      expect(collaboratorWrite.allowed).toBe(true);
-      
-      // Test write permissions denied for viewer
-      const viewerWrite = await canWrite(1, 4); // User 4 is viewer in team 1
-      expect(viewerWrite.allowed).toBe(false);
-      expect(viewerWrite.message).toMatch(/write access required/i);
-      
-      // Test read permissions for all roles
-      const adminRead = await canRead(1, 2); // Admin
-      expect(adminRead.allowed).toBe(true);
-      
-      const collaboratorRead = await canRead(1, 3); // Collaborator
-      expect(collaboratorRead.allowed).toBe(true);
-      
-      const viewerRead = await canRead(1, 4); // Viewer
-      expect(viewerRead.allowed).toBe(true);
-      
-      // Test read denied for no access
-      const noAccessRead = await canRead(1, 5); // No access
-      expect(noAccessRead.allowed).toBe(false);
-    });
-
-    it('should test getTeamUsers utility function', async () => {
-      const { getTeamUsers } = require('../../src/utils/team');
-      
-      // Test getting users for team 1
-      const users = await getTeamUsers(1);
-      expect(Array.isArray(users)).toBe(true);
-      expect(users.length).toBeGreaterThan(0);
-      
-      // Verify user structure
-      const user = users[0];
-      expect(user).toHaveProperty('id');
-      expect(user).toHaveProperty('username');
-      expect(user).toHaveProperty('role');
-      expect(user).toHaveProperty('created_at');
-      expect(['admin', 'collaborator', 'viewer']).toContain(user.role);
-      
-      // Test getting users for non-existent team
-      const noUsers = await getTeamUsers(99999);
-      expect(Array.isArray(noUsers)).toBe(true);
-      expect(noUsers.length).toBe(0);
-    });
-
-    it('should test getTeamById utility function', async () => {
-      const { getTeamById } = require('../../src/utils/team');
-      
-      // Test getting existing team
-      const team = await getTeamById(1);
-      expect(team).toHaveProperty('id', 1);
-      expect(team).toHaveProperty('name');
-      expect(team).toHaveProperty('created_at');
-      expect(team.deleted_at).toBeNull();
-      
-      // Test getting non-existent team
-      const noTeam = await getTeamById(99999);
-      expect(noTeam).toBeNull();
-    });
-
-    it('should test getTeamById with includeDeleted parameter', async () => {
-      const { getTeamById } = require('../../src/utils/team');
-      const auth = authenticatedRequest(superadminToken);
-      
-      // Soft delete team 1
-      await auth.delete('/api/teams/1');
-      
-      // Should not find deleted team by default
-      const noTeam = await getTeamById(1);
-      expect(noTeam).toBeNull();
-      
-      // Should find deleted team when includeDeleted=true
-      const deletedTeam = await getTeamById(1, true);
-      expect(deletedTeam).toHaveProperty('id', 1);
-      expect(deletedTeam.deleted_at).not.toBeNull();
-    });
-
-    it('should test getTeamByBookId utility function', async () => {
-      const { getTeamByBookId } = require('../../src/utils/team');
-      
-      // Test getting team for existing book
-      const team = await getTeamByBookId(1); // Book 1 belongs to team 1
-      expect(team).toHaveProperty('id', 1);
-      expect(team).toHaveProperty('name');
-      expect(team.deleted_at).toBeNull();
-      
-      // Test getting team for non-existent book
-      const noTeam = await getTeamByBookId(99999);
-      expect(noTeam).toBeNull();
-    });
-
-    it('should return null for soft-deleted book', async () => {
-      // This tests the schema checking code in utils/team.js
-      const { getTeamByBookId } = require('../../src/utils/team');
-      
-      // This call will exercise the schema compatibility code
-      const team = await getTeamByBookId(1);
-      expect(team).toBeDefined();
-      
-      // Test with soft-deleted book (if book has deleted_at column)
-      const auth = authenticatedRequest(adminToken);
-      
-      // Create a new book and then soft delete it
-      const createResponse = await auth.post('/api/books').send({
-        name: 'Test Book for Schema',
-        team_id: 1
-      });
-      const bookId = createResponse.body.id;
-      
-      // Soft delete the book
-      await auth.delete(`/api/books/${bookId}`);
-      
-      // Should not find team for soft-deleted book
-      const noTeamForDeletedBook = await getTeamByBookId(bookId);
-      expect(noTeamForDeletedBook).toBeNull();
-    });
-
-    it('should handle database errors in getUserRole', async () => {
-      const { getUserRole } = require('../../src/utils/team');
-      
-      // Test with invalid data types that might cause database errors
-      try {
-        await getUserRole('invalid', 'invalid');
-        // If no error thrown, test passes (function handles it gracefully)
-        expect(true).toBe(true);
-      } catch (error) {
-        // If error thrown, that's also expected behavior
-        expect(error).toBeDefined();
-      }
-    });
-
-    it('should test team access for soft-deleted teams', async () => {
-      const { getUserRole, canRead, canWrite, canAdmin } = require('../../src/utils/team');
-      const auth = authenticatedRequest(superadminToken);
-      
-      // Soft delete team 1
-      await auth.delete('/api/teams/1');
-      
-      // Should not have access to soft-deleted team
-      const role = await getUserRole(1, 2); // User 2 was admin in team 1
-      expect(role).toBeNull();
-      
-      const readAccess = await canRead(1, 2);
-      expect(readAccess.allowed).toBe(false);
-      
-      const writeAccess = await canWrite(1, 2);
-      expect(writeAccess.allowed).toBe(false);
-      
-      const adminAccess = await canAdmin(1, 2);
-      expect(adminAccess.allowed).toBe(false);
-    });
-  });
-
   describe('GET /api/teams/:id/books', () => {
+    beforeAll(async () => {
+      await resetBeforeTest(); // Reset to ensure clean state
+    });
+
     it('should return books for team with write access', async () => {
-      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
       const response = await auth.get('/api/teams/1/books');
 
@@ -1320,7 +1105,6 @@ describe('Teams Management API', () => {
     });
 
     it('should return books for team with read access', async () => {
-      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1, collaborator in team 2
       const response = await auth.get('/api/teams/1/books');
 
@@ -1369,23 +1153,19 @@ describe('Teams Management API', () => {
     });
 
     it('should return empty array for team with no books', async () => {
-      await resetBeforeTest();
-      
       // Create a new team without books
       const auth = authenticatedRequest(superadminToken);
-      const teamResponse = await auth.post('/api/teams')
-        .send({
-          name: 'Empty Team for Books Test'
-        });
+      const teamResponse = await auth.post('/api/teams').send({
+        name: 'Empty Team for Books Test'
+      });
 
       const teamId = teamResponse.body.id;
 
       // Add the collaborator user to this new team
-      await auth.post(`/api/teams/${teamId}/users`)
-        .send({
-          userId: 3, // collaborator user
-          role: 'viewer'
-        });
+      await auth.post(`/api/teams/${teamId}/users`).send({
+        userId: 3, // collaborator user
+        role: 'viewer'
+      });
 
       // Now test with the collaborator - verify they can access books for this team
       const userAuth = authenticatedRequest(collaboratorToken);
@@ -1398,7 +1178,6 @@ describe('Teams Management API', () => {
   });
 
   describe('POST /api/teams/:id/users/add-by-username', () => {
-    beforeEach(resetBeforeTest);
 
     it('should add a user to a team by username as admin', async () => {
       const auth = authenticatedRequest(adminToken);
@@ -1408,19 +1187,21 @@ describe('Teams Management API', () => {
         .post('/api/users')
         .send({ username, password: 'testpassword123' });
 
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username, role: 'viewer' });
 
       validateApiResponse(response, 201);
       expect(Array.isArray(response.body)).toBe(true);
-      const addedUser = response.body.find(u => u.username === username);
+      const addedUser = response.body.find((u) => u.username === username);
       expect(addedUser).toBeDefined();
       expect(addedUser.role).toBe('viewer');
     });
 
     it('should reject if username is missing', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ role: 'viewer' });
 
       validateApiResponse(response, 400);
@@ -1429,7 +1210,8 @@ describe('Teams Management API', () => {
 
     it('should reject if role is missing or invalid', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username: 'someuser', role: 'invalid_role' });
 
       validateApiResponse(response, 400);
@@ -1439,7 +1221,8 @@ describe('Teams Management API', () => {
 
     it('should return 404 if team does not exist', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/99999/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/99999/users/add-by-username')
         .send({ username: 'someuser', role: 'viewer' });
 
       validateApiResponse(response, 404);
@@ -1448,7 +1231,8 @@ describe('Teams Management API', () => {
 
     it('should return 404 if user does not exist or is inactive', async () => {
       const auth = authenticatedRequest(adminToken);
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username: 'nonexistentuser', role: 'viewer' });
 
       validateApiResponse(response, 404);
@@ -1463,11 +1247,11 @@ describe('Teams Management API', () => {
       const createUserResponse = await authenticatedRequest(superadminToken)
         .post('/api/users')
         .send({ username, password: 'testpassword123' });
-      await auth.post('/api/teams/1/users/add-by-username')
-        .send({ username, role: 'viewer' });
+      await auth.post('/api/teams/1/users/add-by-username').send({ username, role: 'viewer' });
 
       // Try to add again
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username, role: 'viewer' });
 
       validateApiResponse(response, 409);
@@ -1477,7 +1261,8 @@ describe('Teams Management API', () => {
 
     it('should deny access for collaborator', async () => {
       const auth = authenticatedRequest(collaboratorToken);
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username: 'someuser', role: 'viewer' });
 
       validateApiResponse(response, 403);
@@ -1487,7 +1272,8 @@ describe('Teams Management API', () => {
       const auth = authenticatedRequest(adminToken);
       // Soft-delete team 1
       await auth.delete('/api/teams/1');
-      const response = await auth.post('/api/teams/1/users/add-by-username')
+      const response = await auth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username: 'someuser', role: 'viewer' });
 
       validateApiResponse(response, 403);
@@ -1502,7 +1288,8 @@ describe('Teams Management API', () => {
       const username = `testuser_superadmin_add_${Date.now()}`;
       await superAuth.post('/api/users').send({ username, password: 'testpassword123' });
 
-      const response = await superAuth.post('/api/teams/1/users/add-by-username')
+      const response = await superAuth
+        .post('/api/teams/1/users/add-by-username')
         .send({ username, role: 'viewer' });
 
       validateApiResponse(response, 403);

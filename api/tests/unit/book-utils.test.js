@@ -16,9 +16,6 @@ const {
 const { resetDatabase } = require('../utils/test-helpers');
 
 describe('Book Utilities', () => {
-  beforeEach(async () => {
-    await resetDatabase();
-  });
 
   describe('canAdmin', () => {
     it('should allow admin users', async () => {

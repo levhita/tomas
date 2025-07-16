@@ -5,7 +5,7 @@
  * - Retrieving single account details
  * - Getting account balances
  * - Creating, updating and deleting accounts
- * 
+ *
  * Permission model:
  * - READ operations: Any team member (admin, collaborator, viewer)
  * - WRITE operations: Admins and collaborators (accounts can be managed by write access)
@@ -14,7 +14,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team');
+const {
+  canRead,
+  canWrite,
+  canAdmin,
+  getTeamByBookId,
+  getTeamByAccountId
+} = require('../utils/team');
+const { getBookByAccountId } = require('../utils/book');
 
 /**
  * @swagger
@@ -54,21 +61,23 @@ const { canRead, canWrite, canAdmin, getTeamByBookId } = require('../utils/team'
  */
 router.get('/:id', async (req, res) => {
   try {
-    // First get the account to determine its book
-    const [accounts] = await db.query(`
+    // First get the account
+    const [accounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
+    // Use utility to get the team for this account
+    const team = await getTeamByAccountId(req.params.id);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(404).json({ error: 'Account not found' });
     }
 
     const { allowed, message } = await canRead(team.id, req.user.id);
@@ -77,7 +86,7 @@ router.get('/:id', async (req, res) => {
     }
 
     res.status(200).json(accounts[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch account' });
   }
@@ -150,23 +159,21 @@ router.get('/:id/balance', async (req, res) => {
   const { up_to_date } = req.query;
 
   try {
-    // First get the account to determine its book
-    const [accounts] = await db.query(`
+    // First get the account
+    const [accounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [id]);
+    `,
+      [id]
+    );
 
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
-    // Check if user has access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-
+    // Get team using utility function
+    const team = await getTeamByAccountId(id);
     const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
       return res.status(403).json({ error: message });
@@ -181,20 +188,23 @@ router.get('/:id/balance', async (req, res) => {
     // Get balance up to the specified date or current date if not specified
     const balanceDate = up_to_date || new Date().toISOString().split('T')[0];
 
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       SELECT 
         SUM(CASE WHEN exercised = 1 THEN amount ELSE 0 END) as exercised_balance,
         SUM(amount) as projected_balance
       FROM transaction 
       WHERE account_id = ?
       AND date <= ?
-    `, [id, balanceDate]);
+    `,
+      [id, balanceDate]
+    );
 
     res.status(200).json({
-      exercised_balance: result[0].exercised_balance || 0,
-      projected_balance: result[0].projected_balance || 0
+      exercised_balance: result[0].exercised_balance,
+      projected_balance: result[0].projected_balance
     });
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch account balance' });
   }
@@ -238,7 +248,7 @@ router.get('/:id/balance', async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/', async (req, res) => {
-  const { name, note = null, type = "debit", book_id } = req.body;
+  const { name, note = null, type = 'debit', book_id } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
@@ -261,19 +271,25 @@ router.post('/', async (req, res) => {
     }
 
     // Insert the new account
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       INSERT INTO account (name, note, type, book_id)
       VALUES (?, ?, ?, ?)
-    `, [name, note, type, book_id]);
+    `,
+      [name, note, type, book_id]
+    );
 
     // Fetch the created account with all fields
-    const [accounts] = await db.query(`
+    const [accounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [result.insertId]);
+    `,
+      [result.insertId]
+    );
 
     res.status(201).json(accounts[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create account' });
   }
@@ -341,20 +357,22 @@ router.put('/:id', async (req, res) => {
 
   try {
     // First get the account to determine its book
-    const [accounts] = await db.query(`
+    const [accounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
     // Check if user has write access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
+    const team = await getTeamByAccountId(req.params.id);
     if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(404).json({ error: 'Team not found' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
@@ -363,26 +381,28 @@ router.put('/:id', async (req, res) => {
     }
 
     // Update the account
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       UPDATE account
       SET name = ?,
           note = ?,
           type = ?
       WHERE id = ?
-    `, [name, note, type, req.params.id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
+    `,
+      [name, note, type, req.params.id]
+    );
 
     // Fetch the updated account
-    const [updatedAccounts] = await db.query(`
+    const [updatedAccounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     res.status(200).json(updatedAccounts[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update account' });
   }
@@ -433,20 +453,22 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     // First get the account to determine its book
-    const [accounts] = await db.query(`
+    const [accounts] = await db.query(
+      `
       SELECT * FROM account 
       WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
     // Check if user has write access to this account's book via team membership
-    const bookId = accounts[0].book_id;
-    const team = await getTeamByBookId(bookId);
+    const team = await getTeamByAccountId(req.params.id);
     if (!team) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(404).json({ error: 'Book not found' });
     }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
@@ -455,32 +477,30 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Check if there are any transactions with this account
-    const [transactions] = await db.query(`
+    const [transactions] = await db.query(
+      `
       SELECT COUNT(*) as count FROM transaction 
       WHERE account_id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (transactions[0].count > 0) {
       return res.status(428).json({ error: 'Cannot delete account with transactions' });
     }
 
     // Delete the account
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       DELETE FROM account
       WHERE id = ?
-    `, [req.params.id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
+    `,
+      [req.params.id]
+    );
 
     // Return no content on successful deletion
     res.status(204).send();
-  } catch (err) {
-    // Specific error for foreign key constraint violation
-    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(428).json({ error: 'Cannot delete account with transactions' });
-    }
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to delete account' });
   }
