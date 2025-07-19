@@ -760,81 +760,13 @@ router.delete('/:id/permanent', async (req, res) => {
       return res.status(400).json({ error: 'Book must be soft-deleted before permanent deletion' });
     }
 
-    const connection = await db.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      // CASCADE DELETE ALL RELATED DATA
-
-      // 1. Delete transactions first (they reference accounts and categories)
-      await connection.query(
-        `
-        DELETE t FROM transaction t 
-        INNER JOIN account a ON t.account_id = a.id 
-        WHERE a.book_id = ?
-      `,
-        [req.params.id]
-      );
-
-      // 2. Delete totals (they reference accounts)
-      await connection.query(
-        `
-        DELETE t FROM total t 
-        INNER JOIN account a ON t.account_id = a.id 
-        WHERE a.book_id = ?
-      `,
-        [req.params.id]
-      );
-
-      // 3. Delete categories (handle self-references by deleting children first)
-      // First, delete child categories (categories with parent_category_id)
-      await connection.query(
-        `
-        DELETE FROM category 
-        WHERE book_id = ? AND parent_category_id IS NOT NULL
-      `,
-        [req.params.id]
-      );
-
-      // Then delete parent categories
-      await connection.query(
-        `
-        DELETE FROM category 
-        WHERE book_id = ? AND parent_category_id IS NULL
-      `,
-        [req.params.id]
-      );
-
-      // 4. Delete accounts
-      await connection.query(
-        `
-        DELETE FROM account WHERE book_id = ?
-      `,
-        [req.params.id]
-      );
-
-      // 6. Finally delete the book
-      const [result] = await connection.query(
-        `
+    const [result] = await db.query(
+      `
         DELETE FROM book WHERE id = ?
       `,
-        [req.params.id]
-      );
-
-      if (result.affectedRows === 0) {
-        await connection.rollback();
-        connection.release();
-        return res.status(404).json({ error: 'Book not found' });
-      }
-
-      await connection.commit();
-      connection.release();
-      res.status(204).send();
-    } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
-      await connection.rollback();
-      connection.release();
-      throw err;
-    }
+      [req.params.id]
+    );
+    res.status(204).json({ message: 'Book permanently deleted' });
   } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to permanently delete book' });
