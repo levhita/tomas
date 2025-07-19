@@ -1407,5 +1407,25 @@ describe('Categories Management API', () => {
         });
       });
     });
+
+    it('should return 404 when trying to get category of a book that is deleted or soft-deleted', async () => {
+      const { authenticatedRequest, initializeTokenCache } = require('../utils/test-helpers');
+      const tokens = await initializeTokenCache();
+      const adminToken = tokens.admin;
+
+      // Find a category in book 1
+      const auth = authenticatedRequest(adminToken);
+      const categoriesResponse = await auth.get('/api/books/1/categories');
+      const category = categoriesResponse.body[0];
+      expect(category).toBeDefined();
+
+      // Soft-delete book 1
+      await auth.delete('/api/books/1');
+
+      // Try to fetch the category
+      const response = await auth.get(`/api/categories/${category.id}`);
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Category not found');
+    });
   });
 });

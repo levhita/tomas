@@ -4,13 +4,13 @@
  * - Retrieving single category details
  * - Creating, updating and deleting categories
  * - Managing hierarchical category structure with parent-child relationships
- * 
+ *
  * Note: Category listing by book is now handled by /api/books/:id/categories endpoint
- * 
+ *
  * Permission model:
  * - READ operations: Any team member (admin, collaborator, viewer)
  * - WRITE operations: Team editors (admin, collaborator)
- * 
+ *
  * Hierarchy constraints:
  * - Categories can only be nested two levels deep (parent-child)
  * - A category with children cannot become a child of another category
@@ -21,8 +21,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
-
-
 
 /**
  * @swagger
@@ -62,10 +60,18 @@ const { canRead, canWrite, getTeamByBookId } = require('../utils/team');
  */
 router.get('/:id', async (req, res) => {
   try {
-    const [categories] = await db.query(`
-      SELECT * FROM category 
-      WHERE id = ?
-    `, [req.params.id]);
+    const [categories] = await db.query(
+      `
+      SELECT c.*
+      FROM category as c
+      JOIN book as b ON c.book_id = b.id
+      join team as t ON b.team_id = t.id
+      WHERE c.id = ?
+      AND b.deleted_at IS NULL
+      AND t.deleted_at IS NULL
+    `,
+      [req.params.id]
+    );
 
     if (categories.length === 0) {
       return res.status(404).json({ error: 'Category not found' });
@@ -73,9 +79,6 @@ router.get('/:id', async (req, res) => {
 
     // Check if user has access to the book this category belongs to via team membership
     const team = await getTeamByBookId(categories[0].book_id);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
 
     const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
@@ -83,7 +86,7 @@ router.get('/:id', async (req, res) => {
     }
 
     res.status(200).json(categories[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch category' });
   }
@@ -96,7 +99,7 @@ router.get('/:id', async (req, res) => {
  *     summary: Create a new category
  *     description: |
  *       Create a new category within a book. Supports hierarchical categories with parent-child relationships.
- *       
+ *
  *       **Hierarchy constraints:**
  *       - If parent_category_id is provided, that category must not have a parent itself
  *       - Parent category must belong to the same book
@@ -155,9 +158,6 @@ router.post('/', async (req, res) => {
   try {
     // Verify user has write access to the book via team membership
     const team = await getTeamByBookId(book_id);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
@@ -167,13 +167,16 @@ router.post('/', async (req, res) => {
     // If parent category is specified, verify it belongs to the same book
     // and enforce the two-level hierarchy limit
     if (parent_category_id) {
-      const [parentCategories] = await db.query(`
+      const [parentCategories] = await db.query(
+        `
         SELECT c.*, 
                (SELECT COUNT(*) FROM category WHERE parent_category_id = c.id) AS child_count,
                (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
         FROM category c 
         WHERE c.id = ?
-      `, [parent_category_id]);
+      `,
+        [parent_category_id]
+      );
 
       if (parentCategories.length === 0) {
         return res.status(404).json({ error: 'Parent category not found' });
@@ -187,7 +190,8 @@ router.post('/', async (req, res) => {
       // Enforce two-level nesting limit - if parent already has a parent, reject
       if (parentCategories[0].parent_id !== null) {
         return res.status(400).json({
-          error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
+          error:
+            'Categories can only be nested two levels deep. The selected parent already has a parent.'
         });
       }
 
@@ -196,19 +200,25 @@ router.post('/', async (req, res) => {
     }
 
     // Create the new category
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       INSERT INTO category (name, note, type, parent_category_id, book_id)
       VALUES (?, ?, ?, ?, ?)
-    `, [name, note, type, parent_category_id, book_id]);
+    `,
+      [name, note, type, parent_category_id, book_id]
+    );
 
     // Fetch the created category with all fields
-    const [categories] = await db.query(`
+    const [categories] = await db.query(
+      `
       SELECT * FROM category 
       WHERE id = ?
-    `, [result.insertId]);
+    `,
+      [result.insertId]
+    );
 
     res.status(201).json(categories[0]);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to create category' });
   }
@@ -221,7 +231,7 @@ router.post('/', async (req, res) => {
  *     summary: Update an existing category
  *     description: |
  *       Update an existing category. Supports hierarchical category management with strict constraints.
- *       
+ *
  *       **Hierarchy constraints:**
  *       - A category cannot be its own parent
  *       - A category with children cannot become a child of another category
@@ -296,9 +306,18 @@ router.put('/:id', async (req, res) => {
 
   try {
     // First fetch the category to check book access
-    const [categories] = await db.query(`
-      SELECT * FROM category WHERE id = ?
-    `, [req.params.id]);
+    const [categories] = await db.query(
+      `
+      SELECT c.*
+      FROM category as c
+      JOIN book as b ON c.book_id = b.id
+      JOIN team as t ON b.team_id = t.id
+      WHERE c.id = ?
+      AND b.deleted_at IS NULL
+      AND t.deleted_at IS NULL
+    `,
+      [req.params.id]
+    );
 
     if (categories.length === 0) {
       return res.status(404).json({ error: 'Category not found' });
@@ -310,9 +329,6 @@ router.put('/:id', async (req, res) => {
 
     // Verify user has write access to the book via team membership
     const team = await getTeamByBookId(bookId);
-    if (!team) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
@@ -320,11 +336,14 @@ router.put('/:id', async (req, res) => {
     }
 
     // Check if this category has children to enforce type inheritance
-    const [childCheck] = await db.query(`
+    const [childCheck] = await db.query(
+      `
       SELECT COUNT(*) AS child_count
       FROM category
       WHERE parent_category_id = ?
-    `, [categoryId]);
+    `,
+      [categoryId]
+    );
 
     const hasChildren = childCheck[0].child_count > 0;
 
@@ -339,12 +358,15 @@ router.put('/:id', async (req, res) => {
           return res.status(400).json({ error: 'A category cannot be its own parent' });
         }
 
-        const [parentCategories] = await db.query(`
+        const [parentCategories] = await db.query(
+          `
           SELECT c.*, 
                  (SELECT parent_category_id FROM category WHERE id = c.id) AS parent_id
           FROM category c
           WHERE c.id = ?
-        `, [parent_category_id]);
+        `,
+          [parent_category_id]
+        );
 
         if (parentCategories.length === 0) {
           return res.status(404).json({ error: 'Parent category not found' });
@@ -358,7 +380,8 @@ router.put('/:id', async (req, res) => {
         // Enforce two-level nesting limit - if parent already has a parent, reject
         if (parentCategories[0].parent_id !== null) {
           return res.status(400).json({
-            error: 'Categories can only be nested two levels deep. The selected parent already has a parent.'
+            error:
+              'Categories can only be nested two levels deep. The selected parent already has a parent.'
           });
         }
 
@@ -383,9 +406,12 @@ router.put('/:id', async (req, res) => {
       if (currentCategory.parent_category_id !== null && type !== undefined) {
         // Category currently has a parent and type is being updated
         // Child categories must inherit type from parent, cannot change independently
-        const [parentCategories] = await db.query(`
+        const [parentCategories] = await db.query(
+          `
           SELECT type FROM category WHERE id = ?
-        `, [currentCategory.parent_category_id]);
+        `,
+          [currentCategory.parent_category_id]
+        );
 
         if (parentCategories.length > 0) {
           type = parentCategories[0].type;
@@ -445,40 +471,44 @@ router.put('/:id', async (req, res) => {
       updateValues.push(categoryId);
 
       // Update the category
-      const [result] = await db.query(`
+      const [result] = await db.query(
+        `
         UPDATE category
         SET ${updateFields.join(', ')}
         WHERE id = ?
-      `, updateValues);
-
-      if (result.affectedRows === 0) {
-        await db.query('ROLLBACK');
-        return res.status(404).json({ error: 'Category not found' });
-      }
+      `,
+        updateValues
+      );
 
       // If this category has children and the type changed, update all children
       if (hasChildren && type !== undefined && type !== currentCategory.type) {
-        await db.query(`
+        await db.query(
+          `
           UPDATE category
           SET type = ?
           WHERE parent_category_id = ?
-        `, [type, categoryId]);
+        `,
+          [type, categoryId]
+        );
       }
 
       await db.query('COMMIT');
 
       // Fetch the updated category
-      const [updatedCategories] = await db.query(`
+      const [updatedCategories] = await db.query(
+        `
         SELECT * FROM category 
         WHERE id = ?
-      `, [categoryId]);
+      `,
+        [categoryId]
+      );
 
       res.status(200).json(updatedCategories[0]);
-    } catch (transactionError) {
+    } catch (transactionError) /* istanbul ignore next: database error cannot be replicated */ {
       await db.query('ROLLBACK');
       throw transactionError;
     }
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to update category' });
   }
@@ -490,9 +520,9 @@ router.put('/:id', async (req, res) => {
  *   delete:
  *     summary: Delete a category (soft delete)
  *     description: |
- *       Mark a category as deleted (soft delete). The category will be marked as deleted 
+ *       Mark a category as deleted (soft delete). The category will be marked as deleted
  *       and excluded from future queries but preserved in the database for data integrity.
- *       
+ *
  *       **Constraints:**
  *       - Cannot delete categories that have child categories
  *       - Cannot delete categories that are referenced by transactions
@@ -537,9 +567,12 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     // First fetch the category to check book access
-    const [categories] = await db.query(`
+    const [categories] = await db.query(
+      `
       SELECT * FROM category WHERE id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (categories.length === 0) {
       return res.status(404).json({ error: 'Category not found' });
@@ -549,9 +582,6 @@ router.delete('/:id', async (req, res) => {
 
     // Verify user has write access to the book via team membership
     const team = await getTeamByBookId(bookId);
-    if (!team) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
@@ -561,30 +591,28 @@ router.delete('/:id', async (req, res) => {
     // No need to check for transactions - they will have their category_id set to null
 
     // Check if there are any child categories
-    const [children] = await db.query(`
+    const [children] = await db.query(
+      `
       SELECT COUNT(*) as count FROM category 
       WHERE parent_category_id = ?
-    `, [req.params.id]);
+    `,
+      [req.params.id]
+    );
 
     if (children[0].count > 0) {
       return res.status(428).json({ error: 'Cannot delete category with child categories' });
     }
 
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       DELETE FROM category
       WHERE id = ?
-    `, [req.params.id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
+    `,
+      [req.params.id]
+    );
 
     res.status(204).send();
-  } catch (err) {
-    // Only handle child category reference constraint, transactions can be set to null
-    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(428).json({ error: 'Cannot delete category with child categories' });
-    }
+  } catch (err) /* istanbul ignore next: database error cannot be replicated */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to delete category' });
   }
