@@ -21,7 +21,6 @@ const {
   getTeamByBookId,
   getTeamByAccountId
 } = require('../utils/team');
-const { getBookByAccountId } = require('../utils/book');
 
 /**
  * @swagger

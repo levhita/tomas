@@ -195,6 +195,46 @@ describe('Book Utilities', () => {
     });
   });
 
+  describe('getBookByAccountId', () => {
+    it('should return the book for a valid account', async () => {
+      // Account 1 belongs to book 1 in test data
+      const { getBookByAccountId } = require('../../src/utils/book');
+      const book = await getBookByAccountId(1);
+      expect(book).toBeDefined();
+      expect(book).toHaveProperty('id', 1);
+      expect(book).toHaveProperty('name');
+      expect(book.deleted_at).toBeNull();
+    });
+
+    it('should return null for a non-existent account', async () => {
+      const { getBookByAccountId } = require('../../src/utils/book');
+      const book = await getBookByAccountId(99999);
+      expect(book).toBeNull();
+    });
+
+    it('should return null for a soft-deleted book', async () => {
+      const { getBookByAccountId } = require('../../src/utils/book');
+      const db = require('../../src/db');
+      // Soft-delete book 1
+      await db.execute('UPDATE book SET deleted_at = NOW() WHERE id = 1');
+      const book = await getBookByAccountId(1);
+      expect(book).toBeNull();
+      // Restore book 1 for other tests
+      await db.execute('UPDATE book SET deleted_at = NULL WHERE id = 1');
+    });
+
+    it('should return null for an account whose team is soft-deleted', async () => {
+      const { getBookByAccountId } = require('../../src/utils/book');
+      const db = require('../../src/db');
+      // Soft-delete team 1 (which owns book 1)
+      await db.execute('UPDATE team SET deleted_at = NOW() WHERE id = 1');
+      const book = await getBookByAccountId(1);
+      expect(book).toBeNull();
+      // Restore team 1 for other tests
+      await db.execute('UPDATE team SET deleted_at = NULL WHERE id = 1');
+    });
+  });
+
   describe('Permission checks for deleted books', () => {
     beforeEach(async () => {
       await resetDatabase();
