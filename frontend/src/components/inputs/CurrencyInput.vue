@@ -27,8 +27,18 @@ const formattedValue = computed(() => {
   })
 })
 
+function stripLeadingZeros(str) {
+  // Remove leading zeros but keep "0" if that's the only digit before decimal
+  return str.replace(/^0+(\d)/, '$1')
+}
+
 function handleInput(event) {
-  currentValue.value = event.target.value
+  let value = event.target.value
+  // Remove leading zeros unless it's "0." for decimals
+  if (!/^0\./.test(value)) {
+    value = stripLeadingZeros(value)
+  }
+  currentValue.value = value
 }
 
 function handleFocus() {
@@ -40,6 +50,11 @@ function evaluate() {
   editing.value = false
   let expression = currentValue.value
     .replace(/[^\d.+\-*/()]/g, '')
+
+  // Remove leading zeros unless it's "0." for decimals
+  if (!/^0\./.test(expression)) {
+    expression = stripLeadingZeros(expression)
+  }
 
   try {
     const result = evaluateExpression(expression)
