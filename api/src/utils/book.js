@@ -206,7 +206,8 @@ async function getBookByIdIncludingDeleted(bookId) {
  * @returns {Promise<Object|null>} - Returns book object or null if not found/deleted
  */
 async function getBookByAccountId(accountId) {
-  const [books] = await db.execute(`
+  const [books] = await db.execute(
+    `
     SELECT b.* FROM book b
     INNER JOIN account a ON a.book_id = b.id
     INNER JOIN team t ON b.team_id = t.id

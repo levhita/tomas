@@ -14,7 +14,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { canRead, canWrite, getTeamByAccountId, getBookByAccountId } = require('../utils/team');
+const { canRead, canWrite, getTeamByAccountId } = require('../utils/team');
+const { getBookById, getBookByAccountId } = require('../utils/book');
 
 /**
  * @swagger
@@ -75,9 +76,6 @@ router.get('/:id', async (req, res) => {
     }
 
     const team = await getTeamByAccountId(transactionInfo[0].account_id);
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
 
     const { allowed, message } = await canRead(team.id, req.user.id);
     if (!allowed) {
@@ -196,15 +194,12 @@ router.post('/', async (req, res) => {
     }
 
     // Validate that the book for this account is not soft-deleted
-    const book = await getBookByAccountId(accounts[0].book_id);
+    const book = await getBookById(accounts[0].book_id);
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
 
     const team = await getTeamByAccountId(account_id);
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
@@ -213,13 +208,17 @@ router.post('/', async (req, res) => {
 
     // If category is provided, verify it belongs to the same book
     if (category_id) {
+      // Validate that category_id is a number
+      if (typeof category_id !== 'number' || isNaN(category_id)) {
+        return res.status(400).json({ error: 'category_id must be a number' });
+      }
+
       const [categories] = await db.query(
         `
-        SELECT book_id FROM category WHERE id = ?
+        SELECT * FROM category WHERE id = ?
       `,
         [category_id]
       );
-
       if (categories.length === 0) {
         return res.status(404).json({ error: 'Category not found' });
       }
@@ -351,10 +350,9 @@ router.put('/:id', async (req, res) => {
 
   try {
     // First get the transaction to check it exists and get its current account_id
-    const [existingTransactionRows] = await db.query(
-      'SELECT * FROM transaction WHERE id = ?',
-      [req.params.id]
-    );
+    const [existingTransactionRows] = await db.query('SELECT * FROM transaction WHERE id = ?', [
+      req.params.id
+    ]);
 
     if (existingTransactionRows.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
@@ -362,7 +360,8 @@ router.put('/:id', async (req, res) => {
 
     const existingTransaction = existingTransactionRows[0];
     // Use provided account_id if present, otherwise use the one from the transaction
-    const effectiveAccountId = account_id !== undefined ? account_id : existingTransaction.account_id;
+    const effectiveAccountId =
+      account_id !== undefined ? account_id : existingTransaction.account_id;
 
     // Get the account to determine its book
     const [accounts] = await db.query(
@@ -371,20 +370,18 @@ router.put('/:id', async (req, res) => {
       `,
       [effectiveAccountId]
     );
+
     if (accounts.length === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
 
     // Validate that the book for this account is not soft-deleted
-    const book = await getBookByAccountId(accounts[0].book_id);
+    const book = await getBookById(accounts[0].book_id);
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
 
     const team = await getTeamByAccountId(effectiveAccountId);
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {
@@ -518,9 +515,6 @@ router.delete('/:id', async (req, res) => {
     }
 
     const team = await getTeamByAccountId(transactionInfo[0].account_id);
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
 
     const { allowed, message } = await canWrite(team.id, req.user.id);
     if (!allowed) {

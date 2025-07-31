@@ -91,7 +91,6 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for a transaction if the book was soft-deleted', async () => {
-      const { authenticatedRequest, initializeTokenCache } = require('../utils/test-helpers');
       const tokens = await initializeTokenCache();
       const adminToken = tokens.admin;
       // Find a transaction for account in book 1
@@ -130,13 +129,14 @@ describe('Transactions Management API', () => {
       // Try to fetch the transaction
       const response = await auth.get(`/api/transactions/${transaction.id}`);
       expect(response.status).toBe(404);
-      expect(response.body).toHaveProperty('error', 'Team not found');
+      expect(response.body).toHaveProperty('error', 'Book not found');
       await resetDatabase(); // Clean up after test
     });
   });
 
   describe('POST /api/transactions', () => {
     it('should create new transaction as admin', async () => {
+      await resetDatabase();
       const auth = authenticatedRequest(adminToken);
       const transactionData = {
         description: 'Test Transaction',
@@ -376,7 +376,7 @@ describe('Transactions Management API', () => {
       const response = await auth.post('/api/transactions').send(transactionData);
 
       validateApiResponse(response, 404);
-      expect(response.body).toHaveProperty('error', 'Team not found');
+      expect(response.body).toHaveProperty('error', 'Book not found');
       await resetDatabase(); // Clean up after test
     });
 
@@ -395,6 +395,23 @@ describe('Transactions Management API', () => {
 
       validateApiResponse(response, 404);
       expect(response.body).toHaveProperty('error', 'Category not found');
+    });
+
+    it('should return 400 if category_id is not a number', async () => {
+      const auth = authenticatedRequest(adminToken);
+      const transactionData = {
+        description: 'Invalid category_id type',
+        amount: -10.0,
+        date: '2024-12-31',
+        exercised: false,
+        account_id: testAccountId,
+        category_id: 'not-a-number'
+      };
+
+      const response = await auth.post('/api/transactions').send(transactionData);
+
+      validateApiResponse(response, 400);
+      expect(response.body).toHaveProperty('error', 'category_id must be a number');
     });
   });
 
@@ -551,7 +568,7 @@ describe('Transactions Management API', () => {
       const transaction = transactionsResponse.body[0];
       expect(transaction).toBeDefined();
 
-      // Soft-delete book 1 
+      // Soft-delete book 1
       const adminAuth = authenticatedRequest(adminToken);
       await adminAuth.delete('/api/books/1');
 
@@ -607,13 +624,13 @@ describe('Transactions Management API', () => {
       expect(updateResponse.status).toBe(404);
       expect(updateResponse.body).toHaveProperty('error');
       // Accept either "Book not found" or "Team not found" depending on implementation
-      expect(updateResponse.body.error).toBe('Team not found');
+      expect(updateResponse.body.error).toBe('Book not found');
 
       // Try to delete the transaction
       const deleteResponse = await auth.delete(`/api/transactions/${transaction.id}`);
       expect(deleteResponse.status).toBe(404);
       expect(deleteResponse.body).toHaveProperty('error');
-      expect(deleteResponse.body.error).toBe('Team not found');
+      expect(deleteResponse.body.error).toBe('Book not found');
       await resetDatabase(); // Clean up after test
     });
 
@@ -634,7 +651,10 @@ describe('Transactions Management API', () => {
       const response = await auth.put(`/api/transactions/${transactionId}`).send({});
 
       validateApiResponse(response, 400);
-      expect(response.body).toHaveProperty('error', 'At least one field must be provided for update');
+      expect(response.body).toHaveProperty(
+        'error',
+        'At least one field must be provided for update'
+      );
     });
 
     it('should return 400 for invalid date when updating a transaction', async () => {
@@ -723,7 +743,10 @@ describe('Transactions Management API', () => {
       });
 
       validateApiResponse(response, 400);
-      expect(response.body).toHaveProperty('error', 'Category must belong to the same book as the account');
+      expect(response.body).toHaveProperty(
+        'error',
+        'Category must belong to the same book as the account'
+      );
     });
   });
 

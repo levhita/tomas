@@ -258,23 +258,6 @@ async function getTeamByAccountId(accountId) {
 }
 
 /**
- * Get the book for a given account, returns null if not found or soft-deleted.
- * @param {number} accountId
- * @returns {Promise<object|null>}
- */
-async function getBookByAccountId(accountId) {
-  const [rows] = await db.query(
-    `
-    SELECT b.* FROM book b
-    INNER JOIN account a ON a.book_id = b.id
-    WHERE a.id = ? AND b.deleted_at IS NULL
-    `,
-    [accountId]
-  );
-  return rows.length > 0 ? rows[0] : null;
-}
-
-/**
  * Function exports
  * 
  * These utility functions enable consistent permission checking across the API.
@@ -296,5 +279,4 @@ module.exports = {
   getTeamByBookId,
   getUserRole,
   getTeamByAccountId,
-  getBookByAccountId
 };
