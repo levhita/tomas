@@ -557,7 +557,6 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 when trying to modify a transaction on a book that was deleted or soft-deleted', async () => {
-      const { authenticatedRequest, initializeTokenCache } = require('../utils/test-helpers');
       const tokens = await initializeTokenCache();
       const adminToken = tokens.admin;
       const superadminToken = tokens.superadmin;
