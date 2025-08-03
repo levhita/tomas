@@ -17,13 +17,18 @@ const { authenticatedRequest, initializeTokenCache, resetDatabase } = require('.
 
 let superadminToken, adminToken;
 
-beforeAll(async () => {
-  const tokens = await initializeTokenCache();
-  superadminToken = tokens.superadmin;
-  adminToken = tokens.admin;
-});
+
+
+
+
+
 
 describe('Team Utilities', () => {
+  beforeAll(async () => {
+    const tokens = await initializeTokenCache();
+    superadminToken = tokens.superadmin;
+    adminToken = tokens.admin;
+  });
   it('should test getUserRole utility function directly', async () => {
     // Test valid user with role
     const role1 = await getUserRole(1, 2); // User 2 is admin in team 1
