@@ -111,7 +111,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for a transaction if the team was soft-deleted', async () => {
-      const { authenticatedRequest, initializeTokenCache } = require('../utils/test-helpers');
+      
       const tokens = await initializeTokenCache();
       const adminToken = tokens.admin;
       const superadminToken = tokens.superadmin;
