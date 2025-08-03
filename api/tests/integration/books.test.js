@@ -778,7 +778,7 @@ describe('Book Management API', () => {
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
 
       validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(Array.isArray(response.body.transactions)).toBe(true);
 
       if (response.body.length > 0) {
         const transaction = response.body[0];
@@ -799,10 +799,10 @@ describe('Book Management API', () => {
         .query({ account_id: 1 }); // Account 1 is in book 1
 
       validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(Array.isArray(response.body.transactions)).toBe(true);
 
       // All transactions should belong to the specified account
-      response.body.forEach(transaction => {
+      response.body.transactions.forEach(transaction => {
         expect(transaction.account_id).toBe(1);
       });
     });
@@ -816,10 +816,10 @@ describe('Book Management API', () => {
         });
 
       validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(Array.isArray(response.body.transactions)).toBe(true);
 
       // All returned transactions should be within the date range
-      response.body.forEach(transaction => {
+      response.body.transactions.forEach(transaction => {
         const transactionDate = new Date(transaction.date);
         expect(transactionDate >= new Date('2024-12-01')).toBe(true);
         expect(transactionDate <= new Date('2024-12-31')).toBe(true);
@@ -831,7 +831,7 @@ describe('Book Management API', () => {
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
 
       validateApiResponse(response, 200);
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(Array.isArray(response.body.transactions)).toBe(true);
 
       // Check that transactions are returned in date order (ASC)
       if (response.body.length > 1) {
