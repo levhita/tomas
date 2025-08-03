@@ -343,6 +343,33 @@ function generateRandomData() {
   };
 }
 
+// Add custom Jest matchers
+beforeAll(() => {
+  // Custom matcher to check if a string is a valid JWT token
+  expect.extend({
+    toHaveValidJWT(received) {
+      if (typeof received !== 'string') {
+        return {
+          message: () => `Expected ${received} to be a string (JWT token)`,
+          pass: false
+        };
+      }
+
+      // JWT tokens have 3 parts separated by dots
+      const parts = received.split('.');
+      const pass = parts.length === 3;
+
+      return {
+        message: () => 
+          pass
+            ? `Expected ${received} not to be a valid JWT token`
+            : `Expected ${received} to be a valid JWT token (should have 3 parts separated by dots)`,
+        pass
+      };
+    }
+  });
+});
+
 module.exports = {
   TEST_USERS,
   TEST_BOOKS,
