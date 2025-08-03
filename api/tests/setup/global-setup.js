@@ -83,10 +83,6 @@ module.exports = async () => {
           console.warn(`Statement: ${statement.substring(0, 100)}...`);
         }
         // Special error logging for book table
-        if (statement.toLowerCase().includes('book')) {
-          console.error(`❌ Error creating book table: ${error.message}`);
-          console.error(`Book table statement: ${statement}`);
-        }
       }
     }
 
