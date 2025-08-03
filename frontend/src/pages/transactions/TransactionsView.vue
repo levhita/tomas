@@ -109,13 +109,13 @@
                     </template>
                     <template v-else-if="col.key === 'amount'">
                       <span :class="colorByType(formatTransactionType(transaction), 'text')">
-                        {{ formatCurrency(transaction.amount, workspaceCurrencySymbol) }}
+                        {{ formatCurrency(transaction.amount, bookCurrencySymbol) }}
                       </span>
                     </template>
-                    <template v-else-if="col.key === 'account'">
+                    <template v-else-if="col.key === 'account_name'">
                       {{ formatAccounts(transaction.account_id) }}
                     </template>
-                    <template v-else-if="col.key === 'category'">
+                    <template v-else-if="col.key === 'category_name'">
                       <span class="badge bg-info text-white">{{ transaction.category_name }}</span>
                     </template>
                     <template v-else-if="col.key === 'type'">
@@ -206,7 +206,7 @@ const page = ref(1);
 const limit = ref(10); // Default page size
 const sortKey = ref('date');
 const sortDirection = ref('desc'); // 'asc' or 'desc'
-const workspaceCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
+const bookCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
 
 const searchQuery = ref('');
 const selectedAccountId = ref(null);
@@ -215,8 +215,8 @@ const defaultColumns = [
   { key: 'select', label: '', thClass: '', tdClass: '' },
   { key: 'description', label: 'Description', thClass: 'text-light-emphasis text-start sortable', tdClass: 'text-light-emphasis text-start' },
   { key: 'amount', label: 'Amount', thClass: 'text-light-emphasis text-end sortable', tdClass: 'text-end fw-semibold' },
-  { key: 'account', label: 'Account', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
-  { key: 'category', label: 'Category', thClass: 'text-light-emphasis text-start sortable', tdClass: 'text-start' },
+  { key: 'account_name', label: 'Account', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
+  { key: 'category_name', label: 'Category', thClass: 'text-light-emphasis text-start sortable', tdClass: 'text-start' },
   { key: 'type', label: 'Type', thClass: 'text-light-emphasis text-start sortable', tdClass: 'text-start' },
   { key: 'date', label: 'Date', thClass: 'text-light-emphasis text-end sortable', tdClass: 'text-light-emphasis text-end' },
   { key: 'note', label: 'Note', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
@@ -304,8 +304,8 @@ function onMove(evt) {
   return true;
 }
 
-function formatAccounts(accountID) {
-  const result = booksStore.getAccountById(accountID);
+function formatAccounts(accountId) {
+  const result = booksStore.getAccountById(accountId);
   return result.name || '-';
 }
 

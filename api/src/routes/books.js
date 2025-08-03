@@ -412,9 +412,9 @@ router.get('/:id/transactions', async (req, res) => {
     let query = `
       SELECT 
         t.*,
-        c.name as category_name,
-        a.name as account_name,
-        a.type as account_type
+        c.name AS category_name,
+        a.name AS account_name,
+        a.type AS account_type
       FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
@@ -484,14 +484,26 @@ router.get('/:id/transactions', async (req, res) => {
     const [transactions] = await db.query(query, params);
 
     // Get total count for pagination
-    // OPTIMIZATION: For count query, simplify by removing unnecessary joins
-    // We only need to count transactions for a specific book's accounts
-    const countQuery = `
-      SELECT COUNT(*) as count 
-      FROM transaction AS t
-      JOIN account a ON t.account_id = a.id  
-      WHERE a.book_id = ?
-    `;
+    // When searching, we need the full joins for accurate counts
+    let countQuery;
+    if (search) {
+      // If searching, we need to join with category table to search category names
+      countQuery = `
+        SELECT COUNT(*) as count 
+        FROM transaction AS t
+        LEFT JOIN category c ON t.category_id = c.id 
+        LEFT JOIN account a ON t.account_id = a.id
+        WHERE a.book_id = ?
+      `;
+    } else {
+      // For simpler queries without search, we can optimize by removing the category join
+      countQuery = `
+        SELECT COUNT(*) as count 
+        FROM transaction AS t
+        JOIN account a ON t.account_id = a.id  
+        WHERE a.book_id = ?
+      `;
+    }
 
     // Add filters to count query (all filters except pagination)
     let whereClause = '';

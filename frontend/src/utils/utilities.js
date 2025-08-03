@@ -24,20 +24,28 @@ export function formatCurrency(amount, currencySymbol = '$', locale = undefined)
   }).format(amount).replace('$', currencySymbol);
 }
 
-export function formatTransactionType({account_id, amount}) {
-  // type accountid 1 = debit_card
-  // type accountid 2 = credit_card
-
- 
-  switch(account_id) {
-    case 1: // debit_card
-      return amount > 0 ? 'Income' : 'Expense';
-      break;
-    case 2: // credit_card
-      return amount < 0 ? 'Payment' : 'Charge';
-    default:
-      return transaction.description || 'Unknown'; 
-    } 
+/**
+ * Determine the transaction type based on account type and amount
+ * 
+ * For debit accounts:
+ * - Positive amount = Income
+ * - Negative amount = Expense
+ * 
+ * For credit accounts:
+ * - Positive amount = Charge (increases debt)
+ * - Negative amount = Payment (reduces debt)
+ * 
+ * @param {Object} transaction - Transaction object with account_type and amount
+ * @returns {string} The transaction type: Income, Expense, Payment, or Charge
+ */
+export function formatTransactionType(transaction) {
+  const { amount, account_type } = transaction;
+  
+  if (account_type === 'debit') {
+    return amount > 0 ? 'Income' : 'Expense';
+  } else if (account_type === 'credit') {
+    return amount < 0 ? 'Payment' : 'Charge';
+  }
 }
 
 function colorByTypeBackground(type) {
