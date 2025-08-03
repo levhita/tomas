@@ -33,7 +33,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
       const url = `/api/books/${bookId}/transactions${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetchWithAuth(url);
       const data = await response.json();
-      transactions.value = data;
+      transactions.value = data.transactions;
     } catch (error) {
       console.error('Error fetching transactions:', error);
       throw error;
@@ -67,10 +67,13 @@ export const useTransactionsStore = defineStore('transactions', () => {
 async function fetchTransactionsByBook(bookId, { page = 1, limit = 20, sortKey = 'date', sortDirection = 'desc', accountId = null, search = '' } = {}) {
   try {
     const params = new URLSearchParams({ page, limit, sortKey, sortDirection });
-    if (accountId) params.append('accountId', accountId);
+    if (accountId) params.append('account_id', accountId); // Changed from accountId to account_id to match API
     if (search) params.append('search', search);
     if (!bookId) throw new Error('bookId is required');
-    const url = `/api/transactions/${bookId}/all?${params.toString()}`;
+    
+    // Updated endpoint URL to use the unified /books/:id/transactions endpoint
+    const url = `/api/books/${bookId}/transactions?${params.toString()}`;
+    
     const response = await fetchWithAuth(url);
     if (!response.ok) {
       const json = await response.json();

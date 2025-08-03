@@ -96,7 +96,7 @@ describe('Transactions Management API', () => {
       // Find a transaction for account in book 1
       const auth = authenticatedRequest(adminToken);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
-      const transaction = transactionsResponse.body[0];
+      const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete book 1
@@ -119,7 +119,7 @@ describe('Transactions Management API', () => {
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(adminToken);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
-      const transaction = transactionsResponse.body[0];
+      const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete team 1 (which owns book 1)
@@ -565,7 +565,7 @@ describe('Transactions Management API', () => {
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(adminToken);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
-      const transaction = transactionsResponse.body[0];
+      const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete book 1
@@ -604,7 +604,7 @@ describe('Transactions Management API', () => {
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(adminToken);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
-      const transaction = transactionsResponse.body[0];
+      const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete team 1 (which owns book 1)

@@ -228,7 +228,7 @@ router.get('/:id/categories', async (req, res) => {
  * /books/{id}/transactions:
  *   get:
  *     summary: Get all transactions for accounts in a specific book
- *     description: Retrieve all transactions for accounts within a book with optional filtering by account, date range.
+ *     description: Retrieve all transactions for accounts within a book with optional filtering, pagination, and sorting.
  *     tags: [Transactions]
  *     security:
  *       - bearerAuth: []
@@ -258,15 +258,52 @@ router.get('/:id/categories', async (req, res) => {
  *           format: date
  *         description: Optional end date filter (YYYY-MM-DD format)
  *         example: '2024-12-31'
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of items per page
+ *       - in: query
+ *         name: sortKey
+ *         schema:
+ *           type: string
+ *           default: 'date'
+ *           enum: [date, amount, description, category_name, account_name, note, id]
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortDirection
+ *         schema:
+ *           type: string
+ *           default: 'desc'
+ *           enum: [asc, desc]
+ *         description: Sort direction
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term to filter transactions by description, note, category or account
  *     responses:
  *       200:
- *         description: List of transactions for the book ordered by date
+ *         description: List of transactions for the book
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Transaction'
+ *               type: object
+ *               properties:
+ *                 transactions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Transaction'
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of transactions matching the filters
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       403:
@@ -283,7 +320,28 @@ router.get('/:id/categories', async (req, res) => {
 router.get('/:id/transactions', async (req, res) => {
   try {
     const bookId = req.params.id;
-    const { account_id, start_date, end_date } = req.query;
+    const { 
+      account_id, 
+      start_date, 
+      end_date, 
+      search,
+      page = 1, 
+      limit = 20, 
+      sortKey = 'date', 
+      sortDirection = 'desc' 
+    } = req.query;
+    
+    // Convert pagination parameters to integers
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Validate sorting parameters
+    const allowedSortKeys = ['date', 'amount', 'description', 'category_name', 'account_name', 'note', 'id'];
+    const allowedDirections = ['asc', 'desc'];
+    
+    const effectiveSortKey = allowedSortKeys.includes(sortKey) ? sortKey : 'date';
+    const effectiveDirection = allowedDirections.includes(sortDirection) ? sortDirection : 'desc';
 
     // First check if the book exists
     const book = await getBookById(bookId);
@@ -298,6 +356,11 @@ router.get('/:id/transactions', async (req, res) => {
     if (!allowed) {
       return res.status(403).json({ error: message });
     }
+
+    // Compose ORDER BY clause
+    let orderBy = 't.' + effectiveSortKey;
+    if (effectiveSortKey === 'category_name') orderBy = 'c.name';
+    if (effectiveSortKey === 'account_name') orderBy = 'a.name';
 
     // Build query with optional filters
     let query = `
@@ -328,18 +391,67 @@ router.get('/:id/transactions', async (req, res) => {
       params.push(account_id);
     }
 
+    // Add date range filter if specified
     if (start_date && end_date) {
       query += ` AND t.date BETWEEN ? AND ?`;
       params.push(start_date, end_date);
     }
 
-    query += ` ORDER BY t.date ASC`;
+    // Add search filter if specified
+    if (search) {
+      query += ` AND (
+        t.description LIKE ? OR
+        t.note LIKE ? OR
+        c.name LIKE ? OR
+        a.name LIKE ?
+      )`;
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
 
+    // Add sorting and pagination
+    query += ` ORDER BY ${orderBy} ${effectiveDirection.toUpperCase()} LIMIT ? OFFSET ?`;
+    
+    // Clone params to be able to run a separate count query
+    const countParams = [...params];
+    params.push(limitNum, offset);
+
+    // Execute the main query to get paginated results
     const [transactions] = await db.query(query, params);
+
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as count 
+      FROM transaction AS t
+      LEFT JOIN category c ON t.category_id = c.id 
+      LEFT JOIN account a ON t.account_id = a.id
+      WHERE a.book_id = ?
+    `;
+    
+    // Add filters to count query (all filters except pagination)
+    let whereClause = '';
+    if (account_id) whereClause += ` AND t.account_id = ?`;
+    if (start_date && end_date) whereClause += ` AND t.date BETWEEN ? AND ?`;
+    if (search) {
+      whereClause += ` AND (
+        t.description LIKE ? OR
+        t.note LIKE ? OR
+        c.name LIKE ? OR
+        a.name LIKE ?
+      )`;
+    }
+    
+    const [countResult] = await db.query(countQuery + whereClause, countParams);
+    const total = countResult[0]?.count || 0;
 
     // Convert exercised from 0/1 to boolean
     transactions.forEach((t) => (t.exercised = !!t.exercised));
-    res.status(200).json(transactions);
+    
+    // Return results with pagination info
+    res.status(200).json({ 
+      transactions, 
+      total
+    });
   } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch transactions' });
