@@ -22,7 +22,6 @@ export const useUsersStore = defineStore('users', () => {
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value);
   const isSuperAdmin = computed(() => {
     const isSuperAdminValue = currentUser.value?.superadmin || false;
-    console.log('isSuperAdmin getter called, user:', currentUser.value, 'superadmin:', isSuperAdminValue);
     return isSuperAdminValue;
   });
   const hasSelectedTeam = computed(() => {

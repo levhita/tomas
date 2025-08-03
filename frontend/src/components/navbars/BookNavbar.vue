@@ -127,20 +127,17 @@ const { showToast } = useToast()
 // Computed property to get the user's role in the current book
 const userRole = computed(() => {
   if (!props.book) {
-    console.log('No book available');
     return null;
   }
 
   const currentUser = usersStore.currentUser;
   if (!currentUser) {
-    console.log('No current user');
     return null;
   }
 
   // Check if currentTeamUsers is available
   const users = teamsStore.currentTeamUsers;
   if (!users || !Array.isArray(users) || users.length === 0) {
-    console.log('currentTeamUsers not available or empty:', users);
     return null;
   }
 
@@ -210,7 +207,6 @@ function initializeDarkMode() {
 // Load team users for the current book
 async function loadTeamUsers() {
   if (!props.book) {
-    console.log('No book to load users for');
     return;
   }
 
