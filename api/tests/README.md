@@ -156,8 +156,8 @@ const TEST_USERS = {
     id: 1,
     superadmin: true
   },
-  TESTUSER1: {
-    username: 'testuser1', 
+  ADMIN: {
+    username: 'admin', 
     password: 'password123',
     id: 2,
     superadmin: false

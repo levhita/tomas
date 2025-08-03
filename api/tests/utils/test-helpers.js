@@ -48,19 +48,6 @@ const TEST_USERS = {
     id: 5,
     superadmin: false
   },
-  // Backward compatibility aliases
-  TESTUSER1: {
-    username: 'admin',
-    password: 'password123',
-    id: 2,
-    superadmin: false
-  },
-  TESTUSER2: {
-    username: 'collaborator',
-    password: 'password123',
-    id: 3,
-    superadmin: false
-  },
   REGULARUSER: {
     username: 'viewer',
     password: 'password123',
