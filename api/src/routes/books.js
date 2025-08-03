@@ -320,26 +320,48 @@ router.get('/:id/categories', async (req, res) => {
 router.get('/:id/transactions', async (req, res) => {
   try {
     const bookId = req.params.id;
-    const { 
-      account_id, 
-      start_date, 
-      end_date, 
+    let {
+      account_id,
+      start_date,
+      end_date,
       search,
-      page = 1, 
-      limit = 20, 
-      sortKey = 'date', 
-      sortDirection = 'desc' 
+      page = 1,
+      limit = 20,
+      sortKey = 'date',
+      sortDirection = 'desc'
     } = req.query;
-    
+
     // Convert pagination parameters to integers
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
 
-    // Validate sorting parameters
-    const allowedSortKeys = ['date', 'amount', 'description', 'category_name', 'account_name', 'note', 'id'];
+    // allowedSortKeys type references the transaction type: Expense, Income, Payment, Charge
+    // and the account_name references debit account or credit account
+    // so we can sort by date, amount, description, account_name, category_name,
+    // type (Expense, Income, Payment, Charge), note, id
+    // but we need to ensure the sortKey is valid and the sortDirection is either asc or desc
+    sortKey = sortKey.toLowerCase();
+    sortDirection = sortDirection.toLowerCase();
+    if (isNaN(page) || page < 1) page = 1;
+    if (isNaN(limit) || limit < 1) limit = 20;
+    if (limit > 1000) limit = 1000; // Limit to a maximum of 1000 items per page
+    if (offset < 0) offset = 0;
+    // Validate sortKey and sortDirection
+    // We only allow certain keys to prevent SQL injection attacks
+    // and we only allow asc or desc for sortDirection
+    // We also need to ensure the sortKey is a valid column in the transaction table
+    const allowedSortKeys = [
+      'date',
+      'amount',
+      'description',
+      'account_name',
+      'category_name',
+      'type',
+      'note',
+      'id'
+    ];
     const allowedDirections = ['asc', 'desc'];
-    
     const effectiveSortKey = allowedSortKeys.includes(sortKey) ? sortKey : 'date';
     const effectiveDirection = allowedDirections.includes(sortDirection) ? sortDirection : 'desc';
 
@@ -358,16 +380,41 @@ router.get('/:id/transactions', async (req, res) => {
     }
 
     // Compose ORDER BY clause
-    let orderBy = 't.' + effectiveSortKey;
-    if (effectiveSortKey === 'category_name') orderBy = 'c.name';
-    if (effectiveSortKey === 'account_name') orderBy = 'a.name';
+    let orderBy;
+    switch (sortKey) {
+      case 'category_name':
+        orderBy = 'c.name';
+        break;
+      case 'account_name':
+        orderBy = 'a.name';
+        break;
+      case 'type':
+        orderBy = `CASE 
+            WHEN a.type = 'debit' AND t.amount > 0 THEN 'Income'
+            WHEN a.type = 'debit' AND t.amount <= 0 THEN 'Expense'
+            WHEN a.type = 'credit' AND t.amount < 0 THEN 'Payment'
+            WHEN a.type = 'credit' AND t.amount >= 0 THEN 'Charge'
+            ELSE 'Unknown'
+          END`;
+        break;
+      case 'date':
+      case 'amount':
+      case 'description':
+      case 'note':
+      case 'id':
+        orderBy = 't.' + sortKey;
+        break;
+      default:
+        orderBy = 't.date'; // fallback to date if somehow an invalid key gets through
+    }
 
     // Build query with optional filters
     let query = `
       SELECT 
         t.*,
         c.name as category_name,
-        a.name as account_name
+        a.name as account_name,
+        a.type as account_type
       FROM transaction AS t
       LEFT JOIN category c ON t.category_id = c.id 
       LEFT JOIN account a ON t.account_id = a.id
@@ -403,15 +450,32 @@ router.get('/:id/transactions', async (req, res) => {
         t.description LIKE ? OR
         t.note LIKE ? OR
         c.name LIKE ? OR
-        a.name LIKE ?
+        a.name LIKE ? OR
+        CAST(t.amount AS CHAR) LIKE ? OR
+        DATE_FORMAT(t.date, '%Y-%m-%d') LIKE ? OR
+        CASE 
+          WHEN a.type = 'debit' AND t.amount > 0 THEN 'Income'
+          WHEN a.type = 'debit' AND t.amount <= 0 THEN 'Expense'
+          WHEN a.type = 'credit' AND t.amount < 0 THEN 'Payment'
+          WHEN a.type = 'credit' AND t.amount >= 0 THEN 'Charge'
+          ELSE 'Unknown'
+        END LIKE ?
       )`;
       const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm
+      );
     }
 
     // Add sorting and pagination
     query += ` ORDER BY ${orderBy} ${effectiveDirection.toUpperCase()} LIMIT ? OFFSET ?`;
-    
+
     // Clone params to be able to run a separate count query
     const countParams = [...params];
     params.push(limitNum, offset);
@@ -420,14 +484,15 @@ router.get('/:id/transactions', async (req, res) => {
     const [transactions] = await db.query(query, params);
 
     // Get total count for pagination
+    // OPTIMIZATION: For count query, simplify by removing unnecessary joins
+    // We only need to count transactions for a specific book's accounts
     const countQuery = `
       SELECT COUNT(*) as count 
       FROM transaction AS t
-      LEFT JOIN category c ON t.category_id = c.id 
-      LEFT JOIN account a ON t.account_id = a.id
+      JOIN account a ON t.account_id = a.id  
       WHERE a.book_id = ?
     `;
-    
+
     // Add filters to count query (all filters except pagination)
     let whereClause = '';
     if (account_id) whereClause += ` AND t.account_id = ?`;
@@ -440,16 +505,16 @@ router.get('/:id/transactions', async (req, res) => {
         a.name LIKE ?
       )`;
     }
-    
+
     const [countResult] = await db.query(countQuery + whereClause, countParams);
     const total = countResult[0]?.count || 0;
 
     // Convert exercised from 0/1 to boolean
     transactions.forEach((t) => (t.exercised = !!t.exercised));
-    
+
     // Return results with pagination info
-    res.status(200).json({ 
-      transactions, 
+    res.status(200).json({
+      transactions,
       total
     });
   } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
