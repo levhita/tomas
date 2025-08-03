@@ -1,0 +1,11 @@
+meta {
+  name: all transactions on workspace
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{server_url}}/transactions/1/all
+  body: none
+  auth: inherit
+}

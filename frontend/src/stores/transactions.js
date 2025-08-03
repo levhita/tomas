@@ -64,6 +64,27 @@ export const useTransactionsStore = defineStore('transactions', () => {
     }
   }
 
+async function fetchTransactionsByBook(bookId, { page = 1, limit = 20, sortKey = 'date', sortDirection = 'desc', accountId = null, search = '' } = {}) {
+  try {
+    const params = new URLSearchParams({ page, limit, sortKey, sortDirection });
+    if (accountId) params.append('accountId', accountId);
+    if (search) params.append('search', search);
+    if (!bookId) throw new Error('bookId is required');
+    const url = `/api/transactions/${bookId}/all?${params.toString()}`;
+    const response = await fetchWithAuth(url);
+    if (!response.ok) {
+      const json = await response.json();
+      throw new Error(json.error);
+    }
+    const data = await response.json();
+    transactions.value = data.transactions;
+    return { transactions: data.transactions, total: data.total };
+  } catch (error) {
+    console.error('Error fetching transactions by book:', error);
+    throw error;
+  }
+}
+
   async function addTransaction(transaction) {
     try {
       const response = await fetchWithAuth('/api/transactions', {
@@ -127,6 +148,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     // Actions
     fetchTransactions,
     fetchTransactionById,
+    fetchTransactionsByBook,
     addTransaction,
     updateTransaction,
     deleteTransaction,
