@@ -17,6 +17,11 @@ const { resetDatabase } = require('../utils/test-helpers');
 
 describe('Book Utilities', () => {
 
+  beforeAll(async () => {
+    // Reset the database to a known state before running tests
+    await resetDatabase();
+  });
+  
   describe('canAdmin', () => {
     it('should allow admin users', async () => {
       // Using test data: user 2 (admin) has admin role in team 1 (book 1)
