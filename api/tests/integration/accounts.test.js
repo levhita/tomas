@@ -40,12 +40,6 @@ describe('Accounts Management API', () => {
     await refreshTokens();
   });
 
-  // Reset database only before tests that modify data or create conflicts
-  const resetBeforeTest = async () => {
-    await resetDatabase();
-  };
-
-
   describe('GET /api/accounts/:id', () => {
 
     it('should return account details for valid account', async () => {
@@ -147,7 +141,7 @@ describe('Accounts Management API', () => {
 
   describe('GET /api/accounts/:id/balance', () => {
     it('should return account balance for valid account', async () => {
-      await resetBeforeTest();
+      await resetDatabase();
       const auth = authenticatedRequest(adminToken); // Use admin token for team 1 access
       const testAccountId = 1; // From test data
 
@@ -495,7 +489,7 @@ describe('Accounts Management API', () => {
 
   describe('DELETE /api/accounts/:id', () => {
     it('should delete account without transactions as admin', async () => { 
-      await resetBeforeTest();
+      await resetDatabase();
       const auth = authenticatedRequest(adminToken);
 
       // First create an account to delete

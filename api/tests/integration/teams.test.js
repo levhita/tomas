@@ -43,10 +43,6 @@ describe('Teams Management API', () => {
     collaboratorToken = tokens.collaborator;
     noaccessToken = tokens.noaccess;
   };
-  // Reset database only before tests that modify data or create conflicts
-  const resetBeforeTest = async () => {
-    await resetDatabase();
-  };
 
   describe('GET /api/teams', () => {
     it('should return user teams for authenticated user', async () => {
@@ -433,7 +429,7 @@ describe('Teams Management API', () => {
 
   describe('GET /api/teams/:id/users', () => {
     it('should return team users for admin', async () => {
-      await resetBeforeTest(); // Ensure team is not deleted
+      await resetDatabase(); // Ensure team is not deleted
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       const response = await auth.get('/api/teams/1/users');
@@ -451,7 +447,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return team users for collaborator', async () => {
-      await resetBeforeTest(); // Ensure team is not deleted
+      await resetDatabase(); // Ensure team is not deleted
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
 
       const response = await auth.get('/api/teams/1/users');
@@ -622,7 +618,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent non-superadmin from changing last admin to non-admin role', async () => {
-      await resetBeforeTest(); // Ensure team is not deleted
+      await resetDatabase(); // Ensure team is not deleted
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
 
       // Try to change self (last admin) to viewer
@@ -737,7 +733,7 @@ describe('Teams Management API', () => {
     });
 
     it('should remove user from team as superadmin', async () => {
-      await resetBeforeTest(); // Ensure team is not deleted
+      await resetDatabase(); // Ensure team is not deleted
       const superAuth = authenticatedRequest(superadminToken);
 
       // Remove user 4 (viewer) from team 1
@@ -907,7 +903,7 @@ describe('Teams Management API', () => {
       });
 
       it('should deny collaborator from soft-deleting team', async () => {
-        await resetBeforeTest(); // Reset for clean state
+        await resetDatabase(); // Reset for clean state
         const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
 
         const response = await auth.delete('/api/teams/1');
@@ -944,7 +940,7 @@ describe('Teams Management API', () => {
 
     describe('POST /api/teams/:id/restore - Restore Soft-deleted Team', () => {
       beforeAll(async () => {
-        await resetBeforeTest();
+        await resetDatabase();
         // Soft-delete team 1 for testing restore
         const auth = authenticatedRequest(superadminToken);
         await auth.delete('/api/teams/1');
@@ -1008,7 +1004,7 @@ describe('Teams Management API', () => {
       });
 
       it('should permanently delete soft-deleted team', async () => {
-        await resetBeforeTest(); // Reset to get non-deleted state
+        await resetDatabase(); // Reset to get non-deleted state
         const auth = authenticatedRequest(superadminToken);
 
         // First soft-delete the team
@@ -1041,7 +1037,7 @@ describe('Teams Management API', () => {
 
     describe('Search with deleted teams', () => {
       beforeAll(async () => {
-        await resetBeforeTest();
+        await resetDatabase();
         // Soft-delete team 1 for testing
         const auth = authenticatedRequest(superadminToken);
         await auth.delete('/api/teams/1');
@@ -1084,7 +1080,7 @@ describe('Teams Management API', () => {
 
   describe('GET /api/teams/:id/books', () => {
     beforeAll(async () => {
-      await resetBeforeTest(); // Reset to ensure clean state
+      await resetDatabase(); // Reset to ensure clean state
     });
 
     it('should return books for team with write access', async () => {
