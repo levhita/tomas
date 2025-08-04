@@ -565,7 +565,6 @@ describe('Transactions Management API', () => {
       });
       expect(updateResponse.status).toBe(404);
       expect(updateResponse.body).toHaveProperty('error');
-      // Accept either "Book not found" or "Team not found" depending on implementation
       expect(updateResponse.body.error).toBe('Book not found');
 
       // Try to delete the transaction
