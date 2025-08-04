@@ -8,38 +8,27 @@ const request = require('supertest');
 const {
   TEST_USERS,
   TEST_BOOKS,
-  loginUser,
-  initializeTokenCache,
+  getOrInitializeTokens,
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
   validateBookObject,
   generateRandomData,
-  createTestUser,
   app
 } = require('../utils/test-helpers');
 
 describe('Book Management API', () => {
-  let superadminToken;
-  let adminToken; // User with admin role in team 1
-  let viewerToken; // User with viewer role in team 1
-  let collaboratorToken; // User with collaborator role in team 1
-  let noaccessToken; // User with no team access for permission-denied scenarios
+  let tokens;
 
   beforeAll(async () => {
     await resetDatabase(); // Ensure fresh database state before tests
     // Use token cache initialization for better performance
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin; // User 2: admin in team 1, viewer in team 2
-    viewerToken = tokens.viewer; // User 4: viewer in team 1, collaborator in team 2
-    collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
-    noaccessToken = tokens.noaccess; // User 5: no team access
+    tokens = await getOrInitializeTokens();
   });
 
   describe('GET /api/books/:id', () => {
     it('should return book for user with access', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, admin in team 2
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
       validateApiResponse(response, 200);
@@ -49,7 +38,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access to book user has no access to', async () => {
-      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const auth = authenticatedRequest(tokens.noaccess); // User with no team access
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
       validateApiResponse(response, 403);
@@ -57,7 +46,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin); // User 1: superadmin in team 1
       const response = await auth.get('/api/books/99999');
 
       validateApiResponse(response, 404);
@@ -66,7 +55,7 @@ describe('Book Management API', () => {
 
   describe('GET /api/books/:id/accounts', () => {
     it('should return accounts for book with read access', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/accounts`);
 
       validateApiResponse(response, 200);
@@ -84,7 +73,7 @@ describe('Book Management API', () => {
 
     it('should deny access to book accounts without permission', async () => {
       await resetDatabase();
-      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const auth = authenticatedRequest(tokens.noaccess); // User with no team access
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/accounts`);
 
       validateApiResponse(response, 403);
@@ -92,7 +81,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book accounts', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/books/99999/accounts');
 
       validateApiResponse(response, 404);
@@ -101,7 +90,7 @@ describe('Book Management API', () => {
 
   describe('POST /api/books', () => {
     it('should create new book', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const bookData = generateRandomData();
 
       const response = await auth.post('/api/books').send({
@@ -121,7 +110,7 @@ describe('Book Management API', () => {
     });
 
     it('should create book with minimal data', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const bookData = generateRandomData();
 
       const response = await auth.post('/api/books').send({
@@ -137,7 +126,7 @@ describe('Book Management API', () => {
     });
 
     it('should reject missing required fields', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       const response = await auth.post('/api/books').send({
         note: 'Missing name'
@@ -148,7 +137,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for user without team permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const bookData = generateRandomData();
 
       const response = await auth.post('/api/books').send({
@@ -161,7 +150,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny superadmin access without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const bookData = generateRandomData();
 
       const response = await auth.post('/api/books').send({
@@ -184,7 +173,7 @@ describe('Book Management API', () => {
 
   describe('PUT /api/books/:id', () => {
     it('should update book as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1 (book 1)
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1 (book 1)
       const newName = `Updated ${Date.now()}`;
 
       const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`).send({
@@ -203,7 +192,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for non-admin user', async () => {
-      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1, no write access
+      const auth = authenticatedRequest(tokens.viewer); // User 4: viewer in team 1, no write access
 
       // User 4 is viewer in book 1 (team 1), should not be able to update
       const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`).send({
@@ -214,7 +203,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for user without team permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
 
       const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`).send({
         name: 'No Access Update'
@@ -225,7 +214,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny superadmin access without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.put(`/api/books/${TEST_BOOKS.BOOK1.id}`).send({
         name: 'Superadmin No Access Update'
@@ -236,7 +225,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.put('/api/books/99999').send({
         name: 'Updated'
@@ -248,7 +237,7 @@ describe('Book Management API', () => {
 
   describe('DELETE /api/books/:id', () => {
     it('should soft delete book as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1 (book 1)
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1 (book 1)
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -263,7 +252,7 @@ describe('Book Management API', () => {
 
     it('should deny collaborator from soft deleting book', async () => {
       await resetDatabase(); // Ensure fresh data for team/book relationship tests
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1 (book 1)
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1 (book 1)
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -271,7 +260,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for viewer (read-only user)', async () => {
-      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1 (read-only)
+      const auth = authenticatedRequest(tokens.viewer); // User 4: viewer in team 1 (read-only)
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -279,7 +268,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for user without team permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -288,7 +277,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny superadmin access without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
 
@@ -297,7 +286,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.delete('/api/books/99999');
 
@@ -309,12 +298,12 @@ describe('Book Management API', () => {
     beforeAll(async () => {
       await resetDatabase();
       // Soft delete a book first using admin (who can soft delete)
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
     });
 
     it('should restore soft-deleted book as team admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
@@ -328,7 +317,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for non-admin team member', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, not admin
 
       const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
@@ -337,7 +326,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for user without team permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
 
       const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
@@ -346,7 +335,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for superadmin without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
@@ -355,7 +344,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(adminToken); // Use admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // Use admin in team 1
 
       const response = await auth.post('/api/books/99999/restore');
 
@@ -364,7 +353,7 @@ describe('Book Management API', () => {
 
     it('should return 400 for already active book', async () => {
       // First restore the book
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       await auth.post(`/api/books/${TEST_BOOKS.BOOK1.id}/restore`);
 
       // Try to restore again
@@ -380,7 +369,7 @@ describe('Book Management API', () => {
     beforeAll(async () => {
       await resetDatabase();
       // Create a fresh book with no dependent data for deletion testing
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const createResponse = await auth.post('/api/books').send({
         name: 'Deletable Book',
         team_id: 1, // Team 1 where user 2 is admin
@@ -394,7 +383,7 @@ describe('Book Management API', () => {
     });
 
     it('should cascade delete book with existing data', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // Soft delete book 1 first (it has accounts)
       await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
@@ -407,7 +396,7 @@ describe('Book Management API', () => {
     });
 
     it('should permanently delete empty book as team admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
       validateApiResponse(response, 204);
 
@@ -418,31 +407,31 @@ describe('Book Management API', () => {
     });
 
     it('should deny access for non-admin team member', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, not admin
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}/permanent`);
       validateApiResponse(response, 403);
     });
 
     it('should deny access for user without team permission', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
       validateApiResponse(response, 404);
     });
 
     it('should deny access for superadmin without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.delete(`/api/books/${deletableBookId}/permanent`);
       validateApiResponse(response, 404);
     });
 
     it('should return 404 for non-existent book', async () => {
-      const auth = authenticatedRequest(adminToken); // Use team admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // Use team admin in team 1
       const response = await auth.delete('/api/books/99999/permanent');
       validateApiResponse(response, 404);
     });
 
     it('should return 400 for active book', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // Try to permanently delete an active book
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}/permanent`);
@@ -455,7 +444,7 @@ describe('Book Management API', () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle database errors in book creation', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Mock database error by providing invalid data that would cause a database constraint violation
       const teamData = {
@@ -471,7 +460,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle database errors in book update', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // First create a book to update
       const createResponse = await auth.post('/api/books').send({
@@ -496,7 +485,7 @@ describe('Book Management API', () => {
     it('should handle database errors in book deletion', async () => {
       // This test is tricky as we need to simulate a database error during deletion
       // We'll test by trying to delete a book that gets modified during the operation
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a book first
       const createResponse = await auth.post('/api/books').send({
@@ -514,7 +503,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle database errors in book restoration', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create and soft-delete a book first
       const createResponse = await auth.post('/api/books').send({
@@ -533,7 +522,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle update with no affected rows', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a book, then soft-delete it
       const createResponse = await auth.post('/api/books').send({
@@ -558,7 +547,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle soft deletion with no affected rows', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a book and soft-delete it
       const createResponse = await auth.post('/api/books').send({
@@ -578,7 +567,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle restoration with no affected rows', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a book
       const createResponse = await auth.post('/api/books').send({
@@ -599,7 +588,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle permanent deletion database errors', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Test permanent deletion of non-existent book
       const response = await auth.delete('/api/books/99999/permanent');
@@ -609,7 +598,7 @@ describe('Book Management API', () => {
     });
 
     it('should validate missing name in update request', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a book first
       const createResponse = await auth.post('/api/books').send({
@@ -633,7 +622,7 @@ describe('Book Management API', () => {
     it('should handle team not found during book operations', async () => {
       // This tests the edge case where a book exists but its team is deleted
       // This is harder to test in isolation, but we can test the team lookup path
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Test accessing a book that might have team relationship issues
       const response = await auth.get('/api/books/99999');
@@ -643,7 +632,7 @@ describe('Book Management API', () => {
     });
 
     it('should require teamId parameter in book creation', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Test creating a book without teamId
       const bookData = {
@@ -658,7 +647,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle team not found during book creation', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Test creating a book with non-existent teamId
       const bookData = {
@@ -675,7 +664,7 @@ describe('Book Management API', () => {
 
   describe('GET /api/books/:id/categories', () => {
     it('should return categories for book with read access', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
 
       validateApiResponse(response, 200);
@@ -692,7 +681,7 @@ describe('Book Management API', () => {
     });
 
     it('should return categories ordered alphabetically by name', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
 
       validateApiResponse(response, 200);
@@ -714,7 +703,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access to book categories without permission', async () => {
-      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const auth = authenticatedRequest(tokens.noaccess); // User with no team access
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
 
       validateApiResponse(response, 403);
@@ -722,7 +711,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny superadmin access without team permission', async () => {
-      const auth = authenticatedRequest(superadminToken); // Superadmin has no team membership
+      const auth = authenticatedRequest(tokens.superadmin); // Superadmin has no team membership
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/categories`);
 
       validateApiResponse(response, 403);
@@ -737,7 +726,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 for non-existent book categories', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/books/99999/categories');
 
       validateApiResponse(response, 404);
@@ -745,7 +734,7 @@ describe('Book Management API', () => {
     });
 
     it('should handle malformed book_id parameter', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/books/invalid/categories');
 
       // Should return 404 for invalid book ID format
@@ -755,7 +744,7 @@ describe('Book Management API', () => {
 
   describe('GET /api/books/:id/transactions', () => {
     it('should return all transactions for a book', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions`);
 
       validateApiResponse(response, 200);
@@ -765,7 +754,7 @@ describe('Book Management API', () => {
     });
 
     it('should filter transactions by account_id', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get(
         `/api/books/${TEST_BOOKS.BOOK1.id}/transactions?account_id=1`
       );
@@ -781,7 +770,7 @@ describe('Book Management API', () => {
 
     it('should filter transactions by date range', async () => {
       // Use test data fixtures or proper test setup methods instead of direct db queries
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // First create test transactions through the API
       const testTransactions = [
@@ -825,7 +814,7 @@ describe('Book Management API', () => {
 
     it('should search transactions by description', async () => {
       const searchTerm = 'unique search term';
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction through the API
       await auth.post(`/api/transactions`).send({
@@ -845,7 +834,7 @@ describe('Book Management API', () => {
     });
 
     it('should search transactions by category name', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const uniqueCategoryName = 'UniqueTestCategory';
 
       // First create a category through the API
@@ -877,7 +866,7 @@ describe('Book Management API', () => {
     });
 
     it('should paginate results correctly', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create test transactions through the API
       const createPromises = [];
@@ -919,7 +908,7 @@ describe('Book Management API', () => {
     });
 
     it('should sort results correctly', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Test sorting by amount descending
       const descendingResponse = await auth.get(
@@ -952,7 +941,7 @@ describe('Book Management API', () => {
     });
 
     it('should return correct transaction types based on account type', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // First, create test accounts through the API
       const debitAccountResponse = await auth.post(`/api/accounts`).send({
@@ -1021,7 +1010,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 when book does not exist', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/books/9999/transactions');
 
       validateApiResponse(response, 404);
@@ -1029,7 +1018,7 @@ describe('Book Management API', () => {
     });
 
     it('should return 404 when account does not exist in book', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get(
         `/api/books/${TEST_BOOKS.BOOK1.id}/transactions?account_id=9999`
       );
@@ -1040,8 +1029,8 @@ describe('Book Management API', () => {
 
     it('should enforce permission checks', async () => {
       // Create a restricted book through proper API calls
-      const adminAuth = authenticatedRequest(adminToken);
-      const viewerAuth = authenticatedRequest(viewerToken);
+      const adminAuth = authenticatedRequest(tokens.admin);
+      const viewerAuth = authenticatedRequest(tokens.viewer);
 
       // Create a new team where viewer doesn't have access
       const teamResponse = await adminAuth.post('/api/teams').send({
@@ -1066,7 +1055,7 @@ describe('Book Management API', () => {
     });
 
     it('should correctly sort by transaction types', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       
       // Create accounts for different transaction types
       const debitAccountResponse = await auth.post(`/api/accounts`).send({
@@ -1153,7 +1142,7 @@ describe('Book Management API', () => {
     });
     
     it('should correctly sort by category_name', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       
       // Create categories with names that will sort alphabetically
       const categories = [
@@ -1201,7 +1190,7 @@ describe('Book Management API', () => {
     });
     
     it('should correctly sort by account_name', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       
       // Create accounts with names that will sort alphabetically
       const accounts = [
@@ -1249,7 +1238,7 @@ describe('Book Management API', () => {
     });
     
     it('should handle invalid sort keys gracefully', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       
       // Test with invalid sort key - should default to 'date'
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions?sortKey=invalid_key`);
@@ -1299,7 +1288,7 @@ describe('Book Management API', () => {
     });
     
     it('should handle invalid sort direction gracefully', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       
       // Test with invalid sort direction - should default to 'desc'
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/transactions?sortDirection=invalid_direction`);

@@ -8,8 +8,7 @@
 const request = require('supertest');
 const {
   TEST_USERS,
-  loginUser,
-  initializeTokenCache,
+  getOrInitializeTokens,
   authenticatedRequest,
   validateApiResponse,
   generateRandomData,
@@ -18,26 +17,21 @@ const {
 } = require('../utils/test-helpers');
 
 describe('Transactions Management API', () => {
-  let superadminToken, adminToken, collaboratorToken, viewerToken, noaccessToken;
   // Make sure these IDs match what's in the test_seeds.sql file
   let testBookId = 1; // From test data
   let testAccountId = 1; // Test Checking Account
   let testCategoryId = 2; // Food & Dining category
 
+  let tokens;
   beforeAll(async () => {
     await resetDatabase();
-    // Use token cache initialization for better performance
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;
-    collaboratorToken = tokens.collaborator;
-    viewerToken = tokens.viewer;
-    noaccessToken = tokens.noaccess;
+    tokens = await getOrInitializeTokens();
   });
+
 
   describe('GET /api/transactions/:id', () => {
     it('should return transaction details for valid transaction', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/transactions/1');
 
       validateApiResponse(response, 200);
@@ -52,7 +46,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for non-existent transaction', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/transactions/99999');
 
       validateApiResponse(response, 404);
@@ -60,7 +54,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should allow access to transaction in book with permission', async () => {
-      const auth = authenticatedRequest(collaboratorToken);
+      const auth = authenticatedRequest(tokens.collaborator);
       const response = await auth.get('/api/transactions/1');
 
       validateApiResponse(response, 200);
@@ -68,7 +62,7 @@ describe('Transactions Management API', () => {
 
     it('should deny access to transaction without permission', async () => {
       // Use noaccess user who has no team membership
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const response = await auth.get('/api/transactions/1'); // Transaction 1 is in book 1
 
       validateApiResponse(response, 403);
@@ -77,7 +71,7 @@ describe('Transactions Management API', () => {
 
     it('should deny access to superadmin without team membership', async () => {
       // Use superadmin who is not a member of any team
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/transactions/1');
 
       validateApiResponse(response, 403);
@@ -91,16 +85,14 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for a transaction if the book was soft-deleted', async () => {
-      const tokens = await initializeTokenCache();
-      const adminToken = tokens.admin;
       // Find a transaction for account in book 1
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
       const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete book 1
-      const adminAuth = authenticatedRequest(adminToken);
+      const adminAuth = authenticatedRequest(tokens.admin);
       await adminAuth.delete('/api/books/1');
 
       // Try to fetch the transaction
@@ -111,19 +103,15 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for a transaction if the team was soft-deleted', async () => {
-      
-      const tokens = await initializeTokenCache();
-      const adminToken = tokens.admin;
-      const superadminToken = tokens.superadmin;
 
       // Find a transaction for account in book 1 (team 1)
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
       const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete team 1 (which owns book 1)
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
       await superAuth.delete('/api/teams/1');
 
       // Try to fetch the transaction
@@ -137,7 +125,7 @@ describe('Transactions Management API', () => {
   describe('POST /api/transactions', () => {
     it('should create new transaction as admin', async () => {
       await resetDatabase();
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Test Transaction',
         note: 'Created by test',
@@ -164,7 +152,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should create transaction without note and category', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Simple Transaction',
         amount: 100.0,
@@ -183,7 +171,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should reject missing description', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         amount: -25.0,
         date: '2024-12-17',
@@ -198,7 +186,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should reject missing amount', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Missing Amount Transaction',
         date: '2024-12-17',
@@ -213,7 +201,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should reject invalid date format', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Invalid Date Transaction',
         amount: -25.0,
@@ -228,7 +216,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should reject non-existent account', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Transaction for missing account',
         amount: -25.0,
@@ -243,7 +231,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should reject category from different book', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Cross-book category transaction',
         amount: -25.0,
@@ -259,7 +247,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should allow collaborator to create transaction', async () => {
-      const auth = authenticatedRequest(collaboratorToken);
+      const auth = authenticatedRequest(tokens.collaborator);
       const transactionData = {
         description: 'Collaborator Transaction',
         amount: -30.0,
@@ -275,7 +263,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny viewer access to create transaction', async () => {
-      const auth = authenticatedRequest(viewerToken);
+      const auth = authenticatedRequest(tokens.viewer);
       const transactionData = {
         description: 'Viewer Transaction',
         amount: -25.0,
@@ -291,7 +279,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny access without team membership', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const transactionData = {
         description: 'No Access Transaction',
         amount: -25.0,
@@ -307,7 +295,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny superadmin access without team membership', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const transactionData = {
         description: 'Superadmin Transaction',
         amount: -25.0,
@@ -336,7 +324,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny adding a transaction to a book that was soft-deleted', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Soft-delete book 1
       await auth.delete('/api/books/1');
@@ -358,10 +346,10 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny adding a transaction to a team that was soft-deleted', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Soft-delete team 1 (owner of book 1)
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
       await superAuth.delete('/api/teams/1');
 
       // Try to add a transaction to an account in book 1
@@ -381,7 +369,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for invalid category on post', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Invalid Category Transaction',
         amount: -20.0,
@@ -398,7 +386,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 400 if category_id is not a number', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Invalid category_id type',
         amount: -10.0,
@@ -420,7 +408,7 @@ describe('Transactions Management API', () => {
 
     beforeEach(async () => {
       // Create a transaction to update
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Transaction to Update',
         amount: -40.0,
@@ -435,7 +423,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should update transaction as admin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const updateData = {
         description: 'Updated Transaction',
         note: 'Updated by test',
@@ -459,7 +447,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for non-existent transaction', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const updateData = {
         description: 'Update Missing Transaction',
         amount: -60.0,
@@ -474,7 +462,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should allow collaborator to update transaction', async () => {
-      const auth = authenticatedRequest(collaboratorToken);
+      const auth = authenticatedRequest(tokens.collaborator);
       const updateData = {
         description: 'Updated by Collaborator',
         amount: -45.0,
@@ -491,7 +479,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny viewer access to update transaction', async () => {
-      const auth = authenticatedRequest(viewerToken);
+      const auth = authenticatedRequest(tokens.viewer);
       const updateData = {
         description: 'Viewer Update',
         amount: -40.0,
@@ -508,7 +496,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny access without team membership', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const updateData = {
         description: 'No Access Update',
         amount: -40.0,
@@ -525,7 +513,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny superadmin access without team membership', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const updateData = {
         description: 'Superadmin Update',
         amount: -40.0,
@@ -557,18 +545,15 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 when trying to modify a transaction on a book that was deleted or soft-deleted', async () => {
-      const tokens = await initializeTokenCache();
-      const adminToken = tokens.admin;
-      const superadminToken = tokens.superadmin;
 
       // Find a transaction for account in book 1 (team 1)
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
       const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete book 1
-      const adminAuth = authenticatedRequest(adminToken);
+      const adminAuth = authenticatedRequest(tokens.admin);
       await adminAuth.delete('/api/books/1');
 
       // Try to update the transaction
@@ -595,19 +580,15 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 when trying to modify a transaction on a team that was deleted or soft-deleted', async () => {
-      const { authenticatedRequest, initializeTokenCache } = require('../utils/test-helpers');
-      const tokens = await initializeTokenCache();
-      const adminToken = tokens.admin;
-      const superadminToken = tokens.superadmin;
 
       // Find a transaction for account in book 1 (team 1)
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
       const transaction = transactionsResponse.body.transactions[0];
       expect(transaction).toBeDefined();
 
       // Soft-delete team 1 (which owns book 1)
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
       await superAuth.delete('/api/teams/1');
 
       // Try to update the transaction
@@ -634,7 +615,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 400 if no updatable fields are provided for update', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction to update
       const createResponse = await auth.post('/api/transactions').send({
@@ -657,7 +638,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 400 for invalid date when updating a transaction', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction to update
       const createResponse = await auth.post('/api/transactions').send({
@@ -680,7 +661,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for updating to a non-existent account', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction to update
       const createResponse = await auth.post('/api/transactions').send({
@@ -702,7 +683,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for updating to a non-existent category', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction to update
       const createResponse = await auth.post('/api/transactions').send({
@@ -724,7 +705,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 400 if category does not belong to the same book as the account', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Create a transaction to update
       const createResponse = await auth.post('/api/transactions').send({
@@ -754,7 +735,7 @@ describe('Transactions Management API', () => {
 
     beforeEach(async () => {
       // Create a transaction to delete
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const transactionData = {
         description: 'Transaction to Delete',
         amount: -35.0,
@@ -769,7 +750,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should delete transaction as admin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.delete(`/api/transactions/${transactionIdToDelete}`);
 
       validateApiResponse(response, 204);
@@ -780,7 +761,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for non-existent transaction', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.delete('/api/transactions/99999');
 
       validateApiResponse(response, 404);
@@ -788,14 +769,14 @@ describe('Transactions Management API', () => {
     });
 
     it('should allow collaborator to delete transaction', async () => {
-      const auth = authenticatedRequest(collaboratorToken);
+      const auth = authenticatedRequest(tokens.collaborator);
       const response = await auth.delete(`/api/transactions/${transactionIdToDelete}`);
 
       validateApiResponse(response, 204);
     });
 
     it('should deny viewer access to delete transaction', async () => {
-      const auth = authenticatedRequest(viewerToken);
+      const auth = authenticatedRequest(tokens.viewer);
       const response = await auth.delete(`/api/transactions/${transactionIdToDelete}`);
 
       validateApiResponse(response, 403);
@@ -803,7 +784,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny access without team membership', async () => {
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const response = await auth.delete(`/api/transactions/${transactionIdToDelete}`);
 
       validateApiResponse(response, 403);
@@ -811,7 +792,7 @@ describe('Transactions Management API', () => {
     });
 
     it('should deny superadmin access without team membership', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.delete(`/api/transactions/${transactionIdToDelete}`);
 
       validateApiResponse(response, 403);
