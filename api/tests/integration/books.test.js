@@ -27,7 +27,7 @@ describe('Book Management API', () => {
   let noaccessToken; // User with no team access for permission-denied scenarios
 
   beforeAll(async () => {
-    resetDatabase(); // Ensure fresh database state before tests
+    await resetDatabase(); // Ensure fresh database state before tests
     // Use token cache initialization for better performance
     const tokens = await initializeTokenCache();
     superadminToken = tokens.superadmin;
@@ -36,11 +36,6 @@ describe('Book Management API', () => {
     collaboratorToken = tokens.collaborator; // User 3: collaborator in team 1, admin in team 2
     noaccessToken = tokens.noaccess; // User 5: no team access
   });
-
-  // Reset database only before tests that modify data or create conflicts
-  const resetBeforeTest = async () => {
-    await resetDatabase();
-  };
 
   describe('GET /api/books/:id', () => {
     it('should return book for user with access', async () => {
@@ -88,7 +83,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny access to book accounts without permission', async () => {
-      await resetBeforeTest();
+      await resetDatabase();
       const auth = authenticatedRequest(noaccessToken); // User with no team access
       const response = await auth.get(`/api/books/${TEST_BOOKS.BOOK1.id}/accounts`);
 
@@ -267,7 +262,7 @@ describe('Book Management API', () => {
     });
 
     it('should deny collaborator from soft deleting book', async () => {
-      await resetBeforeTest(); // Ensure fresh data for team/book relationship tests
+      await resetDatabase(); // Ensure fresh data for team/book relationship tests
       const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1 (book 1)
 
       const response = await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
@@ -312,7 +307,7 @@ describe('Book Management API', () => {
 
   describe('POST /api/books/:id/restore', () => {
     beforeAll(async () => {
-      await resetBeforeTest();
+      await resetDatabase();
       // Soft delete a book first using admin (who can soft delete)
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
       await auth.delete(`/api/books/${TEST_BOOKS.BOOK1.id}`);
@@ -383,7 +378,7 @@ describe('Book Management API', () => {
     let deletableBookId;
 
     beforeAll(async () => {
-      await resetBeforeTest();
+      await resetDatabase();
       // Create a fresh book with no dependent data for deletion testing
       const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
       const createResponse = await auth.post('/api/books').send({
@@ -419,7 +414,7 @@ describe('Book Management API', () => {
       // Verify book cannot be restored
       const restoreResponse = await auth.post(`/api/books/${deletableBookId}/restore`);
       validateApiResponse(restoreResponse, 404);
-      await resetBeforeTest(); // Reset after test
+      await resetDatabase(); // Reset after test
     });
 
     it('should deny access for non-admin team member', async () => {
@@ -454,7 +449,7 @@ describe('Book Management API', () => {
 
       validateApiResponse(response, 400);
       expect(response.body.error).toMatch(/soft-deleted/i);
-      await resetBeforeTest(); // Reset after test
+      await resetDatabase(); // Reset after test
     });
   });
 

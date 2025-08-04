@@ -1,8 +1,8 @@
 /**
  * Test Utilities
- * 
+ *
  * Common utilities and helpers for testing API endpoints.
- * 
+ *
  * Token Caching Optimization:
  * - The loginUser function now caches JWT tokens to avoid expensive bcrypt operations
  * - Use initializeTokenCache() at the beginning of test suites for best performance
@@ -13,6 +13,7 @@
 const request = require('supertest');
 const app = require('../../src/app');
 const db = require('../../src/db');
+const { executeScript } = require('./sql-utils');
 
 /**
  * Test user credentials
@@ -99,12 +100,10 @@ async function loginUser(user = TEST_USERS.SUPERADMIN) {
     return tokenCache.get(cacheKey);
   }
 
-  const response = await request(app)
-    .post('/api/users/login')
-    .send({
-      username: user.username,
-      password: user.password
-    });
+  const response = await request(app).post('/api/users/login').send({
+    username: user.username,
+    password: user.password
+  });
 
   if (response.status !== 200) {
     throw new Error(`Login failed for ${user.username}: ${response.text}`);
@@ -150,17 +149,19 @@ async function initializeTokenCache() {
  */
 async function getOrInitializeTokens() {
   // Check if we have tokens in cache
-  if (tokenCache.has('superadmin') &&
+  if (
+    tokenCache.has('superadmin') &&
     tokenCache.has('admin') &&
     tokenCache.has('collaborator') &&
     tokenCache.has('viewer') &&
-    tokenCache.has('noaccess')) {
+    tokenCache.has('noaccess')
+  ) {
     return {
       superadmin: tokenCache.get('superadmin'),
       admin: tokenCache.get('admin'),
       collaborator: tokenCache.get('collaborator'),
       viewer: tokenCache.get('viewer'),
-      noaccess: tokenCache.get('noaccess'),
+      noaccess: tokenCache.get('noaccess')
     };
   }
 
@@ -186,99 +187,44 @@ function authenticatedRequest(token) {
  * Reset database to clean state between tests
  */
 async function resetDatabase() {
-  // NOTE: We don't clear token cache here because JWT tokens remain valid
-  // even after database reset, since they're signed with the JWT secret
-  // and don't depend on database state
-
   try {
-    // Temporarily disable foreign key checks to handle circular references
-    await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+    // Use a clean_up.sql script instead of manual DELETE statements
+    const fs = require('fs').promises;
+    const path = require('path');
 
-    // Clear all data but keep schema - order matters due to foreign key constraints
-    const tables = [
-      'transaction',    // references account, category
-      'total',          // references account
-      'category',       // references category (self), book  
-      'account',        // references book
-      'book',           // references team
-      'team_user',      // references team, user
-      'team',           // referenced by book, team_user
-      'user'            // referenced by team_user
-    ];
+    // Read and execute the cleanup script
+    const cleanupPath = path.join(__dirname, '../../db/cleanup.sql');
+    const cleanupSql = await fs.readFile(cleanupPath, 'utf8');
 
-    // Delete in dependency order
-    for (const table of tables) {
-      await db.execute(`DELETE FROM ${table}`);
-      await db.execute(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
-    }
+    // Execute the cleanup script using shared utility
+    await executeScript(db, cleanupSql, 'cleanup', true);
 
-    // Re-enable foreign key checks
-    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+    // Re-insert test data
+    const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+    const seedsSql = await fs.readFile(seedsPath, 'utf8');
+
+    // Execute the seeds script using shared utility
+    await executeScript(db, seedsSql, 'seed', true);
   } catch (error) {
-    // Make sure to re-enable foreign key checks even if there's an error
-    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+    console.error('Error during database reset:', error);
     throw error;
   }
 
-  // Re-insert test data
-  const fs = require('fs').promises;
-  const path = require('path');
-  const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
-  const seeds = await fs.readFile(seedsPath, 'utf8');
-
-  // Extract and execute only INSERT statements
-  const statements = seeds
-    .split('\n')
-    .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
-    .join('\n')
-    .split(';')
-    .map(stmt => stmt.trim())
-    .filter(stmt => stmt.length > 0);
-
-  const insertStatements = statements
-    .filter(stmt => stmt.toUpperCase().startsWith('INSERT'));
-
-  // Execute all INSERT statements in order
-  for (const statement of insertStatements) {
-    try {
-      await db.execute(statement);
-    } catch (error) {
-      console.error(`Error executing statement: ${statement.substring(0, 50)}...`);
-      console.error(error.message);
-      // Continue with other statements even if one fails
-    }
-  }
-
   // Wait a bit to ensure all operations are committed
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
 /**
  * Create a test user
  * @param {Object} userData - User data
  * @param {string} token - Admin token
- * @returns {Promise<Object>} Created user
+ * @returns {Promise<Object>
  */
 async function createTestUser(userData, token) {
   const response = await request(app)
     .post('/api/users')
     .set('Authorization', `Bearer ${token}`)
     .send(userData);
-
-  return response.body;
-}
-
-/**
- * Create a test book
- * @param {Object} bookData - Book data
- * @param {string} token - Admin token
- * @returns {Promise<Object>} Created book
- */
-async function createTestBook(bookData, token) {
-  const response = await request(app)
-    .post('/api/books')
-    .set('Authorization', `Bearer ${token}`)
-    .send(bookData);
 
   return response.body;
 }
@@ -360,7 +306,7 @@ beforeAll(() => {
       const pass = parts.length === 3;
 
       return {
-        message: () => 
+        message: () =>
           pass
             ? `Expected ${received} not to be a valid JWT token`
             : `Expected ${received} to be a valid JWT token (should have 3 parts separated by dots)`,
@@ -371,20 +317,28 @@ beforeAll(() => {
 });
 
 module.exports = {
+  // Test data
   TEST_USERS,
   TEST_BOOKS,
+
+  // Auth utilities
   loginUser,
   clearTokenCache,
   initializeTokenCache,
   getOrInitializeTokens,
   authenticatedRequest,
+
+  // Database utilities
   resetDatabase,
+
+  // Test helpers
   createTestUser,
-  createTestBook,
   validateApiResponse,
   validateUserObject,
   validateBookObject,
   generateRandomData,
+
+  // Core app components
   app,
   db
 };
