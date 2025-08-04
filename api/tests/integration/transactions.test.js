@@ -21,13 +21,12 @@ describe('Transactions Management API', () => {
   let testBookId = 1; // From test data
   let testAccountId = 1; // Test Checking Account
   let testCategoryId = 2; // Food & Dining category
-
   let tokens;
+
   beforeAll(async () => {
     await resetDatabase();
     tokens = await getOrInitializeTokens();
   });
-
 
   describe('GET /api/transactions/:id', () => {
     it('should return transaction details for valid transaction', async () => {
@@ -103,7 +102,6 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 for a transaction if the team was soft-deleted', async () => {
-
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
@@ -545,7 +543,6 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 when trying to modify a transaction on a book that was deleted or soft-deleted', async () => {
-
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');
@@ -580,7 +577,6 @@ describe('Transactions Management API', () => {
     });
 
     it('should return 404 when trying to modify a transaction on a team that was deleted or soft-deleted', async () => {
-
       // Find a transaction for account in book 1 (team 1)
       const auth = authenticatedRequest(tokens.admin);
       const transactionsResponse = await auth.get('/api/books/1/transactions');

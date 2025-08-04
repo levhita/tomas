@@ -17,8 +17,8 @@ const {
 } = require('../utils/test-helpers');
 
 describe('Accounts Management API', () => {
-  let tokens;
   let testBookId = 1; // From test data
+  let tokens;
 
   beforeAll(async () => {
     await resetDatabase();

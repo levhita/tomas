@@ -1,6 +1,6 @@
 /**
  * Categories API Integration Tests
- * 
+ *
  * Tests all category management endpoints with authentication and permission validation.
  */
 
@@ -17,12 +17,9 @@ describe('Categories Management API', () => {
   let tokens;
 
   beforeAll(async () => {
-    await resetDatabase(); // Ensure a clean state before tests
-    // Use the new token cache initialization for better performance
+    await resetDatabase();
     tokens = await getOrInitializeTokens();
   });
-
-
 
   describe('GET /api/categories/:id', () => {
     it('should return category details for valid category', async () => {
@@ -68,8 +65,7 @@ describe('Categories Management API', () => {
     });
 
     it('should deny access without authentication', async () => {
-      const response = await request(app)
-        .get('/api/categories/1');
+      const response = await request(app).get('/api/categories/1');
 
       validateApiResponse(response, 401);
       expect(response.body).toHaveProperty('error', 'Access token required');
@@ -208,9 +204,7 @@ describe('Categories Management API', () => {
         book_id: 1
       };
 
-      const response = await request(app)
-        .post('/api/categories')
-        .send(categoryData);
+      const response = await request(app).post('/api/categories').send(categoryData);
 
       validateApiResponse(response, 401);
       expect(response.body).toHaveProperty('error', 'Access token required');
@@ -284,9 +278,7 @@ describe('Categories Management API', () => {
     it('should deny access without authentication', async () => {
       const updateData = { name: 'Updated Name' };
 
-      const response = await request(app)
-        .put('/api/categories/1')
-        .send(updateData);
+      const response = await request(app).put('/api/categories/1').send(updateData);
 
       validateApiResponse(response, 401);
       expect(response.body).toHaveProperty('error', 'Access token required');
@@ -332,7 +324,7 @@ describe('Categories Management API', () => {
 
     it('should prevent deletion of category with child categories', async () => {
       const auth = authenticatedRequest(tokens.admin);
-      
+
       // First create a parent category
       const parentData = {
         name: 'Parent Category for Delete Test',
@@ -342,7 +334,7 @@ describe('Categories Management API', () => {
       const parentResponse = await auth.post('/api/categories').send(parentData);
       validateApiResponse(parentResponse, 201);
       const parentId = parentResponse.body.id;
-      
+
       // Now create a child category
       const childData = {
         name: 'Child Category for Delete Test',
@@ -351,18 +343,18 @@ describe('Categories Management API', () => {
       };
       const childResponse = await auth.post('/api/categories').send(childData);
       validateApiResponse(childResponse, 201);
-      
+
       // Try to delete the parent category (should fail)
       const response = await auth.delete(`/api/categories/${parentId}`);
-      
+
       validateApiResponse(response, 428); // Precondition Required
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toContain('Cannot delete category with child categories');
-      
+
       // Clean up by deleting the child first
       const deleteChildResponse = await auth.delete(`/api/categories/${childResponse.body.id}`);
       validateApiResponse(deleteChildResponse, 204);
-      
+
       // Now we should be able to delete the parent
       const deleteParentResponse = await auth.delete(`/api/categories/${parentId}`);
       validateApiResponse(deleteParentResponse, 204);
@@ -390,7 +382,7 @@ describe('Categories Management API', () => {
 
     it('should deny access to user without permission', async () => {
       const auth = authenticatedRequest(tokens.noaccess);
-      
+
       // First create a category to try to delete
       const adminAuth = authenticatedRequest(tokens.admin);
       const createData = {
@@ -400,13 +392,13 @@ describe('Categories Management API', () => {
       const createResponse = await adminAuth.post('/api/categories').send(createData);
       validateApiResponse(createResponse, 201);
       const categoryId = createResponse.body.id;
-      
+
       // Now try to delete with noaccess user
       const response = await auth.delete(`/api/categories/${categoryId}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
-      
+
       // Clean up with admin user
       const deleteResponse = await adminAuth.delete(`/api/categories/${categoryId}`);
       validateApiResponse(deleteResponse, 204);
@@ -414,7 +406,7 @@ describe('Categories Management API', () => {
 
     it('should deny superadmin access without team permission', async () => {
       const auth = authenticatedRequest(tokens.superadmin);
-      
+
       // First create a category to try to delete
       const adminAuth = authenticatedRequest(tokens.admin);
       const createData = {
@@ -424,21 +416,20 @@ describe('Categories Management API', () => {
       const createResponse = await adminAuth.post('/api/categories').send(createData);
       validateApiResponse(createResponse, 201);
       const categoryId = createResponse.body.id;
-      
+
       // Now try to delete with superadmin user who doesn't have access to the team
       const response = await auth.delete(`/api/categories/${categoryId}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
-      
+
       // Clean up with admin user
       const deleteResponse = await adminAuth.delete(`/api/categories/${categoryId}`);
       validateApiResponse(deleteResponse, 204);
     });
 
     it('should deny access without authentication', async () => {
-      const response = await request(app)
-        .delete('/api/categories/1');
+      const response = await request(app).delete('/api/categories/1');
 
       validateApiResponse(response, 401);
       expect(response.body).toHaveProperty('error', 'Access token required');
@@ -736,17 +727,15 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Test Category for Empty Update',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Test Category for Empty Update',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // Try to update with no fields
-        const response = await auth.put(`/api/categories/${categoryId}`)
-          .send({});
+        const response = await auth.put(`/api/categories/${categoryId}`).send({});
 
         validateApiResponse(response, 200);
         expect(response.body.id).toBe(categoryId);
@@ -756,12 +745,11 @@ describe('Categories Management API', () => {
       it('should handle update affecting zero rows (race condition)', async () => {
         const auth = authenticatedRequest(tokens.admin);
 
-        // This tests the scenario where a category is deleted between 
+        // This tests the scenario where a category is deleted between
         // the initial fetch and the update query
-        const response = await auth.put('/api/categories/99999')
-          .send({
-            name: 'Updated Name'
-          });
+        const response = await auth.put('/api/categories/99999').send({
+          name: 'Updated Name'
+        });
 
         validateApiResponse(response, 404);
         expect(response.body).toHaveProperty('error', 'Category not found');
@@ -771,30 +759,27 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create parent category
-        const parentResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Parent Category for Type Change',
-            type: 'expense',
-            book_id: 1
-          });
+        const parentResponse = await auth.post('/api/categories').send({
+          name: 'Parent Category for Type Change',
+          type: 'expense',
+          book_id: 1
+        });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
 
         // Create child category
-        const childResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Child Category for Type Change',
-            parent_category_id: parentId,
-            book_id: 1
-          });
+        const childResponse = await auth.post('/api/categories').send({
+          name: 'Child Category for Type Change',
+          parent_category_id: parentId,
+          book_id: 1
+        });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
 
         // Update parent type to income
-        const updateResponse = await auth.put(`/api/categories/${parentId}`)
-          .send({
-            type: 'income'
-          });
+        const updateResponse = await auth.put(`/api/categories/${parentId}`).send({
+          type: 'income'
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.type).toBe('income');
 
@@ -808,19 +793,17 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a test category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Test Category for DB Error',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Test Category for DB Error',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // Test validation errors during update
-        const response = await auth.put(`/api/categories/${categoryId}`)
-          .send({
-            name: '', // Empty name should trigger validation error
-          });
+        const response = await auth.put(`/api/categories/${categoryId}`).send({
+          name: '' // Empty name should trigger validation error
+        });
 
         validateApiResponse(response, 400);
         expect(response.body).toHaveProperty('error', 'Name cannot be empty');
@@ -830,20 +813,18 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a test category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Test Category for Long Name',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Test Category for Long Name',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // Try to update with a name that's too long (> 255 characters)
         const longName = 'A'.repeat(256);
-        const response = await auth.put(`/api/categories/${categoryId}`)
-          .send({
-            name: longName
-          });
+        const response = await auth.put(`/api/categories/${categoryId}`).send({
+          name: longName
+        });
 
         validateApiResponse(response, 400);
         expect(response.body).toHaveProperty('error', 'Category name cannot exceed 255 characters');
@@ -853,19 +834,17 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a test category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Test Category for Invalid Type',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Test Category for Invalid Type',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // Try to update with invalid type
-        const response = await auth.put(`/api/categories/${categoryId}`)
-          .send({
-            type: 'invalid_type'
-          });
+        const response = await auth.put(`/api/categories/${categoryId}`).send({
+          type: 'invalid_type'
+        });
 
         validateApiResponse(response, 400);
         expect(response.body).toHaveProperty('error', 'Type must be either "expense" or "income"');
@@ -875,11 +854,10 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a category to delete
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category to Delete Successfully',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Category to Delete Successfully',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
@@ -930,11 +908,10 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Test the catch block in POST /categories by attempting to create with valid data
-        const response = await auth.post('/api/categories')
-          .send({
-            name: 'Test DB Error Handling',
-            book_id: 1
-          });
+        const response = await auth.post('/api/categories').send({
+          name: 'Test DB Error Handling',
+          book_id: 1
+        });
 
         // This should work normally, demonstrating error handling exists
         validateApiResponse(response, 201);
@@ -955,30 +932,27 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create parent category
-        const parentResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Parent for Type Inheritance Test',
-            type: 'expense',
-            book_id: 1
-          });
+        const parentResponse = await auth.post('/api/categories').send({
+          name: 'Parent for Type Inheritance Test',
+          type: 'expense',
+          book_id: 1
+        });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
 
         // Create child category
-        const childResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Child for Type Inheritance Test',
-            parent_category_id: parentId,
-            book_id: 1
-          });
+        const childResponse = await auth.post('/api/categories').send({
+          name: 'Child for Type Inheritance Test',
+          parent_category_id: parentId,
+          book_id: 1
+        });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
 
         // Try to update child category type directly (should inherit from parent)
-        const updateResponse = await auth.put(`/api/categories/${childId}`)
-          .send({
-            type: 'income' // This should be overridden by parent type
-          });
+        const updateResponse = await auth.put(`/api/categories/${childId}`).send({
+          type: 'income' // This should be overridden by parent type
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.type).toBe('expense'); // Should remain parent type
       });
@@ -987,31 +961,28 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create parent category
-        const parentResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Parent for Moving Test',
-            type: 'income',
-            book_id: 1
-          });
+        const parentResponse = await auth.post('/api/categories').send({
+          name: 'Parent for Moving Test',
+          type: 'income',
+          book_id: 1
+        });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
 
         // Create child category
-        const childResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Child for Moving Test',
-            parent_category_id: parentId,
-            book_id: 1
-          });
+        const childResponse = await auth.post('/api/categories').send({
+          name: 'Child for Moving Test',
+          parent_category_id: parentId,
+          book_id: 1
+        });
         expect(childResponse.status).toBe(201);
         const childId = childResponse.body.id;
 
         // Move child to root level and change type
-        const updateResponse = await auth.put(`/api/categories/${childId}`)
-          .send({
-            parent_category_id: null,
-            type: 'expense'
-          });
+        const updateResponse = await auth.put(`/api/categories/${childId}`).send({
+          parent_category_id: null,
+          type: 'expense'
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.parent_category_id).toBeNull();
         expect(updateResponse.body.type).toBe('expense');
@@ -1021,20 +992,18 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create category
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category for Note Update',
-            note: 'Original note',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Category for Note Update',
+          note: 'Original note',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // Update just the note
-        const updateResponse = await auth.put(`/api/categories/${categoryId}`)
-          .send({
-            note: 'Updated note'
-          });
+        const updateResponse = await auth.put(`/api/categories/${categoryId}`).send({
+          note: 'Updated note'
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.note).toBe('Updated note');
         expect(updateResponse.body.name).toBe('Category for Note Update'); // Should remain unchanged
@@ -1044,30 +1013,27 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create parent category
-        const parentResponse = await auth.post('/api/categories')
-          .send({
-            name: 'New Parent Category',
-            type: 'income',
-            book_id: 1
-          });
+        const parentResponse = await auth.post('/api/categories').send({
+          name: 'New Parent Category',
+          type: 'income',
+          book_id: 1
+        });
         expect(parentResponse.status).toBe(201);
         const parentId = parentResponse.body.id;
 
         // Create root category
-        const rootResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Root Category for Parent Update',
-            type: 'expense',
-            book_id: 1
-          });
+        const rootResponse = await auth.post('/api/categories').send({
+          name: 'Root Category for Parent Update',
+          type: 'expense',
+          book_id: 1
+        });
         expect(rootResponse.status).toBe(201);
         const rootId = rootResponse.body.id;
 
         // Update just the parent_category_id
-        const updateResponse = await auth.put(`/api/categories/${rootId}`)
-          .send({
-            parent_category_id: parentId
-          });
+        const updateResponse = await auth.put(`/api/categories/${rootId}`).send({
+          parent_category_id: parentId
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.parent_category_id).toBe(parentId);
         expect(updateResponse.body.type).toBe('income'); // Should inherit parent type
@@ -1077,21 +1043,19 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category for DB Error Test',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Category for DB Error Test',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
         // This test ensures the catch block in update is covered
         // Since we can't easily simulate DB errors, we test a valid update
         // that demonstrates error handling paths exist
-        const updateResponse = await auth.put(`/api/categories/${categoryId}`)
-          .send({
-            name: 'Updated Name'
-          });
+        const updateResponse = await auth.put(`/api/categories/${categoryId}`).send({
+          name: 'Updated Name'
+        });
         expect(updateResponse.status).toBe(200);
         expect(updateResponse.body.name).toBe('Updated Name');
       });
@@ -1100,11 +1064,10 @@ describe('Categories Management API', () => {
         const auth = authenticatedRequest(tokens.admin);
 
         // Create a category first
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category for Delete Error Test',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Category for Delete Error Test',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         const categoryId = createResponse.body.id;
 
@@ -1121,11 +1084,10 @@ describe('Categories Management API', () => {
         // This test ensures the catch block in create is covered
         // Since we can't easily simulate DB errors, we test a valid create
         // that demonstrates error handling paths exist
-        const createResponse = await auth.post('/api/categories')
-          .send({
-            name: 'Category for Create Error Test',
-            book_id: 1
-          });
+        const createResponse = await auth.post('/api/categories').send({
+          name: 'Category for Create Error Test',
+          book_id: 1
+        });
         expect(createResponse.status).toBe(201);
         expect(createResponse.body.name).toBe('Category for Create Error Test');
       });
@@ -1291,7 +1253,9 @@ describe('Categories Management API', () => {
           const response = await auth.put(`/api/categories/${parentCategoryId}`).send(updateData);
 
           validateApiResponse(response, 400);
-          expect(response.body.error).toBe('Cannot assign a parent to this category because it already has child categories');
+          expect(response.body.error).toBe(
+            'Cannot assign a parent to this category because it already has child categories'
+          );
         });
 
         it('should reject three-level nesting', async () => {
@@ -1312,14 +1276,16 @@ describe('Categories Management API', () => {
           const response = await auth.put(`/api/categories/${grandchildId}`).send(updateData);
 
           validateApiResponse(response, 400);
-          expect(response.body.error).toBe('Categories can only be nested two levels deep. The selected parent already has a parent.');
+          expect(response.body.error).toBe(
+            'Categories can only be nested two levels deep. The selected parent already has a parent.'
+          );
         });
 
         it('should reject parent from different book', async () => {
           const auth = authenticatedRequest(tokens.admin);
 
           // Try to create category in book 1 with parent from book 2
-          // But admin user doesn't have access to book 2, so let's create a category 
+          // But admin user doesn't have access to book 2, so let's create a category
           // in book 2 first using collaborator token (who has admin access to team 2/book 2)
           const collabAuth = authenticatedRequest(tokens.collaborator);
           const ws2Response = await collabAuth.post('/api/categories').send({
@@ -1366,7 +1332,9 @@ describe('Categories Management API', () => {
             type: 'expense'
           };
 
-          const parentResponse = await auth.put(`/api/categories/${parentCategoryId}`).send(updateParentData);
+          const parentResponse = await auth
+            .put(`/api/categories/${parentCategoryId}`)
+            .send(updateParentData);
           validateApiResponse(parentResponse, 200);
           expect(parentResponse.body.type).toBe('expense');
 

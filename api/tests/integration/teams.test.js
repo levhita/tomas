@@ -9,7 +9,7 @@ const request = require('supertest');
 const {
   TEST_USERS,
   loginUser,
-  initializeTokenCache,
+  getOrInitializeTokens,
   authenticatedRequest,
   resetDatabase,
   validateApiResponse,
@@ -19,34 +19,16 @@ const {
 } = require('../utils/test-helpers');
 
 describe('Teams Management API', () => {
-  let superadminToken;
-  let adminToken; // User with admin role in team 1
-  let viewerToken; // User with viewer role in team 1
-  let collaboratorToken; // User with collaborator role in team 1
-  let noaccessToken; // User with no team access for permission-denied scenarios
+  let tokens;
 
   beforeAll(async () => {
-    await refreshTokens();
-  });
-
-  afterAll(async () => {
-    // Reset database after all teams tests to ensure clean state for subsequent test suites
     await resetDatabase();
+    tokens = await getOrInitializeTokens();
   });
-
-  const refreshTokens = async () => {
-    // Tokens should still be valid, but get them from cache or re-initialize if needed
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;
-    viewerToken = tokens.viewer;
-    collaboratorToken = tokens.collaborator;
-    noaccessToken = tokens.noaccess;
-  };
 
   describe('GET /api/teams', () => {
     it('should return user teams for authenticated user', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1, viewer in team 2
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1, viewer in team 2
       const response = await auth.get('/api/teams');
 
       validateApiResponse(response, 200);
@@ -69,7 +51,7 @@ describe('Teams Management API', () => {
           username: userData.username,
           password: userData.password
         },
-        superadminToken
+        tokens.superadmin
       );
 
       // Get token for the new user
@@ -99,7 +81,7 @@ describe('Teams Management API', () => {
       // 2. Add a user to the team
       // 3. Verify the user can access the team's books (empty list)
 
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const teamResponse = await auth.post('/api/teams').send({
         name: 'Empty Team for Books Test'
       });
@@ -113,7 +95,7 @@ describe('Teams Management API', () => {
       });
 
       // Now test with the collaborator - verify they can access books for this team
-      const userAuth = authenticatedRequest(collaboratorToken);
+      const userAuth = authenticatedRequest(tokens.collaborator);
       const response = await userAuth.get(`/api/teams/${teamId}/books`);
 
       validateApiResponse(response, 200);
@@ -124,7 +106,7 @@ describe('Teams Management API', () => {
 
   describe('GET /api/teams/all', () => {
     it('should return only active teams for superadmin by default', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/all');
 
       validateApiResponse(response, 200);
@@ -147,7 +129,7 @@ describe('Teams Management API', () => {
 
     it('should return only soft-deleted teams when deleted=true parameter is provided', async () => {
       // First, soft-delete a team
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       await auth.delete('/api/teams/1'); // Soft-delete team 1
 
       // Now request only deleted teams
@@ -171,7 +153,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/teams/all');
 
       validateApiResponse(response, 403);
@@ -182,7 +164,7 @@ describe('Teams Management API', () => {
 
   describe('GET /api/teams/search', () => {
     it('should search teams by name for superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/search?q=Test&limit=10');
 
       validateApiResponse(response, 200);
@@ -198,7 +180,7 @@ describe('Teams Management API', () => {
     });
 
     it('should limit search results', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/search?q=Team&limit=1');
 
       validateApiResponse(response, 200);
@@ -207,7 +189,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return empty array for no matches', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/search?q=NonExistentTeam&limit=10');
 
       validateApiResponse(response, 200);
@@ -216,14 +198,14 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.get('/api/teams/search?q=Test&limit=10');
 
       validateApiResponse(response, 403);
     });
 
     it('should return all teams when search term is empty', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/search?q=');
 
       validateApiResponse(response, 200);
@@ -235,7 +217,7 @@ describe('Teams Management API', () => {
     });
 
     it('should include deleted teams when includeDeleted=true', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       // Soft-delete team 1
       await auth.delete('/api/teams/1');
@@ -256,7 +238,7 @@ describe('Teams Management API', () => {
 
   describe('GET /api/teams/:id', () => {
     it('should return team for user with access', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const response = await auth.get('/api/teams/1');
 
       validateApiResponse(response, 200);
@@ -267,7 +249,7 @@ describe('Teams Management API', () => {
 
     it('should deny access to team user has no access to', async () => {
       // Create a new team that existing users don't have access to
-      const auth = authenticatedRequest(noaccessToken);
+      const auth = authenticatedRequest(tokens.noaccess);
       const teamData = {
         name: `Isolated Team ${Date.now()}`
       };
@@ -276,21 +258,21 @@ describe('Teams Management API', () => {
       const isolatedTeamId = createResponse.body.id;
 
       // Try to access with a user who's not a member
-      const viewerAuth = authenticatedRequest(viewerToken);
+      const viewerAuth = authenticatedRequest(tokens.viewer);
       const response = await viewerAuth.get(`/api/teams/${isolatedTeamId}`);
 
       validateApiResponse(response, 403);
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/99999');
 
       validateApiResponse(response, 404);
     });
 
     it('should allow superadmin to view soft-deleted team', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       // First soft-delete team 1
       await auth.delete('/api/teams/1');
@@ -308,8 +290,8 @@ describe('Teams Management API', () => {
     });
 
     it('should deny regular team members access to soft-deleted team', async () => {
-      const superAuth = authenticatedRequest(superadminToken);
-      const memberAuth = authenticatedRequest(adminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
+      const memberAuth = authenticatedRequest(tokens.admin);
 
       // First soft-delete team 1
       await superAuth.delete('/api/teams/1');
@@ -327,7 +309,7 @@ describe('Teams Management API', () => {
 
   describe('POST /api/teams', () => {
     it('should create new team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const teamData = {
         name: `Test Team ${Date.now()}`
       };
@@ -341,7 +323,7 @@ describe('Teams Management API', () => {
     });
 
     it('should create team with minimal data', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const teamData = {
         name: `Minimal Team ${Date.now()}`
       };
@@ -353,7 +335,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject missing required fields', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       const response = await auth.post('/api/teams').send({
         note: 'Missing name'
@@ -374,7 +356,7 @@ describe('Teams Management API', () => {
 
   describe('PUT /api/teams/:id', () => {
     it('should update team as admin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const newName = `Updated Team ${Date.now()}`;
 
       const response = await auth.put('/api/teams/1').send({
@@ -386,7 +368,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject update if name is missing', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.put('/api/teams/1').send({});
 
       validateApiResponse(response, 400);
@@ -394,7 +376,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for non-admin user', async () => {
-      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1
+      const auth = authenticatedRequest(tokens.viewer); // User 4: viewer in team 1
 
       const response = await auth.put('/api/teams/1').send({
         name: 'Hacked Name'
@@ -404,7 +386,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.put('/api/teams/99999').send({
         name: 'Updated'
@@ -414,7 +396,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent editing soft-deleted team by superadmin', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       // Soft-delete the team first
       await auth.delete('/api/teams/1');
@@ -430,7 +412,7 @@ describe('Teams Management API', () => {
   describe('GET /api/teams/:id/users', () => {
     it('should return team users for admin', async () => {
       await resetDatabase(); // Ensure team is not deleted
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       const response = await auth.get('/api/teams/1/users');
 
@@ -448,7 +430,7 @@ describe('Teams Management API', () => {
 
     it('should return team users for collaborator', async () => {
       await resetDatabase(); // Ensure team is not deleted
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1
 
       const response = await auth.get('/api/teams/1/users');
 
@@ -457,8 +439,8 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for non-member', async () => {
-      // Create a new team that viewerToken doesn't have access to
-      const auth = authenticatedRequest(superadminToken);
+      // Create a new team that tokens.viewer doesn't have access to
+      const auth = authenticatedRequest(tokens.superadmin);
       const teamData = {
         name: `Isolated Team ${Date.now()}`
       };
@@ -466,14 +448,14 @@ describe('Teams Management API', () => {
       const createResponse = await auth.post('/api/teams').send(teamData);
       const isolatedTeamId = createResponse.body.id;
 
-      const viewerAuth = authenticatedRequest(viewerToken);
+      const viewerAuth = authenticatedRequest(tokens.viewer);
       const response = await viewerAuth.get(`/api/teams/${isolatedTeamId}/users`);
 
       validateApiResponse(response, 403);
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
 
       const response = await auth.get('/api/teams/99999/users');
 
@@ -484,7 +466,7 @@ describe('Teams Management API', () => {
   describe('POST /api/teams/:id/users', () => {
 
     it('should add user to team as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const userData = {
         userId: TEST_USERS.VIEWER.id, // User 4 (we'll remove and re-add them)
         role: 'collaborator'
@@ -506,12 +488,12 @@ describe('Teams Management API', () => {
     });
 
     it('should add user with different roles', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const roles = ['admin', 'collaborator', 'viewer'];
 
       for (const role of roles) {
         // Create a new user for each role test
-        const createUserResponse = await authenticatedRequest(superadminToken)
+        const createUserResponse = await authenticatedRequest(tokens.superadmin)
           .post('/api/users')
           .send({
             username: `testuser_${role}_${Date.now()}`,
@@ -529,7 +511,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for collaborator', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1
       const userData = {
         userId: TEST_USERS.VIEWER.id,
         role: 'viewer'
@@ -542,7 +524,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 409 for user already in team', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const userData = {
         userId: TEST_USERS.COLLABORATOR.id, // User 3: already in team 1
         role: 'viewer'
@@ -555,7 +537,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const userData = {
         userId: 99999,
         role: 'viewer'
@@ -567,7 +549,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject invalid role', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const userData = {
         userId: TEST_USERS.VIEWER.id,
         role: 'invalid_role'
@@ -580,7 +562,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject if userId is missing when adding user to team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth.post('/api/teams/1/users').send({ role: 'viewer' });
 
       validateApiResponse(response, 400);
@@ -588,7 +570,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 when adding user to a non-existent team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth
         .post('/api/teams/99999/users')
         .send({ userId: TEST_USERS.VIEWER.id, role: 'viewer' });
@@ -601,7 +583,7 @@ describe('Teams Management API', () => {
   describe('PUT /api/teams/:id/users/:userId', () => {
 
     it('should update user role as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
       const updateData = { role: 'admin' };
 
       const response = await auth
@@ -619,7 +601,7 @@ describe('Teams Management API', () => {
 
     it('should prevent non-superadmin from changing last admin to non-admin role', async () => {
       await resetDatabase(); // Ensure team is not deleted
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // Try to change self (last admin) to viewer
       const response = await auth
@@ -631,7 +613,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for collaborator', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, not admin
       const updateData = { role: 'admin' };
 
       const response = await auth
@@ -642,7 +624,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const updateData = { role: 'admin' };
 
       const response = await auth.put('/api/teams/1/users/99999').send(updateData);
@@ -651,7 +633,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const updateData = { role: 'admin' };
 
       const response = await auth.put('/api/teams/99999/users/3').send(updateData);
@@ -660,7 +642,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject invalid role', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const updateData = { role: 'invalid_role' };
 
       const response = await auth
@@ -675,7 +657,7 @@ describe('Teams Management API', () => {
   describe('DELETE /api/teams/:id/users/:userId', () => {
 
     it('should remove user from team as admin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       const response = await auth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
 
@@ -688,7 +670,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for collaborator', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, not admin
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, not admin
 
       const response = await auth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
 
@@ -696,7 +678,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       const response = await auth.delete('/api/teams/1/users/99999');
 
@@ -704,7 +686,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       const response = await auth.delete('/api/teams/99999/users/3');
 
@@ -712,7 +694,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent removing last admin for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // Try to remove self (last admin) from team 1
       const response = await auth.delete(`/api/teams/1/users/${TEST_USERS.ADMIN.id}`);
@@ -723,7 +705,7 @@ describe('Teams Management API', () => {
     });
 
     it('should allow superadmin to remove last admin', async () => {
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
 
       // Superadmin should be able to remove the last admin from team 1
       const response = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.ADMIN.id}`);
@@ -734,7 +716,7 @@ describe('Teams Management API', () => {
 
     it('should remove user from team as superadmin', async () => {
       await resetDatabase(); // Ensure team is not deleted
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
 
       // Remove user 4 (viewer) from team 1
       const response = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`);
@@ -751,7 +733,7 @@ describe('Teams Management API', () => {
   describe('Deleted Team Member Management Restrictions', () => {
 
     it('should prevent adding users to deleted teams for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // First, soft-delete the team
       await auth.delete('/api/teams/1');
@@ -767,7 +749,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent removing users from deleted teams for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // First, soft-delete the team
       await auth.delete('/api/teams/1');
@@ -780,7 +762,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent changing user roles in deleted teams for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
       // First, soft-delete the team
       await auth.delete('/api/teams/1');
@@ -795,7 +777,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent admin from modifying deleted team details', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Soft-delete the team
       await auth.delete('/api/teams/1');
@@ -808,7 +790,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent admin from creating books in deleted teams', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
 
       // Soft-delete the team
       await auth.delete('/api/teams/1');
@@ -823,8 +805,8 @@ describe('Teams Management API', () => {
     });
 
     it('should not allow superadmin to manage deleted team members', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
-      const superAuth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
+      const superAuth = authenticatedRequest(tokens.superadmin);
 
       // First, soft-delete the team
       await auth.delete('/api/teams/1');
@@ -853,8 +835,8 @@ describe('Teams Management API', () => {
     });
 
     it('should restore team member management after restoration', async () => {
-      const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
-      const superAuth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
+      const superAuth = authenticatedRequest(tokens.superadmin);
 
       // First, soft-delete the team
       await auth.delete('/api/teams/1');
@@ -875,7 +857,7 @@ describe('Teams Management API', () => {
     describe('DELETE /api/teams/:id - Soft Delete', () => {
 
       it('should allow team admin to soft-delete their team', async () => {
-        const auth = authenticatedRequest(adminToken); // User 2: admin in team 1
+        const auth = authenticatedRequest(tokens.admin); // User 2: admin in team 1
 
         const response = await auth.delete('/api/teams/1');
         validateApiResponse(response, 204);
@@ -891,7 +873,7 @@ describe('Teams Management API', () => {
       });
 
       it('should allow superadmin to soft-delete any team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.delete('/api/teams/2');
         validateApiResponse(response, 204);
@@ -904,7 +886,7 @@ describe('Teams Management API', () => {
 
       it('should deny collaborator from soft-deleting team', async () => {
         await resetDatabase(); // Reset for clean state
-        const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1
+        const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1
 
         const response = await auth.delete('/api/teams/1');
         validateApiResponse(response, 403);
@@ -912,7 +894,7 @@ describe('Teams Management API', () => {
       });
 
       it('should deny viewer from soft-deleting team', async () => {
-        const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1
+        const auth = authenticatedRequest(tokens.viewer); // User 4: viewer in team 1
 
         const response = await auth.delete('/api/teams/1');
         validateApiResponse(response, 403);
@@ -920,14 +902,14 @@ describe('Teams Management API', () => {
       });
 
       it('should return 404 for non-existent team', async () => {
-        const auth = authenticatedRequest(adminToken);
+        const auth = authenticatedRequest(tokens.admin);
 
         const response = await auth.delete('/api/teams/99999');
         validateApiResponse(response, 404);
       });
 
       it('should return 404 when trying to soft-delete already deleted team', async () => {
-        const auth = authenticatedRequest(adminToken);
+        const auth = authenticatedRequest(tokens.admin);
 
         // First soft-delete
         await auth.delete('/api/teams/1');
@@ -942,12 +924,12 @@ describe('Teams Management API', () => {
       beforeAll(async () => {
         await resetDatabase();
         // Soft-delete team 1 for testing restore
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
         await auth.delete('/api/teams/1');
       });
 
       it('should allow superadmin to restore soft-deleted team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.post('/api/teams/1/restore');
         validateApiResponse(response, 200);
@@ -961,7 +943,7 @@ describe('Teams Management API', () => {
       });
 
       it('should deny non-superadmin from restoring team', async () => {
-        const auth = authenticatedRequest(adminToken);
+        const auth = authenticatedRequest(tokens.admin);
 
         const response = await auth.post('/api/teams/1/restore');
         validateApiResponse(response, 403);
@@ -969,14 +951,14 @@ describe('Teams Management API', () => {
       });
 
       it('should return 404 for non-existent team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.post('/api/teams/99999/restore');
         validateApiResponse(response, 404);
       });
 
       it('should return 400 when trying to restore non-deleted team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.post('/api/teams/1/restore');
         validateApiResponse(response, 400);
@@ -986,7 +968,7 @@ describe('Teams Management API', () => {
 
     describe('DELETE /api/teams/:id/permanent - Permanent Delete', () => {
       it('should allow superadmin to permanently delete team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.delete('/api/teams/1/permanent');
         validateApiResponse(response, 204);
@@ -1005,7 +987,7 @@ describe('Teams Management API', () => {
 
       it('should permanently delete soft-deleted team', async () => {
         await resetDatabase(); // Reset to get non-deleted state
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         // First soft-delete the team
         await auth.delete('/api/teams/1');
@@ -1020,7 +1002,7 @@ describe('Teams Management API', () => {
       });
 
       it('should deny non-superadmin from permanent deletion', async () => {
-        const auth = authenticatedRequest(adminToken);
+        const auth = authenticatedRequest(tokens.admin);
 
         const response = await auth.delete('/api/teams/1/permanent');
         validateApiResponse(response, 403);
@@ -1028,7 +1010,7 @@ describe('Teams Management API', () => {
       });
 
       it('should return 404 for non-existent team', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.delete('/api/teams/99999/permanent');
         validateApiResponse(response, 404);
@@ -1039,13 +1021,13 @@ describe('Teams Management API', () => {
       beforeAll(async () => {
         await resetDatabase();
         // Soft-delete team 1 for testing
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
         await auth.delete('/api/teams/1');
       });
 
       
       it('should exclude soft-deleted teams by default in search', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.get('/api/teams/search?q=Test');
         const deletedTeam = response.body.find((t) => t.id === 1);
@@ -1053,7 +1035,7 @@ describe('Teams Management API', () => {
       });
 
       it('should include soft-deleted teams when requested', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         const response = await auth.get('/api/teams/search?q=Test&includeDeleted=true');
         const deletedTeam = response.body.find((t) => t.id === 1);
@@ -1062,7 +1044,7 @@ describe('Teams Management API', () => {
       });
 
       it('should include soft-deleted teams in /all endpoint with deleted=true parameter', async () => {
-        const auth = authenticatedRequest(superadminToken);
+        const auth = authenticatedRequest(tokens.superadmin);
 
         // First check that the deleted team isn't in the default response
         const defaultResponse = await auth.get('/api/teams/all');
@@ -1084,7 +1066,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return books for team with write access', async () => {
-      const auth = authenticatedRequest(collaboratorToken); // User 3: collaborator in team 1, admin in team 2
+      const auth = authenticatedRequest(tokens.collaborator); // User 3: collaborator in team 1, admin in team 2
       const response = await auth.get('/api/teams/1/books');
 
       validateApiResponse(response, 200);
@@ -1101,7 +1083,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return books for team with read access', async () => {
-      const auth = authenticatedRequest(viewerToken); // User 4: viewer in team 1, collaborator in team 2
+      const auth = authenticatedRequest(tokens.viewer); // User 4: viewer in team 1, collaborator in team 2
       const response = await auth.get('/api/teams/1/books');
 
       validateApiResponse(response, 200);
@@ -1118,7 +1100,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access to team user has no access to', async () => {
-      const auth = authenticatedRequest(noaccessToken); // User with no team access
+      const auth = authenticatedRequest(tokens.noaccess); // User with no team access
       const response = await auth.get('/api/teams/1/books');
 
       validateApiResponse(response, 403);
@@ -1126,7 +1108,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny superadmin access without team membership', async () => {
-      const auth = authenticatedRequest(superadminToken); // Superadmin with no team membership
+      const auth = authenticatedRequest(tokens.superadmin); // Superadmin with no team membership
       const response = await auth.get('/api/teams/1/books');
 
       validateApiResponse(response, 403);
@@ -1140,7 +1122,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 for non-existent team', async () => {
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const response = await auth.get('/api/teams/99999/books');
 
       validateApiResponse(response, 404);
@@ -1150,7 +1132,7 @@ describe('Teams Management API', () => {
 
     it('should return empty array for team with no books', async () => {
       // Create a new team without books
-      const auth = authenticatedRequest(superadminToken);
+      const auth = authenticatedRequest(tokens.superadmin);
       const teamResponse = await auth.post('/api/teams').send({
         name: 'Empty Team for Books Test'
       });
@@ -1164,7 +1146,7 @@ describe('Teams Management API', () => {
       });
 
       // Now test with the collaborator - verify they can access books for this team
-      const userAuth = authenticatedRequest(collaboratorToken);
+      const userAuth = authenticatedRequest(tokens.collaborator);
       const response = await userAuth.get(`/api/teams/${teamId}/books`);
 
       validateApiResponse(response, 200);
@@ -1176,10 +1158,10 @@ describe('Teams Management API', () => {
   describe('POST /api/teams/:id/users/add-by-username', () => {
 
     it('should add a user to a team by username as admin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       // Create a new user to add
       const username = `testuser_addbyusername_${Date.now()}`;
-      await authenticatedRequest(superadminToken)
+      await authenticatedRequest(tokens.superadmin)
         .post('/api/users')
         .send({ username, password: 'testpassword123' });
 
@@ -1195,7 +1177,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject if username is missing', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth
         .post('/api/teams/1/users/add-by-username')
         .send({ role: 'viewer' });
@@ -1205,7 +1187,7 @@ describe('Teams Management API', () => {
     });
 
     it('should reject if role is missing or invalid', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth
         .post('/api/teams/1/users/add-by-username')
         .send({ username: 'someuser', role: 'invalid_role' });
@@ -1216,7 +1198,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 if team does not exist', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth
         .post('/api/teams/99999/users/add-by-username')
         .send({ username: 'someuser', role: 'viewer' });
@@ -1226,7 +1208,7 @@ describe('Teams Management API', () => {
     });
 
     it('should return 404 if user does not exist or is inactive', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       const response = await auth
         .post('/api/teams/1/users/add-by-username')
         .send({ username: 'nonexistentuser', role: 'viewer' });
@@ -1237,10 +1219,10 @@ describe('Teams Management API', () => {
     });
 
     it('should return 409 if user is already in team', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       // Add user by username first
       const username = `testuser_alreadyinteam_${Date.now()}`;
-      const createUserResponse = await authenticatedRequest(superadminToken)
+      const createUserResponse = await authenticatedRequest(tokens.superadmin)
         .post('/api/users')
         .send({ username, password: 'testpassword123' });
       await auth.post('/api/teams/1/users/add-by-username').send({ username, role: 'viewer' });
@@ -1256,7 +1238,7 @@ describe('Teams Management API', () => {
     });
 
     it('should deny access for collaborator', async () => {
-      const auth = authenticatedRequest(collaboratorToken);
+      const auth = authenticatedRequest(tokens.collaborator);
       const response = await auth
         .post('/api/teams/1/users/add-by-username')
         .send({ username: 'someuser', role: 'viewer' });
@@ -1265,7 +1247,7 @@ describe('Teams Management API', () => {
     });
 
     it('should prevent adding user to deleted team for non-superadmin', async () => {
-      const auth = authenticatedRequest(adminToken);
+      const auth = authenticatedRequest(tokens.admin);
       // Soft-delete team 1
       await auth.delete('/api/teams/1');
       const response = await auth
@@ -1277,7 +1259,7 @@ describe('Teams Management API', () => {
     });
 
     it('should not allow superadmin to add user to deleted team', async () => {
-      const superAuth = authenticatedRequest(superadminToken);
+      const superAuth = authenticatedRequest(tokens.superadmin);
       // Soft-delete team 1
       await superAuth.delete('/api/teams/1');
       // Create a new user

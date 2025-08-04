@@ -7,21 +7,18 @@
 const request = require('supertest');
 const {
   TEST_USERS,
-  loginUser,
-  initializeTokenCache,
+  getOrInitializeTokens,
   validateApiResponse,
+  resetDatabase,
   app
 } = require('../utils/test-helpers');
 
 describe('Health Check API', () => {
-  let superadminToken;
-  let adminToken;
+  let tokens;
 
   beforeAll(async () => {
-    // Use token cache initialization for better performance
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;
+    await resetDatabase();
+    tokens = await getOrInitializeTokens();
   });
 
   describe('GET /api/health', () => {
@@ -79,7 +76,7 @@ describe('Health Check API', () => {
     it('should return detailed health status for superadmin', async () => {
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('status');
@@ -123,7 +120,7 @@ describe('Health Check API', () => {
     it('should deny access for non-superadmin users', async () => {
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${adminToken}`);
+        .set('Authorization', `Bearer ${tokens.admin}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
@@ -133,14 +130,14 @@ describe('Health Check API', () => {
     it('should have consistent admin response format across calls', async () => {
       const response1 = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       // Small delay to ensure uptime difference
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const response2 = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       validateApiResponse(response1, 200);
       validateApiResponse(response2, 200);
@@ -155,7 +152,7 @@ describe('Health Check API', () => {
     it('should return valid timestamp format in admin endpoint', async () => {
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       validateApiResponse(response, 200);
 
@@ -176,10 +173,10 @@ describe('Health Check API', () => {
       db.query = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
       db.execute = jest.fn().mockRejectedValue(new Error('Simulated DB failure'));
 
-      // Use the valid superadminToken from beforeAll
+      // Use the valid tokens.superadmin from beforeAll
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       // If the database is down, authentication will fail and return 403 or 401
       expect([401, 403, 500]).toContain(response.status);
@@ -208,7 +205,7 @@ describe('Health Check API', () => {
 
       const response = await request(app)
         .get('/api/health/admin')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       expect(response.status).toBe(403);
       expect(response.body).toHaveProperty('error', 'Invalid token');
@@ -222,7 +219,7 @@ describe('Health Check API', () => {
     it('should return statistics for superadmin', async () => {
       const response = await request(app)
         .get('/api/health/stats')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       validateApiResponse(response, 200);
       expect(response.body).toHaveProperty('users');
@@ -244,7 +241,7 @@ describe('Health Check API', () => {
     it('should deny access for non-superadmin users', async () => {
       const response = await request(app)
         .get('/api/health/stats')
-        .set('Authorization', `Bearer ${adminToken}`);
+        .set('Authorization', `Bearer ${tokens.admin}`);
 
       validateApiResponse(response, 403);
       expect(response.body).toHaveProperty('error');
@@ -258,7 +255,7 @@ describe('Health Check API', () => {
 
       const response = await request(app)
         .get('/api/health/stats')
-        .set('Authorization', `Bearer ${superadminToken}`);
+        .set('Authorization', `Bearer ${tokens.superadmin}`);
 
       validateApiResponse(response, 500);
       expect(response.body).toHaveProperty('error', 'Failed to retrieve statistics');

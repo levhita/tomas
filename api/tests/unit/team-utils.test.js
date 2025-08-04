@@ -13,22 +13,21 @@ const {
   getTeamById,
   getTeamByBookId
 } = require('../../src/utils/team');
-const { authenticatedRequest, initializeTokenCache, resetDatabase } = require('../utils/test-helpers');
-
-let superadminToken, adminToken;
-
-
-
-
-
+const {
+  authenticatedRequest,
+  getOrInitializeTokens,
+  resetDatabase
+} = require('../utils/test-helpers');
 
 
 describe('Team Utilities', () => {
+  let tokens;
+
   beforeAll(async () => {
-    const tokens = await initializeTokenCache();
-    superadminToken = tokens.superadmin;
-    adminToken = tokens.admin;
+    await resetDatabase();
+    tokens = await getOrInitializeTokens();
   });
+
   it('should test getUserRole utility function directly', async () => {
     // Test valid user with role
     const role1 = await getUserRole(1, 2); // User 2 is admin in team 1
@@ -121,7 +120,7 @@ describe('Team Utilities', () => {
   });
 
   it('should test getTeamById with includeDeleted parameter', async () => {
-    const auth = authenticatedRequest(superadminToken);
+    const auth = authenticatedRequest(tokens.superadmin);
 
     // Soft delete team 1
     await auth.delete('/api/teams/1');
@@ -150,7 +149,7 @@ describe('Team Utilities', () => {
   });
 
   it('should return null for soft-deleted book', async () => {
-    const auth = authenticatedRequest(adminToken);
+    const auth = authenticatedRequest(tokens.admin);
 
     // Create a new book and then soft delete it
     const createResponse = await auth.post('/api/books').send({
@@ -178,7 +177,7 @@ describe('Team Utilities', () => {
   });
 
   it('should test team access for soft-deleted teams', async () => {
-    const auth = authenticatedRequest(superadminToken);
+    const auth = authenticatedRequest(tokens.superadmin);
 
     // Soft delete team 1
     await auth.delete('/api/teams/1');

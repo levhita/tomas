@@ -21,8 +21,7 @@ describe('Book Management API', () => {
   let tokens;
 
   beforeAll(async () => {
-    await resetDatabase(); // Ensure fresh database state before tests
-    // Use token cache initialization for better performance
+    await resetDatabase();
     tokens = await getOrInitializeTokens();
   });
 
