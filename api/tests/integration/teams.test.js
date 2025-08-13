@@ -831,7 +831,7 @@ describe('Teams Management API', () => {
       // Superadmin should be able to remove users from deleted teams
       const removeResponse = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.NOACCESS.id}`);
       validateApiResponse(removeResponse, 403);
-      expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
+      expect(removeResponse.body.error).toBe('Cannot add users to a deleted team');
     });
 
     it('should restore team member management after restoration', async () => {
