@@ -819,19 +819,19 @@ describe('Teams Management API', () => {
       validateApiResponse(addResponse, 403);
       expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
 
-      // Superadmin should be able to change roles in deleted teams
+      // Superadmin shouldn't be able to change roles in a deleted team
       const updateResponse = await superAuth
         .put(`/api/teams/1/users/${TEST_USERS.VIEWER.id}`)
         .send({
           role: 'collaborator'
         });
       validateApiResponse(updateResponse, 403);
-      expect(addResponse.body.error).toBe('Cannot add users to a deleted team');
+      expect(updateResponse.body.error).toBe('Cannot update users roles of a deleted team');
 
-      // Superadmin should be able to remove users from deleted teams
+      // Superadmin shouldn't be able to remove users from deleted teams
       const removeResponse = await superAuth.delete(`/api/teams/1/users/${TEST_USERS.NOACCESS.id}`);
       validateApiResponse(removeResponse, 403);
-      expect(removeResponse.body.error).toBe('Cannot add users to a deleted team');
+      expect(removeResponse.body.error).toBe('Cannot delete users of a deleted team');
     });
 
     it('should restore team member management after restoration', async () => {
