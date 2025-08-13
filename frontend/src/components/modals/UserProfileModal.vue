@@ -189,12 +189,12 @@ function validateForm() {
   // Username validation
   if (!form.value.username.trim()) {
     errors.value.username = 'Username is required'
-  } else if (form.value.username.length < 3) {
-    errors.value.username = 'Username must be at least 3 characters'
-  } else if (form.value.username.length > 50) {
-    errors.value.username = 'Username must be less than 50 characters'
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(form.value.username)) {
-    errors.value.username = 'Username can only contain letters, numbers, underscores, and hyphens'
+  } else if (form.value.username.length < 5) {
+    errors.value.username = 'Username must be at least 5 characters'
+  } else if (form.value.username.length > 100) {
+    errors.value.username = 'Username must be less than 100 characters'
+  } else if (!/^[a-zA-Z0-9_\-\.@+]+$/.test(form.value.username)) {
+    errors.value.username = 'Username can only contain letters, numbers, and the following symbols: _ - . @ +'
   }
 
   // Password validation (only when changing password)
@@ -209,8 +209,6 @@ function validateForm() {
       errors.value.password = 'New password is required'
     } else if (form.value.password.length < 6) {
       errors.value.password = 'Password must be at least 6 characters'
-    } else if (form.value.password.length > 100) {
-      errors.value.password = 'Password must be less than 100 characters'
     }
 
     // Confirm password validation
