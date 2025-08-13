@@ -14,7 +14,7 @@
         <form class="row g-2 d-flex align-items-center flex-columns p-4 mb-4 bg-light rounded-4 ">
           <div class="col-12 col-md-6 m-0">
             <div class="form-floating">
-              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions" v-model="searchQuery">
+              <input type="text" class="form-control bg-body-tertiary text-light-emphasis" id="search" placeholder="Search transactions" v-model="searchQuery" @keypress.enter.prevent>
               <label for="search" class="text-light-emphasis">Search</label>
             </div>
           </div>
