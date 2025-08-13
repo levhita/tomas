@@ -12,7 +12,7 @@ WORKDIR /app
 
 # Install backend dependencies
 COPY api/package*.json ./
-RUN npm install --production
+RUN npm install --omit=dev
 
 # Copy backend files
 COPY api/ .
@@ -22,6 +22,9 @@ COPY --from=frontend-builder /frontend/dist ./public
 
 # Add API base path configuration
 ENV API_BASE_PATH=/api
+
+# Set as production
+ENV NODE_ENV=production
 
 EXPOSE 3000
 CMD ["npm", "start"]
