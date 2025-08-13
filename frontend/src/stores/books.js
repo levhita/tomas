@@ -114,7 +114,7 @@ export const useBooksStore = defineStore('books', () => {
       // Add teamId to the data
       const bookData = {
         ...data,
-        teamId: currentTeam.id
+        team_id: currentTeam.id
       };
 
       const response = await fetchWithAuth('/api/books', {

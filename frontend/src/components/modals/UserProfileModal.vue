@@ -12,7 +12,7 @@
 
         <!-- Modal Body -->
         <div class="modal-body">
-          <form @submit.prevent="save">
+          <form id="profileForm" @submit.prevent="save">
             <!-- Username Field -->
             <div class="form-floating mb-3">
               <input type="text" class="form-control" :class="{ 'is-invalid': errors.username }" id="profileUsername"
@@ -95,7 +95,7 @@
             <i class="bi bi-x-circle me-1"></i>
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" :disabled="isLoading || !isFormValid">
+          <button type="submit" form="profileForm" class="btn btn-primary" :disabled="isLoading || !isFormValid">
             <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
               aria-hidden="true"></span>
             <i class="bi bi-check-lg me-1" v-else></i>
@@ -189,12 +189,12 @@ function validateForm() {
   // Username validation
   if (!form.value.username.trim()) {
     errors.value.username = 'Username is required'
-  } else if (form.value.username.length < 3) {
-    errors.value.username = 'Username must be at least 3 characters'
-  } else if (form.value.username.length > 50) {
-    errors.value.username = 'Username must be less than 50 characters'
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(form.value.username)) {
-    errors.value.username = 'Username can only contain letters, numbers, underscores, and hyphens'
+  } else if (form.value.username.length < 5) {
+    errors.value.username = 'Username must be at least 5 characters'
+  } else if (form.value.username.length > 100) {
+    errors.value.username = 'Username must be less than 100 characters'
+  } else if (!/^[a-zA-Z0-9_\-\.@+]+$/.test(form.value.username)) {
+    errors.value.username = 'Username can only contain letters, numbers, and the following symbols: _ - . @ +'
   }
 
   // Password validation (only when changing password)
@@ -209,8 +209,6 @@ function validateForm() {
       errors.value.password = 'New password is required'
     } else if (form.value.password.length < 6) {
       errors.value.password = 'Password must be at least 6 characters'
-    } else if (form.value.password.length > 100) {
-      errors.value.password = 'Password must be less than 100 characters'
     }
 
     // Confirm password validation
