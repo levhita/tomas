@@ -122,7 +122,6 @@ const accountsStore = useAccountsStore()
 const transactions = ref([])
 const total = ref(0)
 const page = ref(1)
-const limit = ref(10)
 const sortKey = ref('date')
 const sortDirection = ref('desc')
 
