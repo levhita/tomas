@@ -12,7 +12,7 @@
 
         <!-- Modal Body -->
         <div class="modal-body">
-          <form @submit.prevent="save">
+          <form id="profileForm" @submit.prevent="save">
             <!-- Username Field -->
             <div class="form-floating mb-3">
               <input type="text" class="form-control" :class="{ 'is-invalid': errors.username }" id="profileUsername"
@@ -95,7 +95,7 @@
             <i class="bi bi-x-circle me-1"></i>
             Cancel
           </button>
-          <button type="button" class="btn btn-primary" @click="save" :disabled="isLoading || !isFormValid">
+          <button type="submit" form="profileForm" class="btn btn-primary" :disabled="isLoading || !isFormValid">
             <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"
               aria-hidden="true"></span>
             <i class="bi bi-check-lg me-1" v-else></i>
