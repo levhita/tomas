@@ -58,28 +58,7 @@
                     scope="col"
                     style="cursor: grab;"
                   >
-                    <span
-                      v-if="element.key !== 'select' && element.key !== 'actions'"
-                      class="d-inline-flex align-items-center user-select-none"
-                      @click="handleSort(element.key)"
-                      style="cursor:pointer;"
-                    >
-                      {{ element.label }}
-                      <i
-                        v-if="sortKey === element.key"
-                        :class="[
-                          'bi',
-                          sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down',
-                          'ms-1',
-                          'text-info'
-                        ]"
-                      ></i>
-                      <i
-                        v-else
-                        class="bi bi-arrow-down-up ms-1 text-info opacity-75"
-                      ></i>
-                    </span>
-                    <span v-else>
+                    <span >
                       {{ element.label }}
                     </span>
                   </th>
@@ -297,21 +276,6 @@ function formatAccounts(accountID) {
   return result.name || '-';
 }
 
-// Sort and pagination handlers
-function handleSort(key) {
-  if (sortKey.value === key) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortKey.value = key;
-    sortDirection.value = 'asc';
-  }
-  page.value = 1;
-  fetchPaginatedTransactions();
-  localStorage.setItem(getSortStorageKey(), JSON.stringify({
-    sortKey: sortKey.value,
-    sortDirection: sortDirection.value
-  }));
-}
 
 function handlePageChange(newPage) {
   if (newPage < 1 || newPage > Math.ceil(total.value / limit.value)) return;
