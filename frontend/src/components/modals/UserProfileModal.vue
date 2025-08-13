@@ -245,7 +245,7 @@ async function save() {
     // Only include password if changing it
     if (form.value.changePassword && form.value.password) {
       userData.password = form.value.password
-      userData.currentPassword = form.value.currentPassword
+      userData.current_password = form.value.currentPassword
     }
 
     // Update current user's profile

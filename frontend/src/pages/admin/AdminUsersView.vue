@@ -5,26 +5,53 @@
         <div class="col-12">
           <!-- Page Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <button class="btn btn-primary" @click="showCreateUserModal">
+            <div>
+              <h1 class="mb-0">User Management</h1>
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item">
+                    <RouterLink to="/admin">Admin</RouterLink>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Users</li>
+                </ol>
+              </nav>
+            </div>
+            <RouterLink to="/admin/users/create" class="btn btn-primary">
               <i class="bi bi-person-plus me-1"></i>
               Add User
-            </button>
+            </RouterLink>
           </div>
 
           <!-- Search and Filters -->
           <div class="card mb-4 admin-filters">
             <div class="card-body">
               <div class="row">
-                <div class="col-md-6">
-                  <div class="form-floating">
-                    <input type="text" class="form-control" id="searchUsers" v-model="searchQuery"
-                      placeholder="Search users...">
-                    <label for="searchUsers">Search users by username</label>
+                <div class="col-md-8">
+                  <div class="form-floating position-relative">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      id="searchUsers" 
+                      v-model="searchQuery"
+                      @input="handleSearchInput"
+                      placeholder="Search users..."
+                    >
+                    <label for="searchUsers">Search</label>
+                    <button 
+                      v-if="searchQuery" 
+                      type="button" 
+                      class="btn btn-sm btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2"
+                      @click="clearSearch"
+                      title="Clear search"
+                      style="z-index: 10;"
+                    >
+                      <i class="bi bi-x"></i>
+                    </button>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <div class="form-floating">
-                    <select class="form-select" id="filterRole" v-model="filterRole">
+                    <select class="form-select" id="filterRole" v-model="filterRole" @change="handleFilterChange">
                       <option value="">All Roles</option>
                       <option value="superadmin">Super Admin</option>
                       <option value="user">Regular User</option>
@@ -32,9 +59,9 @@
                     <label for="filterRole">Filter by Role</label>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <div class="form-floating">
-                    <select class="form-select" id="filterStatus" v-model="filterStatus">
+                    <select class="form-select" id="filterStatus" v-model="filterStatus" @change="handleFilterChange">
                       <option value="">All Status</option>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -48,19 +75,70 @@
 
           <!-- Users Table -->
           <div class="card admin-table">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
               <h5 class="card-title mb-0">
-                Users ({{ filteredUsers.length }})
+                Users ({{ pagination.total }})
               </h5>
+              <div class="d-flex align-items-center">
+                <label for="pageSize" class="form-label me-2 mb-0">Show:</label>
+                <select 
+                  id="pageSize" 
+                  class="form-select form-select-sm" 
+                  style="width: auto;"
+                  v-model="pageSize"
+                  @change="handlePageSizeChange"
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+                <span class="text-muted ms-2">per page</span>
+              </div>
             </div>
+            
+            <!-- Pagination at Top -->
+            <div v-if="currentUsers.length > 0" class="card-header border-top border-bottom-0 bg-body-secondary d-flex justify-content-between align-items-center">
+              <div class="pagination-info">
+                <small class="text-muted">
+                  Showing {{ ((pagination.page - 1) * pagination.limit) + 1 }} to 
+                  {{ Math.min(pagination.page * pagination.limit, pagination.total) }} of 
+                  {{ pagination.total }} users
+                </small>
+              </div>
+              
+              <nav aria-label="Users pagination">
+                <ul class="pagination pagination-sm mb-0">
+                  <li class="page-item" :class="{ disabled: !pagination.hasPrev }">
+                    <button class="page-link" @click="goToPrevPage" :disabled="!pagination.hasPrev">
+                      <i class="bi bi-chevron-left"></i>
+                    </button>
+                  </li>
+                  
+                  <!-- Show page numbers -->
+                  <li v-for="page in getVisiblePages()" :key="page" 
+                      class="page-item" :class="{ active: page === pagination.page }">
+                    <button class="page-link" @click="goToPage(page)">
+                      {{ page }}
+                    </button>
+                  </li>
+                  
+                  <li class="page-item" :class="{ disabled: !pagination.hasNext }">
+                    <button class="page-link" @click="goToNextPage" :disabled="!pagination.hasNext">
+                      <i class="bi bi-chevron-right"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            
             <div class="card-body p-0">
-              <div v-if="usersStore.isLoadingUsers" class="admin-loading">
+              <div v-if="isLoading" class="admin-loading">
                 <div class="spinner-border" role="status">
                   <span class="visually-hidden">Loading users...</span>
                 </div>
               </div>
 
-              <div v-else-if="filteredUsers.length === 0" class="admin-empty-state">
+              <div v-else-if="currentUsers.length === 0" class="admin-empty-state">
                 <i class="bi bi-people"></i>
                 <p class="mb-0">No users found</p>
                 <small v-if="searchQuery || filterRole || filterStatus">
@@ -70,18 +148,18 @@
 
               <div v-else class="table-responsive">
                 <table class="table table-hover mb-0">
-                  <thead class="table-light">
+                  <thead class="table">
                     <tr>
                       <th>User</th>
                       <th>Role</th>
-                      <th>Workspaces</th>
+                      <th>Teams</th>
                       <th>Status</th>
                       <th>Created</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="user in filteredUsers" :key="user.id">
+                    <tr v-for="user in currentUsers" :key="user.id">
                       <td>
                         <div class="d-flex align-items-center">
                           <div class="bg-primary user-avatar me-2">
@@ -96,32 +174,36 @@
                         </div>
                       </td>
                       <td>
-                        <span class="badge status-badge" :class="user.superadmin ? 'bg-danger' : 'bg-secondary'">
+                        <span class="badge status-badge" :class="user.superadmin ? 'bg-primary' : 'bg-info'">
                           {{ user.superadmin ? 'Super Admin' : 'User' }}
                         </span>
                       </td>
                       <td>
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ user.workspace_count || 0 }}
-                            workspace{{ (user.workspace_count || 0) !== 1 ? 's' : '' }}</span>
-                          <small class="text-muted" v-if="user.workspace_count > 0">
-                            <span v-if="user.admin_workspaces > 0" class="me-2">
-                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_workspaces }} admin
+                          <span class="fw-semibold">{{ user.team_count || 0 }}
+                            team{{ (user.team_count || 0) !== 1 ? 's' : '' }}</span>
+                          <small class="text-muted" v-if="user.team_count > 0">
+                            <span v-if="user.admin_teams > 0" class="me-2">
+                              <i class="bi bi-shield-check text-danger"></i> {{ user.admin_teams }} admin
                             </span>
-                            <span v-if="user.collaborator_workspaces > 0" class="me-2">
-                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_workspaces }} edit
+                            <span v-if="user.collaborator_teams > 0" class="me-2">
+                              <i class="bi bi-pencil text-warning"></i> {{ user.collaborator_teams }} edit
                             </span>
-                            <span v-if="user.viewer_workspaces > 0">
-                              <i class="bi bi-eye text-info"></i> {{ user.viewer_workspaces }} view
+                            <span v-if="user.viewer_teams > 0">
+                              <i class="bi bi-eye text-info"></i> {{ user.viewer_teams }} view
                             </span>
                           </small>
                           <small class="text-muted" v-else>
-                            No workspace access
+                            No team access
                           </small>
                         </div>
                       </td>
                       <td>
-                        <span class="badge status-badge" :class="user.active ? 'bg-success' : 'bg-danger'">
+                        <span class="badge status-badge btn" 
+                          :class="user.active ? 'bg-info' : 'bg-secondary'"
+                          @click="toggleUserStatus(user)" 
+                          :title="user.active ? 'Click to disable user' : 'Click to enable user'"
+                          :disabled="user.id === usersStore.currentUser?.id">
                           {{ user.active ? 'Active' : 'Inactive' }}
                         </span>
                       </td>
@@ -129,18 +211,12 @@
                         <small>{{ formatDate(user.created_at) }}</small>
                       </td>
                       <td>
-                        <div class="btn-group btn-group-sm admin-actions" role="group">
-                          <button type="button" class="btn btn-outline-primary" @click="editUser(user)"
+                        <div class="admin-actions">
+                          <button type="button" class="btn btn-link me-2" @click="editUser(user)"
                             title="Edit user">
                             <i class="bi bi-pencil"></i>
                           </button>
-                          <button type="button" class="btn"
-                            :class="user.active ? 'btn-outline-warning' : 'btn-outline-success'"
-                            @click="toggleUserStatus(user)" :title="user.active ? 'Disable user' : 'Enable user'"
-                            :disabled="user.id === usersStore.currentUser?.id">
-                            <i class="bi" :class="user.active ? 'bi-pause-circle' : 'bi-play-circle'"></i>
-                          </button>
-                          <button type="button" class="btn btn-outline-danger" @click="deleteUser(user)"
+                          <button type="button" class="btn btn-link" @click="deleteUser(user)"
                             title="Delete user" :disabled="user.id === usersStore.currentUser?.id">
                             <i class="bi bi-trash"></i>
                           </button>
@@ -150,14 +226,46 @@
                   </tbody>
                 </table>
               </div>
+
+              <!-- Pagination -->
+              <div v-if="currentUsers.length > 0" class="card-footer d-flex justify-content-between align-items-center">
+                <div class="pagination-info">
+                  <small class="text-muted">
+                    Showing {{ ((pagination.page - 1) * pagination.limit) + 1 }} to 
+                    {{ Math.min(pagination.page * pagination.limit, pagination.total) }} of 
+                    {{ pagination.total }} users
+                  </small>
+                </div>
+                
+                <nav aria-label="Users pagination">
+                  <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" :class="{ disabled: !pagination.hasPrev }">
+                      <button class="page-link" @click="goToPrevPage" :disabled="!pagination.hasPrev">
+                        <i class="bi bi-chevron-left"></i>
+                      </button>
+                    </li>
+                    
+                    <!-- Show page numbers -->
+                    <li v-for="page in getVisiblePages()" :key="page" 
+                        class="page-item" :class="{ active: page === pagination.page }">
+                      <button class="page-link" @click="goToPage(page)">
+                        {{ page }}
+                      </button>
+                    </li>
+                    
+                    <li class="page-item" :class="{ disabled: !pagination.hasNext }">
+                      <button class="page-link" @click="goToNextPage" :disabled="!pagination.hasNext">
+                        <i class="bi bi-chevron-right"></i>
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- User Modal -->
-    <UserModal v-model="showUserModal" :user="selectedUser" @save="handleUserSaved" />
   </AdminLayout>
 </template>
 
@@ -183,14 +291,15 @@
  * @component
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '../../layouts/AdminLayout.vue'
-import UserModal from '../../components/modals/UserModal.vue'
 import { useUsersStore } from '../../stores/users'
 import { useConfirm } from '../../composables/useConfirm'
 import { useToast } from '../../composables/useToast'
 
 const usersStore = useUsersStore()
+const router = useRouter()
 const { confirm } = useConfirm()
 const { showToast } = useToast()
 
@@ -198,41 +307,13 @@ const { showToast } = useToast()
 const searchQuery = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
-const showUserModal = ref(false)
-const selectedUser = ref(null)
+const searchTimeout = ref(null)
+const pageSize = ref(10) // Default page size matching store default
 
 // Computed properties
-const filteredUsers = computed(() => {
-  let filtered = usersStore.users
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user =>
-      user.username.toLowerCase().includes(query)
-    )
-  }
-
-  // Role filter
-  if (filterRole.value) {
-    filtered = filtered.filter(user => {
-      if (filterRole.value === 'superadmin') return user.superadmin
-      if (filterRole.value === 'user') return !user.superadmin
-      return true
-    })
-  }
-
-  // Status filter
-  if (filterStatus.value) {
-    filtered = filtered.filter(user => {
-      if (filterStatus.value === 'active') return user.active
-      if (filterStatus.value === 'inactive') return !user.active
-      return true
-    })
-  }
-
-  return filtered
-})
+const currentUsers = computed(() => usersStore.users)
+const pagination = computed(() => usersStore.usersPagination)
+const isLoading = computed(() => usersStore.isLoadingUsers)
 
 // Helper functions
 function getUserInitials(username) {
@@ -254,21 +335,98 @@ function formatDate(dateString) {
   })
 }
 
+// Search and filter functions
+function handleSearchInput() {
+  // Clear previous timeout
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+  
+  // Debounce search
+  searchTimeout.value = setTimeout(() => {
+    loadUsers({ page: 1 }) // Reset to first page when searching
+  }, 300)
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  loadUsers({ page: 1 }) // Reset to first page when clearing search
+}
+
+function handleFilterChange() {
+  loadUsers({ page: 1 }) // Reset to first page when filtering
+}
+
+function handlePageSizeChange() {
+  loadUsers({ page: 1, limit: parseInt(pageSize.value) })
+}
+
+// Pagination functions
+function goToPage(page) {
+  loadUsers({ page })
+}
+
+function goToNextPage() {
+  if (pagination.value.hasNext) {
+    goToPage(pagination.value.page + 1)
+  }
+}
+
+function goToPrevPage() {
+  if (pagination.value.hasPrev) {
+    goToPage(pagination.value.page - 1)
+  }
+}
+
+// Generate visible page numbers for pagination
+function getVisiblePages() {
+  const current = pagination.value.page
+  const total = pagination.value.totalPages
+  const pages = []
+  
+  if (total <= 7) {
+    // Show all pages if total is 7 or less
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    // Show smart pagination
+    if (current <= 4) {
+      // Show first 5 pages + ... + last page
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i)
+      }
+      if (total > 6) {
+        pages.push('...')
+        pages.push(total)
+      }
+    } else if (current >= total - 3) {
+      // Show first page + ... + last 5 pages
+      pages.push(1)
+      if (current > 5) {
+        pages.push('...')
+      }
+      for (let i = total - 4; i <= total; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show first page + ... + current-1, current, current+1 + ... + last page
+      pages.push(1)
+      pages.push('...')
+      for (let i = current - 1; i <= current + 1; i++) {
+        pages.push(i)
+      }
+      pages.push('...')
+      pages.push(total)
+    }
+  }
+  
+  return pages
+}
+
 // User management functions
-function showCreateUserModal() {
-  selectedUser.value = null
-  showUserModal.value = true
-}
-
 function editUser(user) {
-  selectedUser.value = user
-  showUserModal.value = true
-}
-
-function handleUserSaved() {
-  // Refresh the users list to show updated data
-  // The store will already be updated, but this ensures we have the latest data
-  loadUsers()
+  router.push(`/admin/users/${user.id}/edit`)
 }
 
 async function toggleUserStatus(user) {
@@ -290,7 +448,7 @@ async function toggleUserStatus(user) {
       message: `Are you sure you want to ${action} user "${user.username}"?`,
       confirmText: action.charAt(0).toUpperCase() + action.slice(1),
       cancelText: 'Cancel',
-      confirmButtonVariant: user.active ? 'warning' : 'success'
+      confirmButtonVariant: 'primary'
     })
 
     if (user.active) {
@@ -332,7 +490,7 @@ async function deleteUser(user) {
         `This action cannot be undone and will permanently remove:<br>` +
         `• The user account<br>` +
         `• All associated data<br>` +
-        `• Access to all workspaces`,
+        `• Access to all books`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       confirmButtonVariant: 'danger'
@@ -359,10 +517,16 @@ async function deleteUser(user) {
   }
 }
 
-// Load users data
-async function loadUsers() {
+// Load users data with pagination
+async function loadUsers(options = {}) {
   try {
-    await usersStore.fetchAllUsers()
+    await usersStore.fetchAllUsers({
+      page: options.page || pagination.value.page,
+      limit: options.limit || parseInt(pageSize.value),
+      search: searchQuery.value.trim() || undefined,
+      role: filterRole.value || undefined,
+      status: filterStatus.value || undefined
+    })
   } catch (error) {
     console.error('Error loading users:', error)
     showToast({
@@ -375,6 +539,8 @@ async function loadUsers() {
 }
 
 onMounted(() => {
+  // Initialize page size from store
+  pageSize.value = pagination.value.limit
   loadUsers()
 })
 </script>

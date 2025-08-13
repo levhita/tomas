@@ -16,9 +16,9 @@ export default {
       control: 'boolean',
       description: 'When true, displays a loading spinner and disables form inputs'
     },
-    workspaceId: {
+    bookId: {
       control: 'number',
-      description: 'ID of the workspace where the account belongs or will be created'
+      description: 'ID of the book where the account belongs or will be created'
     },
     account: {
       control: 'object',
@@ -41,7 +41,7 @@ const debitAccountDemo = {
   name: 'Checking Account',
   note: 'My primary bank account for daily expenses',
   type: 'debit',
-  workspace_id: 101 // Will be overridden in story args
+  book_id: 101 // Will be overridden in story args
 };
 
 const creditAccountDemo = {
@@ -49,7 +49,7 @@ const creditAccountDemo = {
   name: 'Credit Card',
   note: 'Visa credit card with 2% cashback',
   type: 'credit',
-  workspace_id: 101 // Will be overridden in story args
+  book_id: 101 // Will be overridden in story args
 };
 
 const Template = (args) => ({
@@ -70,11 +70,11 @@ const Template = (args) => ({
     // Watch for control panel changes - always create a new reference
     watch(() => args.account, (newVal) => {
       if (newVal) {
-        // Preserve the account's original workspace_id if it exists
+        // Preserve the account's original book_id if it exists
         updateAccountReference({
           ...newVal,
-          // Don't override the workspace_id if it already exists in the account
-          workspace_id: newVal.workspace_id !== undefined ? newVal.workspace_id : args.workspaceId
+          // Don't override the book_id if it already exists in the account
+          book_id: newVal.book_id !== undefined ? newVal.book_id : args.bookId
         });
       } else {
         updateAccountReference(null);
@@ -101,7 +101,7 @@ const Template = (args) => ({
         updateAccountReference({
           ...account.value,
           type: newType
-          // Preserve the original workspace_id from the account
+          // Preserve the original book_id from the account
         });
       },
       changeName: () => {
@@ -110,22 +110,22 @@ const Template = (args) => ({
         updateAccountReference({
           ...account.value,
           name: `${account.value.name} (edited at ${new Date().toLocaleTimeString()})`
-          // Preserve the original workspace_id from the account
+          // Preserve the original book_id from the account
         });
       },
       resetAccount: () => {
         updateAccountReference(null);
       },
-      changeWorkspaceId: () => {
+      changeBookId: () => {
         if (!account.value) return;
-        // Create a completely new reference with a different workspace_id
-        const newWorkspaceId = account.value.workspace_id === args.workspaceId
-          ? args.workspaceId + 1
-          : args.workspaceId;
+        // Create a completely new reference with a different book_id
+        const newBookId = account.value.book_id === args.bookId
+          ? args.bookId + 1
+          : args.bookId;
 
         updateAccountReference({
           ...account.value,
-          workspace_id: newWorkspaceId
+          book_id: newBookId
         });
       }
     };
@@ -135,7 +135,7 @@ const Template = (args) => ({
       <AccountModal 
         v-model="modelValue"
         :account="account"
-        :workspaceId="args.workspaceId"
+        :bookId="args.bookId"
         :isLoading="args.isLoading"
         @save="onSave"
       />
@@ -147,7 +147,7 @@ const Template = (args) => ({
 export const CreateNewAccount = Template.bind({});
 CreateNewAccount.args = {
   modelValue: true,
-  workspaceId: 123,
+  bookId: 123,
   isLoading: false,
   account: null
 };
@@ -191,7 +191,7 @@ CreateNewAccount.play = async ({ args, canvasElement }) => {
     name: 'Test Savings Account',
     note: 'This is a test savings account',
     type: 'debit',
-    workspace_id: 123
+    book_id: 123
   };
 
   // Mock the save function to verify data
@@ -209,7 +209,7 @@ CreateNewAccount.play = async ({ args, canvasElement }) => {
 export const EditDebitAccount = Template.bind({});
 EditDebitAccount.args = {
   modelValue: true,
-  workspaceId: 101,
+  bookId: 101,
   isLoading: false,
   account: debitAccountDemo,
 };
@@ -248,7 +248,7 @@ EditDebitAccount.play = async ({ args, canvasElement }) => {
     name: 'Main Checking Account',
     note: 'Personal checking account for bills and expenses',
     type: 'debit',
-    workspace_id: 101
+    book_id: 101
   };
 
   // Mock the save function to verify data
@@ -266,7 +266,7 @@ EditDebitAccount.play = async ({ args, canvasElement }) => {
 export const EditCreditAccount = Template.bind({});
 EditCreditAccount.args = {
   modelValue: true,
-  workspaceId: 101,
+  bookId: 101,
   isLoading: false,
   account: creditAccountDemo
 };
@@ -302,7 +302,7 @@ EditCreditAccount.play = async ({ args, canvasElement }) => {
     name: 'Premium Credit Card',
     note: 'Visa credit card with 2% cashback', // Original note preserved
     type: 'credit',
-    workspace_id: 101
+    book_id: 101
   };
 
   // Mock the save function to verify data
@@ -320,7 +320,7 @@ EditCreditAccount.play = async ({ args, canvasElement }) => {
 export const LoadingState = Template.bind({});
 LoadingState.args = {
   modelValue: true,
-  workspaceId: 123,
+  bookId: 123,
   isLoading: true,
   account: null
 };
@@ -353,30 +353,30 @@ LoadingState.play = async ({ args, canvasElement }) => {
   expect(spinner).toBeInTheDocument();
 };
 
-// Add a story for testing workspace_id handling
-export const WorkspaceIdHandling = Template.bind({});
-WorkspaceIdHandling.args = {
+// Add a story for testing book_id handling
+export const BookIdHandling = Template.bind({});
+BookIdHandling.args = {
   modelValue: true,
-  workspaceId: 999, // Different from the account's workspace_id
+  bookId: 999, // Different from the account's book_id
   isLoading: false,
   account: {
     id: 5,
-    name: 'Account with explicit workspace_id',
-    note: 'This account has its own workspace_id that should be preserved',
+    name: 'Account with explicit book_id',
+    note: 'This account has its own book_id that should be preserved',
     type: 'debit',
-    workspace_id: 555 // Explicitly different from props.workspaceId
+    book_id: 555 // Explicitly different from props.bookId
   }
 };
-WorkspaceIdHandling.parameters = {
+BookIdHandling.parameters = {
   docs: {
     description: {
-      story: 'Tests that account.workspace_id is properly preserved even when workspaceId prop has a different value.'
+      story: 'Tests that account.book_id is properly preserved even when bookId prop has a different value.'
     }
   }
 };
 
-// Play function to verify workspace_id handling
-WorkspaceIdHandling.play = async ({ args, canvasElement }) => {
+// Play function to verify book_id handling
+BookIdHandling.play = async ({ args, canvasElement }) => {
   const canvas = within(canvasElement);
 
   // Mock the save function to verify data
@@ -386,12 +386,12 @@ WorkspaceIdHandling.play = async ({ args, canvasElement }) => {
   const saveButton = canvas.getByTestId('save-account-button');
   await userEvent.click(saveButton);
 
-  // Verify first save call preserved the original workspace_id
+  // Verify first save call preserved the original book_id
   expect(args.save).toHaveBeenCalledWith(expect.objectContaining({
-    workspace_id: 555 // The original workspace_id from the account
+    book_id: 555 // The original book_id from the account
   }));
 
-  // Now modify the name but workspace_id should still be preserved
+  // Now modify the name but book_id should still be preserved
   const nameInput = canvas.getByLabelText('Name *');
   await userEvent.clear(nameInput);
   await userEvent.type(nameInput, 'Renamed account');
@@ -399,31 +399,31 @@ WorkspaceIdHandling.play = async ({ args, canvasElement }) => {
   // Save again
   await userEvent.click(saveButton);
 
-  // Verify second save call still preserved the workspace_id
+  // Verify second save call still preserved the book_id
   expect(args.save).toHaveBeenCalledWith(expect.objectContaining({
     name: 'Renamed account',
-    workspace_id: 555 // Should still be the original workspace_id
+    book_id: 555 // Should still be the original book_id
   }));
 };
 
-// Add a story for testing new account creation with workspaceId fallback
-export const NewAccountWorkspaceIdFallback = Template.bind({});
-NewAccountWorkspaceIdFallback.args = {
+// Add a story for testing new account creation with bookId fallback
+export const NewAccountBookIdFallback = Template.bind({});
+NewAccountBookIdFallback.args = {
   modelValue: true,
-  workspaceId: 777, // This should be used as fallback
+  bookId: 777, // This should be used as fallback
   isLoading: false,
   account: null
 };
-NewAccountWorkspaceIdFallback.parameters = {
+NewAccountBookIdFallback.parameters = {
   docs: {
     description: {
-      story: 'Tests that a new account correctly uses the workspaceId prop when no account.workspace_id exists.'
+      story: 'Tests that a new account correctly uses the bookId prop when no account.book_id exists.'
     }
   }
 };
 
-// Play function to verify workspaceId fallback for new accounts
-NewAccountWorkspaceIdFallback.play = async ({ args, canvasElement }) => {
+// Play function to verify bookId fallback for new accounts
+NewAccountBookIdFallback.play = async ({ args, canvasElement }) => {
   const canvas = within(canvasElement);
 
   // Mock the save function to verify data
@@ -438,9 +438,9 @@ NewAccountWorkspaceIdFallback.play = async ({ args, canvasElement }) => {
   const saveButton = canvas.getByTestId('save-account-button');
   await userEvent.click(saveButton);
 
-  // Verify the save event includes the fallback workspace_id from props
+  // Verify the save event includes the fallback book_id from props
   expect(args.save).toHaveBeenCalledWith(expect.objectContaining({
     name: 'New Account with Fallback ID',
-    workspace_id: 777 // Should use the workspaceId prop as fallback
+    book_id: 777 // Should use the bookId prop as fallback
   }));
 };

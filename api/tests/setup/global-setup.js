@@ -1,13 +1,14 @@
 /**
  * Global Test Setup
  * 
- * This file runs before all tests and sets up the test database environment.
- * It creates a separate test database and applies the test schema.
+ * This file runs before all tests and it creates a separate test
+ * database and applies the test schema.
  */
 
 const mysql = require('mysql2/promise');
 const fs = require('fs').promises;
 const path = require('path');
+const { executeScript } = require('../utils/sql-utils');
 
 module.exports = async () => {
   // Load test environment variables first
@@ -32,52 +33,45 @@ module.exports = async () => {
   });
 
   try {
-    // Read and execute test schema (which includes DROP TABLE statements)
-    const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
-    const schema = await fs.readFile(schemaPath, 'utf8');
-
+    // Read schema files
+    const schemaPath = path.join(__dirname, '../../db/schema.sql');
+    const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+    
     console.log('🔄 Recreating tables with test data...');
-    console.log(`Schema file size: ${schema.length} characters`);
+    
+    // Execute schema and seed scripts using the shared utility
+    const schemaSql = await fs.readFile(schemaPath, 'utf8');
+    await executeScript(connection, schemaSql, 'schema');
 
-    // Split statements more carefully - remove comments and empty lines first
-    const statements = schema
-      .split('\n')
-      .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
-      .join('\n')
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
+    const seedsSql = await fs.readFile(seedsPath, 'utf8');
+    await executeScript(connection, seedsSql, 'seed');
 
-    console.log(`Found ${statements.length} statements to execute`);
-
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      try {
-        await connection.execute(statement);
-        if (statement.toLowerCase().startsWith('create table') ||
-          statement.toLowerCase().startsWith('drop table')) {
-          console.log(`✓ Executed: ${statement.substring(0, 50)}...`);
-        }
-      } catch (error) {
-        // Log but don't fail on non-critical errors
-        if (!error.message.includes("doesn't exist") &&
-          !error.message.includes("Unknown table")) {
-          console.warn(`Warning on statement ${i + 1}: ${error.message}`);
-          console.warn(`Statement: ${statement.substring(0, 100)}...`);
-        }
-      }
-    }
-
-    // Verify tables were created
-    const [tables] = await connection.execute('SHOW TABLES');
-    console.log(`Created ${tables.length} tables:`, tables.map(t => Object.values(t)[0]));
-
+    // Verify database state
     // Check if users were inserted
-    const [users] = await connection.execute('SELECT id, username, superadmin FROM user');
-    console.log(`Inserted ${users.length} users:`, users);
+    const [users] = await connection.execute('SELECT * FROM user');
+    // console.log(`Inserted ${users.length} users`);
+
+    // Check if teams were inserted
+    const [teams] = await connection.execute('SELECT * FROM team');
+    // console.log(`Inserted ${teams.length} teams`);
+
+    // Check if books were inserted
+    const [books] = await connection.execute('SELECT * FROM book');
+    // console.log(`Inserted ${books.length} books`);
+
+    // Check if accounts were inserted
+    const [accounts] = await connection.execute('SELECT * FROM account');
+    // console.log(`Inserted ${accounts.length} accounts`);
+
+    // Check if categories were inserted
+    const [categories] = await connection.execute('SELECT * FROM category');
+    // console.log(`Inserted ${categories.length} categories`);
+
+    // Check if transactions were inserted
+    const [transactions] = await connection.execute('SELECT * FROM transaction');
+    // console.log(`Inserted ${transactions.length} transactions`);
 
     console.log('✅ Test database setup complete');
-
   } catch (error) {
     console.error('❌ Failed to setup test database:', error);
     throw error;

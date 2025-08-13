@@ -1,5 +1,5 @@
 <template>
-  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div class="toast-container position-fixed top-0 end-0 p-3">
     <div v-for="(toast, index) in toasts" :key="index" class="toast show"
       :class="toast.variant ? `bg-${toast.variant} text-white` : ''" role="alert" aria-live="assertive"
       aria-atomic="true">
@@ -22,7 +22,7 @@
  * Toast Component
  * 
  * A Bootstrap-based toast notification system that shows non-intrusive messages
- * in the bottom-right corner of the screen. Supports multiple toasts at once and
+ * in the top-right corner of the screen. Supports multiple toasts at once and
  * automatically removes them after a configurable duration.
  * 
  * Features:

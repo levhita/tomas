@@ -2,7 +2,7 @@
 
 # Scope on Changes
 
-Keep the frontend following what is already implemented in the API, always check with incodeAPI.js in the frontend and with the routes in the API to validate that what is done is correct.
+Keep the frontend following what is already implemented in the API, always check with the stores in the frontend and with the routes in the API to validate that what is done is correct.
 
 Furthermore, check with schema.sql to validate that the database schema is correct and that the API is returning the expected data.
 
@@ -42,16 +42,16 @@ Credit accounts: Expenses increase the debt/balance (positive), Income/payments 
 ## Permissions
 We use a permissions system to control access to certain features and pages. Please ensure that any new components or pages are compatible with the permissions system.
 
-User roles outside workspaces:
+User roles outside teams:
 - superadmin: Has access to admin dashboard features and can manage users and permissions.
-- regular user: has access to his user profile and can view the workspaces he is a member of.
+- regular user: has access to his user profile and can view the teams he is a member of.
 
-Inside workspaces superadmins dont have special permissions, they are treated as regular users with the roles they have assigned in the workspace.
+Inside teams and books superadmins dont have special permissions, they are treated as regular users with the roles they have assigned in the team.
 
-The roles inside workspaces are:
-- admin: full access to workspaces, can give other users access to workspaces, can manage edit where he is admin, and can view and edit accounts, categories and transactions.
-- collaborator: can view and edit workspaces where he is a collaborator, can view accounts but cannot manage them. can view and edit categories. can view and edit transactions.
-- viewer: can view workspaces where he is a viewer, can view accounts, categories and transactions but cannot edit them.
+The roles inside teams are:
+- admin: full access to team team, can give other users access to team, can manage edit where he is admin, can view and edit books, can view and edit accounts, categories and transactions.
+- collaborator: can view teams where he is a collaborator, can view books where he is a collaborator but cannot manage them, can view accounts but cannot manage them. can view and edit categories. can view and edit transactions.
+- viewer: can view teams where he is a viewer, can view books where he is a viewer, can view accounts, categories and transactions but cannot edit them.
 
 # Frontend Testing
 We use Storybook 9 for component testing, this means that we need to use `storybook/test` instead of `@storybook/test` in the tests.
@@ -67,8 +67,8 @@ For running any frontend test, code changes or install packages you need to cd i
 Only stories that are tagged as `stable` or `testable` will be run during the tests, this is to avoid running stories that are not ready for testing.
 
 # API Testing
- We run test using the `/api/test.sh` script, inside the test we use `supertest` and run the tests directly against the API that in turn directly uses the database, effectively testing the API and the database together.
+We run test using the `cd api && npm run test` script, inside the test we use `jest` and run the tests directly against the API that in turn directly uses the database, effectively testing the API and the database together.
 
- We have  a test database that is used for testing, this database is created and populated with test data when the tests are run.
+we have  a test database that is used for testing, this database is created and populated with test data when the tests are run.
 
 For running any api test, code changes or install packages you need to cd into api folder.

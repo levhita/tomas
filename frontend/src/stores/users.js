@@ -7,30 +7,69 @@ export const useUsersStore = defineStore('users', () => {
   const token = ref(null);
   const users = ref([]); // List of all users (for admin)
   const isLoadingUsers = ref(false); // Loading state for users list
+  const usersPagination = ref({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  }); // Pagination state for users
   const isInitializing = ref(false); // Track initialization state
   const isInitialized = ref(false); // Track if initialization has been attempted
 
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value);
-  const isSuperAdmin = computed(() => currentUser.value?.superadmin || false);
+  const isSuperAdmin = computed(() => {
+    const isSuperAdminValue = currentUser.value?.superadmin || false;
+    return isSuperAdminValue;
+  });
+  const hasSelectedTeam = computed(() => {
+    if (!token.value) return false;
+    try {
+      const payload = JSON.parse(atob(token.value.split('.')[1]));
+      return !!payload.teamId;
+    } catch {
+      return false;
+    }
+  });
+  const selectedTeam = computed(() => {
+    if (!token.value) return null;
+    try {
+      const payload = JSON.parse(atob(token.value.split('.')[1]));
+      return payload.teamId ? {
+        id: payload.teamId,
+        name: payload.teamName,
+        role: payload.teamRole
+      } : null;
+    } catch {
+      return null;
+    }
+  });
+  
+  // Alias for currentTeam to maintain consistency
+  const currentTeam = selectedTeam;
+  const isCurrentUserAdmin = computed(() => {
+    return selectedTeam.value?.role === 'admin';
+  });
   const userStats = computed(() => {
     const total = users.value.length;
     const superAdmins = users.value.filter(user => user.superadmin).length;
     const regularUsers = total - superAdmins;
 
-    // Workspace statistics
-    const totalWorkspaceAccess = users.value.reduce((sum, user) => sum + (user.workspace_count || 0), 0);
-    const usersWithWorkspaceAccess = users.value.filter(user => (user.workspace_count || 0) > 0).length;
-    const usersWithoutWorkspaceAccess = total - usersWithWorkspaceAccess;
+    // Book statistics
+    const totalBookAccess = users.value.reduce((sum, user) => sum + (user.book_count || 0), 0);
+    const usersWithBookAccess = users.value.filter(user => (user.book_count || 0) > 0).length;
+    const usersWithoutBookAccess = total - usersWithBookAccess;
 
     return {
       total,
       superAdmins,
       regularUsers,
-      totalWorkspaceAccess,
-      usersWithWorkspaceAccess,
-      usersWithoutWorkspaceAccess,
-      averageWorkspacesPerUser: total > 0 ? (totalWorkspaceAccess / total).toFixed(1) : 0
+      totalBookAccess,
+      usersWithBookAccess,
+      usersWithoutBookAccess,
+      averageBooksPerUser: total > 0 ? (totalBookAccess / total).toFixed(1) : 0
     };
   });
 
@@ -141,20 +180,141 @@ export const useUsersStore = defineStore('users', () => {
     localStorage.removeItem('token');
   }
 
+  // Team-related functions
+
+  /**
+   * Fetch current user's teams
+   * @returns {Promise<Array>} List of teams the user has access to
+   */
+  async function fetchUserTeams() {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/me/teams', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch teams');
+      }
+
+      const teams = await response.json();
+      return teams;
+    } catch (error) {
+      console.error('Error fetching user teams:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Select a team and get a new JWT token with team information
+   * @param {number} teamId - The team ID to select
+   * @returns {Promise<Object>} New token and team information
+   */
+  async function selectTeam(teamId) {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/select-team', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ team_id: teamId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to select team');
+      }
+
+      const data = await response.json();
+      
+      // Update the token with the new one that includes team information
+      token.value = data.token;
+      localStorage.setItem('token', data.token);
+
+      return data;
+    } catch (error) {
+      console.error('Error selecting team:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Exit team mode and return to admin mode
+   * @returns {Promise<Object>} New token without team information
+   */
+  async function exitTeamMode() {
+    try {
+      if (!token.value) {
+        throw new Error('No token available');
+      }
+
+      const response = await fetch('/api/users/exit-team', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to exit team mode');
+      }
+
+      const data = await response.json();
+      
+      // Update the token with the new one without team information
+      token.value = data.token;
+      localStorage.setItem('token', data.token);
+
+      return data;
+    } catch (error) {
+      console.error('Error exiting team mode:', error);
+      throw error;
+    }
+  }
+
   // Admin functions for user management
 
   /**
-   * Fetch all users - Super admin only
-   * @returns {Promise<Array>} List of all users
+   * Fetch all users with pagination - Super admin only
+   * @param {Object} options - Query options
+   * @param {number} options.page - Page number (default: 1)
+   * @param {number} options.limit - Items per page (default: 20)
+   * @param {string} options.search - Search query
+   * @param {string} options.role - Role filter
+   * @param {string} options.status - Status filter
+   * @returns {Promise<Object>} Paginated users data
    */
-  async function fetchAllUsers() {
+  async function fetchAllUsers(options = {}) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     isLoadingUsers.value = true;
     try {
-      const response = await fetch('/api/users', {
+      const params = new URLSearchParams({
+        page: options.page || usersPagination.value.page,
+        limit: options.limit || usersPagination.value.limit,
+        ...(options.search && { search: options.search }),
+        ...(options.role && { role: options.role }),
+        ...(options.status && { status: options.status })
+      });
+
+      const response = await fetch(`/api/users?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -167,14 +327,65 @@ export const useUsersStore = defineStore('users', () => {
         throw new Error(error.error || 'Failed to fetch users');
       }
 
-      const userData = await response.json();
-      users.value = userData;
-      return userData;
+      const data = await response.json();
+      
+      // Update state
+      users.value = data.users;
+      usersPagination.value = data.pagination;
+
+      return data;
     } catch (error) {
-      console.error('Fetch users error:', error);
+      console.error('Error fetching users:', error);
       throw error;
     } finally {
       isLoadingUsers.value = false;
+    }
+  }
+
+  /**
+   * Search users by username - Super admin only
+   * @param {string} query - Search query
+   * @param {number} limit - Maximum number of results (default 10)
+   * @param {number} teamId - Optional team ID to check membership status
+   * @returns {Promise<Array>} List of matching users with membership status
+   */
+  async function searchUsers(query, limit = 10, teamId = null) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+
+    if (!query || query.trim().length < 1) {
+      return [];
+    }
+
+    try {
+      const searchParams = new URLSearchParams({
+        q: query.trim(),
+        limit: limit.toString()
+      });
+      
+      if (teamId) {
+        searchParams.append('team_id', teamId.toString());
+      }
+      
+      const response = await fetch(`/api/users/search?${searchParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to search users');
+      }
+
+      const userData = await response.json();
+      return userData;
+    } catch (error) {
+      console.error('Search users error:', error);
+      throw error;
     }
   }
 
@@ -337,12 +548,21 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   /**
-   * Search workspaces by name or ID - Super admin only
-   * @param {string} query - Search query (workspace name or ID)
-   * @param {number} limit - Maximum results to return (default: 10)
-   * @returns {Promise<Array>} List of matching workspaces
+   * Fetch a user by ID - Super admin only (alias for getUserById for consistency)
+   * @param {number} userId - User ID to fetch
+   * @returns {Promise<Object>} User data
    */
-  async function searchWorkspaces(query, limit = 10) {
+  async function fetchUserById(userId) {
+    return getUserById(userId);
+  }
+
+  /**
+   * Search books by name or ID - Super admin only
+   * @param {string} query - Search query (book name or ID)
+   * @param {number} limit - Maximum results to return (default: 10)
+   * @returns {Promise<Array>} List of matching books
+   */
+  async function searchBooks(query, limit = 10) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -357,7 +577,7 @@ export const useUsersStore = defineStore('users', () => {
         limit: limit.toString()
       });
 
-      const response = await fetch(`/api/workspaces/search?${params}`, {
+      const response = await fetch(`/api/books/search?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -367,29 +587,29 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to search workspaces');
+        throw new Error(error.error || 'Failed to search books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Search workspaces error:', error);
+      console.error('Search books error:', error);
       throw error;
     }
   }
 
   /**
-   * Fetch all workspaces - Super admin only
-   * @deprecated Use searchWorkspaces instead for better performance
-   * @returns {Promise<Array>} List of all workspaces
+   * Fetch all books - Super admin only
+   * @deprecated Use searchBooks instead for better performance
+   * @returns {Promise<Array>} List of all books
    */
-  async function fetchAllWorkspaces() {
+  async function fetchAllBooks() {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch('/api/workspaces/all', {
+      const response = await fetch('/api/books/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -399,29 +619,29 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch all workspaces');
+        throw new Error(error.error || 'Failed to fetch all books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Fetch all workspaces error:', error);
+      console.error('Fetch all books error:', error);
       throw error;
     }
   }
 
   /**
-   * Get workspace access for a specific user - Super admin only
+   * Get book access for a specific user - Super admin only
    * @param {number} userId - User ID
-   * @returns {Promise<Array>} List of workspaces the user has access to
+   * @returns {Promise<Array>} List of books the user has access to
    */
-  async function getUserWorkspaces(userId) {
+  async function getUserBooks(userId) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces`, {
+      const response = await fetch(`/api/users/${userId}/books`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -431,66 +651,66 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch user workspaces');
+        throw new Error(error.error || 'Failed to fetch user books');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Get user workspaces error:', error);
+      console.error('Get user books error:', error);
       throw error;
     }
   }
 
   /**
-   * Add user to a workspace - Super admin only
+   * Add user to a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
+   * @param {number} bookId - Book ID
    * @param {string} role - Role to assign (admin, collaborator, viewer)
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @returns {Promise<Array>} Updated list of user's books
    */
-  async function addUserToWorkspace(userId, workspaceId, role) {
+  async function addUserToBook(userId, bookId, role) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces`, {
+      const response = await fetch(`/api/users/${userId}/books`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token.value}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ workspaceId, role }),
+        body: JSON.stringify({ bookId, role }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to add user to workspace');
+        throw new Error(error.error || 'Failed to add user to book');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Add user to workspace error:', error);
+      console.error('Add user to book error:', error);
       throw error;
     }
   }
 
   /**
-   * Update user's role in a workspace - Super admin only
+   * Update user's role in a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
+   * @param {number} bookId - Book ID
    * @param {string} role - New role (admin, collaborator, viewer)
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @returns {Promise<Array} Updated list of user's books
    */
-  async function updateUserWorkspaceRole(userId, workspaceId, role) {
+  async function updateUserBookRole(userId, bookId, role) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces/${workspaceId}`, {
+      const response = await fetch(`/api/users/${userId}/books/${bookId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -501,30 +721,30 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update user workspace role');
+        throw new Error(error.error || 'Failed to update user book role');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Update user workspace role error:', error);
+      console.error('Update user book role error:', error);
       throw error;
     }
   }
 
   /**
-   * Remove user from a workspace - Super admin only
+   * Remove user from a book - Super admin only
    * @param {number} userId - User ID
-   * @param {number} workspaceId - Workspace ID
-   * @returns {Promise<Array>} Updated list of user's workspaces
+   * @param {number} bookId - Book ID
+   * @returns {Promise<Array>} Updated list of user's books
    */
-  async function removeUserFromWorkspace(userId, workspaceId) {
+  async function removeUserFromBook(userId, bookId) {
     if (!isSuperAdmin.value) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/workspaces/${workspaceId}`, {
+      const response = await fetch(`/api/users/${userId}/books/${bookId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -534,13 +754,13 @@ export const useUsersStore = defineStore('users', () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to remove user from workspace');
+        throw new Error(error.error || 'Failed to remove user from book');
       }
 
-      const workspaces = await response.json();
-      return workspaces;
+      const books = await response.json();
+      return books;
     } catch (error) {
-      console.error('Remove user from workspace error:', error);
+      console.error('Remove user from book error:', error);
       throw error;
     }
   }
@@ -623,17 +843,60 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
+  /**
+   * Fetch teams for a specific user (admin only)
+   * @param {number} userId - User ID
+   * @returns {Promise<Array>} List of teams the user belongs to
+   */
+  async function fetchUserTeamsById(userId) {
+    if (!isSuperAdmin.value) {
+      throw new Error('Unauthorized: Super admin access required');
+    }
+    
+    try {
+      const response = await fetch(`/api/users/${userId}/teams`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch user teams';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error('Could not parse error response:', e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch user teams error:', error);
+      throw error;
+    }
+  }
+
   return {
     // State
     currentUser,
     token,
     users,
     isLoadingUsers,
+    usersPagination,
     isInitializing,
     isInitialized,
     // Getters
     isAuthenticated,
     isSuperAdmin,
+    hasSelectedTeam,
+    selectedTeam,
+    currentTeam,
+    isCurrentUserAdmin,
     userStats,
     // Actions
     login,
@@ -642,18 +905,25 @@ export const useUsersStore = defineStore('users', () => {
     initializeFromToken,
     // Admin actions
     fetchAllUsers,
+    searchUsers,
     createUser,
     updateUser,
     deleteUser,
     enableUser,
     disableUser,
     getUserById,
-    // Workspace management
-    searchWorkspaces,
-    fetchAllWorkspaces,
-    getUserWorkspaces,
-    addUserToWorkspace,
-    updateUserWorkspaceRole,
-    removeUserFromWorkspace
+    fetchUserById,
+    // Book management
+    searchBooks,
+    fetchAllBooks,
+    getUserBooks,
+    addUserToBook,
+    updateUserBookRole,
+    removeUserFromBook,
+    // Team management
+    fetchUserTeams,
+    selectTeam,
+    exitTeamMode,
+    fetchUserTeamsById
   };
 });

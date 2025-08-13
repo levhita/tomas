@@ -97,8 +97,8 @@ main {
   margin-left: 1rem;
 }
 
-/* Workspace loading state */
-.workspace-loading {
+/* Book loading state */
+.book-loading {
   min-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -112,16 +112,11 @@ main {
 
 /* Login page container */
 .login-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--bs-dark, #212529);
-  z-index: 1000;
 }
 
 /* Login card */
@@ -166,20 +161,20 @@ main {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 2.7 Workspace Cards                                                       */
+/* 2.7 Book Cards                                                       */
 /* -------------------------------------------------------------------------- */
 
-.workspace-card {
+.book-card {
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-.workspace-card:hover {
+.book-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.workspace-card .card-footer {
+.book-card .card-footer {
   border-top: 1px solid rgba(0, 0, 0, 0.125);
   padding: 0.75rem 1rem;
 }
@@ -275,3 +270,96 @@ main {
     color: var(--bs-primary-color);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* 2.11 Book Navigation Navbar                                               */
+/* -------------------------------------------------------------------------- */
+
+/* Book navbar logo sizing */
+.book-navbar .navbar-logo {
+  height: 40px;
+  width: 40px;
+}
+
+/* Navigation tabs container */
+.book-navbar .nav-tabs-container {
+  display: flex;
+  align-items: left;
+}
+
+.book-navbar .nav-tabs-container .nav-tabs {
+  background: none;
+  border: none;
+}
+
+.book-navbar .nav-tabs-container .nav-link {
+  color: var(--bs-body-color);
+  border: 1px solid transparent;
+  border-radius: var(--bs-border-radius-pill);
+  padding: 0.5rem 1rem;
+  margin: 0 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.book-navbar .nav-tabs-container .nav-link:hover {
+  color: var(--bs-primary);
+  background-color: var(--bs-gray-100);
+}
+
+.book-navbar .nav-tabs-container .nav-link.active {
+  color: var(--bs-primary);
+  background-color: var(--bs-primary-bg-subtle);
+  border-color: var(--bs-primary);
+}
+
+/* Dark mode adjustments for book navbar */
+[data-bs-theme="dark"] .book-navbar .nav-tabs-container .nav-link:hover {
+  background-color: var(--bs-gray-800);
+}
+
+[data-bs-theme="dark"] .book-navbar .nav-tabs-container .nav-link.active {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+/* Responsive adjustments for book navbar */
+@media (max-width: 991.98px) {
+  .book-navbar .nav-tabs-container {
+    margin-top: 1rem;
+    justify-content: left;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-tabs {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-item {
+    width: 100%;
+  }
+  
+  .book-navbar .nav-tabs-container .nav-link {
+    text-align: center;
+    margin: 0.25rem 0;
+  }
+
+  /* Stack button groups vertically on mobile */
+  .book-navbar .navbar-nav {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .book-navbar .btn-group {
+    justify-content: center;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2.12 Not Found Page                                                       */
+/* -------------------------------------------------------------------------- */
+
+/* 404 page full height container */
+.not-found-page {
+  min-height: 100vh;
+}
+
+/* ========================================================================== */

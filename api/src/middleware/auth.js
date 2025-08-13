@@ -92,7 +92,13 @@ async function authenticateToken(req, res, next) {
 
     // Inject user object into the request
     // This makes user data available to downstream middleware and route handlers
-    req.user = users[0];
+    req.user = {
+      ...users[0],
+      // Include team information from token if available
+      teamId: decoded.teamId || null,
+      teamName: decoded.teamName || null,
+      teamRole: decoded.teamRole || null
+    };
 
     // Continue to the next middleware or route handler
     next();

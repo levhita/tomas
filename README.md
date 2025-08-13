@@ -24,8 +24,12 @@ Personal and Home finance projection and expense tracking application.
 ## Testing
 
 We use automated testing to ensure code quality. See [TESTING.md](TESTING.md) for details on running tests and our CI/CD pipeline.
-  - MySQL database
-  - Node.js
+
+## API Documentation
+You can view the interactive Swagger UI documentation by:
+1. Installing dependencies: `cd api && npm install`
+2. Running: `npm run docs`
+3. Opening http://localhost:3000/api-docs in your browser
 
 ## Installation
 

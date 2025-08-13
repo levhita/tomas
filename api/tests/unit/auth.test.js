@@ -31,8 +31,8 @@ describe('Authentication Middleware', () => {
 
   describe('authenticateToken', () => {
     it('should authenticate valid JWT token', async () => {
-      // Use real test data - testuser1 (id: 2) is a regular user
-      const payload = { userId: 2, username: 'testuser1', superadmin: false };
+      // Use real test data - admin (id: 2) is a regular user
+      const payload = { userId: 2, username: 'admin', superadmin: false };
       const token = jwt.sign(payload, process.env.YAMO_JWT_SECRET);
 
       const req = mockRequest(`Bearer ${token}`);
@@ -42,15 +42,15 @@ describe('Authentication Middleware', () => {
 
       expect(req.user).toBeDefined();
       expect(req.user.id).toBe(2);
-      expect(req.user.username).toBe('testuser1');
+      expect(req.user.username).toBe('admin');
       expect(req.user.superadmin).toBe(false);
       expect(mockNext).toHaveBeenCalledWith();
       expect(res.status).not.toHaveBeenCalled();
     });
 
     it('should reject token without superadmin claim', async () => {
-      // Use real test data - testuser1 but omit superadmin claim
-      const payload = { userId: 2, username: 'testuser1' }; // Missing superadmin claim
+      // Use real test data - admin but omit superadmin claim
+      const payload = { userId: 2, username: 'admin' }; // Missing superadmin claim
       const token = jwt.sign(payload, process.env.YAMO_JWT_SECRET);
 
       const req = mockRequest(`Bearer ${token}`);
@@ -185,8 +185,8 @@ describe('Authentication Middleware', () => {
     });
 
     it('should reject token with mismatched superadmin claim', async () => {
-      // Create token claiming testuser1 (id: 2) is superadmin, but in DB they're not
-      const payload = { userId: 2, username: 'testuser1', superadmin: true };
+      // Create token claiming admin (id: 2) is superadmin, but in DB they're not
+      const payload = { userId: 2, username: 'admin', superadmin: true };
       const token = jwt.sign(payload, process.env.YAMO_JWT_SECRET);
 
       const req = mockRequest(`Bearer ${token}`);

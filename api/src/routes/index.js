@@ -17,15 +17,20 @@ const fs = require('fs');
 const packageInfo = require('../../package.json');
 
 /**
- * GET /
- * Renders the API home page with basic information
- * 
- * @permission Public endpoint - no authentication required
- * @returns {HTML} Rendered index page with API information
- * 
- * This endpoint serves as a welcome page for the API,
- * showing basic information about the application and potentially
- * providing links to documentation or other resources.
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API home page
+ *     description: Renders the API home page with basic information about the application
+ *     tags: [General]
+ *     responses:
+ *       200:
+ *         description: API home page
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               description: HTML page with API information
  */
 router.get('/', function (req, res, next) {
   try {

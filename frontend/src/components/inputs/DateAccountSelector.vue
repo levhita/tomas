@@ -2,7 +2,7 @@
   <div class="toolbar bg-body-tertiary border-bottom shadow-sm p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
       <!-- Account Selector Component -->
-      <AccountSelect :modelValue="accountId" :workspaceId="workspaceId"
+      <AccountSelect :modelValue="accountId" :bookId="bookId"
         @update:modelValue="$emit('update:accountId', $event)" />
 
       <div class="btn-group" role="group">
@@ -35,13 +35,13 @@ import { ref, computed, watch } from 'vue'
 import moment from 'moment'
 import AccountSelect from './AccountSelect.vue'
 import { useAccountsStore } from '../../stores/accounts'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 
 const props = defineProps({
   accountId: Number,
   selectedDate: String,
-  workspaceId: Number,
-  workspaceName: String,
+  bookId: Number,
+  bookName: String,
 })
 
 const emit = defineEmits(['update:accountId', 'update:selectedDate', 'update:rangeType'])
@@ -49,8 +49,8 @@ const rangeType = ref('monthly')
 
 // Account store reference
 const accountsStore = useAccountsStore()
-// Workspace store for permissions
-const workspacesStore = useWorkspacesStore()
+// Book store for permissions
+const booksStore = useBooksStore()
 
 const selectedPeriod = computed(() => {
   if (rangeType.value === 'weekly') {

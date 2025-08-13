@@ -64,7 +64,7 @@
                   <select id="accountSelect" class="form-select" v-model="transaction.account_id"
                     :disabled="!hasWritePermission" required>
                     <option v-if="!transaction.account_id" value="" disabled selected>Select an account</option>
-                    <option v-for="account in accountsStore.accountsByName" :key="account.id" :value="account.id">
+                    <option v-for="account in booksStore.accountsByName" :key="account.id" :value="account.id">
                       {{ account.name }}
                     </option>
                   </select>
@@ -152,9 +152,8 @@
 import { ref, watch, nextTick, computed } from 'vue'
 import CategorySelect from '../inputs/CategorySelect.vue'
 import CurrencyInput from '../inputs/CurrencyInput.vue'
-import { useAccountsStore } from '../../stores/accounts'
 import { useConfirm } from '../../composables/useConfirm'
-import { useWorkspacesStore } from '../../stores/workspaces'
+import { useBooksStore } from '../../stores/books'
 import moment from 'moment'
 
 const { confirm } = useConfirm()
@@ -177,14 +176,13 @@ const amount = ref(0)
 const transactionType = ref('expense')
 const modalElement = ref(null)
 
-const accountsStore = useAccountsStore()
-const workspacesStore = useWorkspacesStore()
+const booksStore = useBooksStore()
 
 // Permission check
-const hasWritePermission = computed(() => workspacesStore.hasWritePermission)
+const hasWritePermission = computed(() => booksStore.hasWritePermission)
 
 const isDebitAccount = computed(() => {
-  const account = accountsStore.getAccountById(transaction.value.account_id)
+  const account = booksStore.getAccountById(transaction.value.account_id)
   return account?.type === 'debit'
 })
 

@@ -1,5 +1,9 @@
 <template>
-  <select :value="modelValue" @change="$emit('update:modelValue', $event.target.value)" class="form-select">
+  <select
+    :value="modelValue"
+    @change="onChange"
+    class="form-select"
+  >
     <option value="">Select category</option>
     <template v-for="category in filteredCategories" :key="category.id">
       <option :value="category.id">
@@ -19,7 +23,10 @@ import { computed } from 'vue';
 import { useCategoriesStore } from '../../stores/categories';
 
 const props = defineProps({
-  modelValue: [String, Number],
+  modelValue: {
+    type: Number,
+    default: null
+  },
   type: {
     type: String,
     default: null, // 'expense', 'income', or null for all
@@ -40,4 +47,9 @@ const filteredCategories = computed(() => {
 
   return categories;
 });
+
+function onChange(event) {
+  const value = event.target.value;
+  emit('update:modelValue', value === '' ? null : Number(value));
+}
 </script>

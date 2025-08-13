@@ -9,19 +9,34 @@
     </a>
 
     <!-- Dropdown menu content -->
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-      <!-- User role display (read-only) -->
-      <li>
-        <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
-          <i :class="['bi', getRoleIcon]"></i>
-          {{ workspaceRole }}
-
+    <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown" aria-labelledby="userDropdown">
+      <!-- Current team role display -->
+      <li v-if="usersStore.currentTeam">
+        <span class="dropdown-item-text d-flex align-items-center">
+          <i :class="['bi', getTeamRoleIcon, 'me-2', getTeamRoleColorClass]"></i>
+          {{ formatRole(usersStore.currentTeam.role) }}
         </span>
       </li>
 
-      <!-- Visual separator -->
-      <li>
+      <!-- User role display (for users without teams, but not superadmins) -->
+      <li v-else-if="bookRole !== 'superadmin'">
+        <span class="dropdown-item-text d-flex align-items-center justify-content-between" :class="getRoleBadgeClass">
+          <i :class="['bi', getRoleIcon]"></i>
+          {{ bookRole }}
+        </span>
+      </li>
+
+      <!-- Visual separator (only show if there's a role display above) -->
+      <li v-if="usersStore.currentTeam || bookRole !== 'superadmin'">
         <hr class="dropdown-divider">
+      </li>
+
+      <!-- Switch team action (show for all authenticated users) -->
+      <li>
+        <a href="#" class="dropdown-item" @click.prevent="switchTeam">
+          <i class="bi bi-arrow-left-right me-2"></i>
+          Switch Team
+        </a>
       </li>
 
       <!-- Profile action -->
@@ -43,10 +58,17 @@
 
     <!-- User Profile Modal -->
     <UserProfileModal v-model="showProfileModal" @save="handleProfileSaved" />
+    
+    <!-- Team Selection Modal -->
+    <TeamSelectionModal 
+      ref="teamModal"
+      :is-required="false"
+      @team-selected="onTeamSwitched"
+    />
   </li>
-  <li class="nav-item d-flex align-items-center ms-2">
+  <!-- <li class="nav-item d-flex align-items-center ms-2">
     <i :class="['bi', getRoleIcon, getRoleBadgeClass]"></i>
-  </li>
+  </li> -->
 </template>
 
 <script setup>
@@ -58,17 +80,17 @@
  * 
  * Features:
  * - Shows current username with a person icon
- * - Displays user role (Super Administrator or User) or workspace role (Admin, Collaborator, Viewer)
+ * - Displays user role (Super Administrator or User) or book role (Admin, Collaborator, Viewer)
  * - Provides logout functionality
  * - Bootstrap dropdown styling with right-alignment
  * - Accessible dropdown with proper ARIA attributes
  * 
  * Props:
- * @prop {String} workspaceRole - The user's role in the current workspace (admin, collaborator, viewer) or system (superadmin, user)
+ * @prop {String} bookRole - The user's role in the current book (admin, collaborator, viewer) or system (superadmin, user)
  * 
  * Usage:
- * <UserMenu workspaceRole="user" />
- * <UserMenu workspaceRole="admin" />
+ * <UserMenu bookRole="user" />
+ * <UserMenu bookRole="admin" />
  * 
  * Dependencies:
  * - Vue Router (for navigation after logout)
@@ -89,12 +111,13 @@
 
 import { useRouter } from 'vue-router'
 import { useUsersStore } from '../stores/users'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import UserProfileModal from './modals/UserProfileModal.vue'
+import TeamSelectionModal from './TeamSelectionModal.vue'
 
 // Props
 const props = defineProps({
-  workspaceRole: {
+  bookRole: {
     type: String,
     default: 'user',
     validator: (value) => ['superadmin', 'admin', 'collaborator', 'viewer', 'user'].includes(value)
@@ -110,48 +133,88 @@ const usersStore = useUsersStore()
 // Profile modal state
 const showProfileModal = ref(false)
 
-// Computed properties for workspace role formatting
-import { computed } from 'vue'
+// Team modal reference
+const teamModal = ref(null)
 
-// Format the workspace role with proper capitalization
-const formatWorkspaceRole = computed(() => {
-  if (!props.workspaceRole) return '';
-  return props.workspaceRole.charAt(0).toUpperCase() + props.workspaceRole.slice(1);
+// Computed properties for book role formatting
+
+// Format the book role with proper capitalization
+const formatBookRole = computed(() => {
+  if (!props.bookRole) return '';
+  return props.bookRole.charAt(0).toUpperCase() + props.bookRole.slice(1);
 })
 
 // Get the appropriate Bootstrap badge class based on the role
 const getRoleBadgeClass = computed(() => {
-  switch (props.workspaceRole) {
-    // Workspace roles
+  switch (props.bookRole) {
+    // Book roles
     case 'admin':
       return 'text-danger';
     case 'collaborator':
       return 'text-primary';
     case 'viewer':
       return 'text-info';
-    // General user roles
-    case 'superadmin':
+  }
+})
+
+// Get the appropriate Bootstrap badge class for team roles
+const getTeamRoleBadgeClass = computed(() => {
+  if (!usersStore.currentTeam) return 'bg-secondary';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
+      return 'bg-danger';
+    case 'collaborator':
+      return 'bg-primary';
+    case 'viewer':
+      return 'bg-info';
+    default:
+      return 'bg-secondary';
+  }
+})
+
+// Get the appropriate text color class for team roles
+const getTeamRoleColorClass = computed(() => {
+  if (!usersStore.currentTeam) return 'text-secondary';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
       return 'text-danger';
-    case 'user':
+    case 'collaborator':
       return 'text-primary';
+    case 'viewer':
+      return 'text-info';
+    default:
+      return 'text-secondary';
+  }
+})
+
+// Get the appropriate Bootstrap icon for team roles
+const getTeamRoleIcon = computed(() => {
+  if (!usersStore.currentTeam) return 'bi-person-fill';
+  
+  switch (usersStore.currentTeam.role) {
+    case 'admin':
+      return 'bi-shield-fill-check';
+    case 'collaborator':
+      return 'bi-pencil-fill';
+    case 'viewer':
+      return 'bi-eye-fill';
+    default:
+      return 'bi-person-fill';
   }
 })
 
 // Get the appropriate Bootstrap icon representing the access level
 const getRoleIcon = computed(() => {
-  switch (props.workspaceRole) {
-    // Workspace roles
+  switch (props.bookRole) {
+    // Book roles
     case 'admin':
       return 'bi-shield-fill-check'; // Gear icon for admin (configuration powers)
     case 'collaborator':
       return 'bi-pencil-fill'; // Pencil icon for collaborator (editing capabilities)
     case 'viewer':
       return 'bi-eye-fill'; // Eye icon for viewer (read-only access)
-    // General user roles
-    case 'superadmin':
-      return 'bi-shield-fill-check'; // Shield icon for superadmin (highest security)
-    case 'user':
-      return 'bi-person-fill'; // Person icon for regular user
   }
 })
 
@@ -215,4 +278,60 @@ async function handleLogout() {
     router.push('/login')
   }
 }
+
+/**
+ * Shows the team selection modal for switching teams
+ * 
+ * @function switchTeam
+ * @returns {void}
+ */
+function switchTeam() {
+  teamModal.value?.show()
+}
+
+/**
+ * Handles successful team switch
+ * 
+ * Called when the user successfully switches to a different team or admin mode.
+ * Always reloads the page to ensure all data is refreshed for the new context.
+ * 
+ * @function onTeamSwitched
+ * @param {Object|null} team - The newly selected team or null for admin mode
+ * @returns {void}
+ */
+function onTeamSwitched(team) {
+  console.log('Switched to:', team ? `team ${team.name}` : 'admin mode')
+  // Always reload the page to ensure all data is refreshed for the new team context
+  window.location.reload()
+}
+
+/**
+ * Format role names with proper capitalization
+ * 
+ * @function formatRole
+ * @param {string} role - The role to format
+ * @returns {string} Formatted role name
+ */
+function formatRole(role) {
+  if (!role) return ''
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
 </script>
+
+<style scoped>
+.user-menu-dropdown {
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.user-menu-dropdown .dropdown-item-text {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.user-menu-dropdown .dropdown-item-text strong {
+  display: block;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+}
+</style>

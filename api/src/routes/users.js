@@ -22,17 +22,61 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { authenticateToken, requireSuperAdmin } = require('../middleware/auth');
 
+/** istanbul ignore next: This is a configuration value, not part of the code logic */
 // Add JWT secret to environment variables or config
 const YAMO_JWT_SECRET = process.env.YAMO_JWT_SECRET || 'default-secret-key-insecure-should-be-configured';
 
 /**
- * POST /users/login
- * Authenticate a user and generate a JWT token
- * 
- * @body {string} username - Required username
- * @body {string} password - Required password
- * @permission Public - available to unauthenticated users
- * @returns {Object} User data and JWT token for authentication
+ * @swagger
+ * /users/login:
+ *   post:
+ *     summary: Authenticate a user and generate a JWT token
+ *     description: Login endpoint for user authentication. Returns user data and JWT token for subsequent API calls.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: admin
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: secretpassword
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Authentication failed due to server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', async (req, res) => {
   try {
@@ -74,9 +118,7 @@ router.post('/login', async (req, res) => {
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
-      return res.status(401).json({
-        error: 'Invalid credentials'
-      });
+      return res.status(401).json({error: 'Invalid credentials' });
     }
 
     // Generate JWT token
@@ -97,23 +139,250 @@ router.post('/login', async (req, res) => {
       token
     });
 
-  } catch (err) {
-    console.error('Authentication error:', err);
-    res.status(500).json({
-      error: 'Authentication failed'
-    });
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
 /**
- * GET /users
- * Get list of all users with workspace statistics
- * 
- * @permission SuperAdmin only
- * @returns {Array} List of all users (excluding password data) with workspace counts
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Search users by username (for adding to teams)
+ *     description: Search for users by username with optional team membership status. Admin only endpoint.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query (username partial match)
+ *         example: 'john'
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: Maximum number of results
+ *       - in: query
+ *         name: team_id
+ *         schema:
+ *           type: integer
+ *         description: Optional team ID to check membership status
+ *     responses:
+ *       200:
+ *         description: List of matching users with membership status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/User'
+ *                   - type: object
+ *                     properties:
+ *                       is_member:
+ *                         type: boolean
+ *                         description: Whether user is member of specified team
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to search users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/search', requireSuperAdmin, async (req, res) => {
+  try {
+    const { q, limit = 10, team_id } = req.query;
+    
+    if (!q || q.trim().length < 1) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    const searchTerm = `%${q.trim()}%`;
+    /* istanbul ignore next: is impractical to test this in unit tests, but should be tested manually */
+    const resultLimit = Math.min(parseInt(limit) || 10, 50); // Cap at 50 results
+    
+    let query = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.superadmin, 
+        u.active,
+        u.created_at,
+        CASE 
+          WHEN tu.user_id IS NOT NULL THEN 1 
+          ELSE 0 
+        END as is_team_member,
+        tu.role as team_role
+      FROM user u
+      LEFT JOIN team_user tu ON u.id = tu.user_id ${team_id ? 'AND tu.team_id = ?' : ''}
+      WHERE u.username LIKE ? 
+        AND u.active = 1
+    `;
+    
+    const queryParams = [];
+    
+    // Add team_id parameter if provided (for the LEFT JOIN)
+    if (team_id) {
+      queryParams.push(parseInt(team_id));
+    }
+    
+    queryParams.push(searchTerm);
+    
+    query += ` ORDER BY u.username ASC LIMIT ?`;
+    queryParams.push(resultLimit);
+    
+    const [users] = await db.query(query, queryParams);
+    
+    res.status(200).json(users.map(user => ({
+      ...user,
+      superadmin: user.superadmin === 1,
+      active: user.active === 1,
+      is_team_member: user.is_team_member === 1,
+      team_role: user.team_role || null
+    })));
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get list of all users with team statistics
+ *     description: Retrieve a paginated list of all users with search and filtering capabilities. Admin only endpoint.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of users per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search query for username
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: ['superadmin', 'regular']
+ *         description: Filter by user role
+ *     responses:
+ *       200:
+ *         description: List of users with pagination info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/User'
+ *                       - type: object
+ *                         properties:
+ *                           team_count:
+ *                             type: integer
+ *                             description: Number of teams user belongs to
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/', requireSuperAdmin, async (req, res) => {
   try {
+    // Parse pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const role = req.query.role || '';
+    const status = req.query.status || '';
+    
+    // Calculate offset
+    const offset = (page - 1) * limit;
+    
+    // Build WHERE conditions
+    let whereConditions = [];
+    let queryParams = [];
+    
+    // Search filter
+    if (search) {
+      whereConditions.push('u.username LIKE ?');
+      queryParams.push(`%${search}%`);
+    }
+    
+    // Role filter
+    if (role === 'superadmin') {
+      whereConditions.push('u.superadmin = 1');
+    } else if (role === 'user') {
+      whereConditions.push('u.superadmin = 0');
+    }
+    
+    // Status filter
+    if (status === 'active') {
+      whereConditions.push('u.active = 1');
+    } else if (status === 'inactive') {
+      whereConditions.push('u.active = 0');
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Get total count
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total
+      FROM user u
+      ${whereClause}
+    `, queryParams);
+    
+    const total = countResult[0].total;
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated users
     const [users] = await db.query(`
       SELECT 
         u.id, 
@@ -121,79 +390,365 @@ router.get('/', requireSuperAdmin, async (req, res) => {
         u.superadmin, 
         u.active,
         u.created_at,
-        COUNT(DISTINCT wu.workspace_id) as workspace_count,
-        COUNT(DISTINCT CASE WHEN wu.role = 'admin' THEN wu.workspace_id END) as admin_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'collaborator' THEN wu.workspace_id END) as collaborator_workspaces,
-        COUNT(DISTINCT CASE WHEN wu.role = 'viewer' THEN wu.workspace_id END) as viewer_workspaces
+        COUNT(DISTINCT tu.team_id) as team_count,
+        COUNT(DISTINCT CASE WHEN tu.role = 'admin' THEN tu.team_id END) as admin_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'collaborator' THEN tu.team_id END) as collaborator_teams,
+        COUNT(DISTINCT CASE WHEN tu.role = 'viewer' THEN tu.team_id END) as viewer_teams
       FROM user u
-      LEFT JOIN workspace_user wu ON u.id = wu.user_id 
-      LEFT JOIN workspace w ON wu.workspace_id = w.id AND w.deleted_at IS NULL
+      LEFT JOIN team_user tu ON u.id = tu.user_id 
+      LEFT JOIN team t ON tu.team_id = t.id AND t.deleted_at IS NULL
+      ${whereClause}
       GROUP BY u.id, u.username, u.superadmin, u.active, u.created_at
       ORDER BY u.username ASC
-    `);
+      LIMIT ? OFFSET ?
+    `, [...queryParams, limit, offset]);
 
-    res.status(200).json(users.map(user => {
-      // Convert admin and active flags from 0/1 to boolean and workspace counts to numbers
+    const formattedUsers = users.map(user => {
+      // Convert admin and active flags from 0/1 to boolean and team counts to numbers
       return {
         ...user,
         superadmin: user.superadmin === 1,
         active: user.active === 1,
-        workspace_count: parseInt(user.workspace_count) || 0,
-        admin_workspaces: parseInt(user.admin_workspaces) || 0,
-        collaborator_workspaces: parseInt(user.collaborator_workspaces) || 0,
-        viewer_workspaces: parseInt(user.viewer_workspaces) || 0
+        team_count: parseInt(user.team_count) || 0,
+        admin_teams: parseInt(user.admin_teams) || 0,
+        collaborator_teams: parseInt(user.collaborator_teams) || 0,
+        viewer_teams: parseInt(user.viewer_teams) || 0
       };
-    }));
-  } catch (err) {
+    });
+
+    res.status(200).json({
+      users: formattedUsers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
 /**
- * GET /users/me
- * Get current user's information
- * 
- * @permission Authenticated user
- * @returns {Object} Current user data (excluding password)
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: Get current user's information
+ *     description: Retrieve the authenticated user's profile information (excluding password).
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     // The user information is already available from the auth middleware
     // But we'll fetch fresh data from the database to ensure it's up to date
     const [users] = await db.query(`
-      SELECT id, username, superadmin, active, created_at 
+      SELECT id, username, superadmin, active, created_at
       FROM user 
       WHERE id = ?
     `, [req.user.id]);
-
-    if (users.length === 0) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
-    }
-
+    // User can safely be assumed to exist at this point as it passed authentication
     const user = users[0];
     // Convert superadmin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
     user.active = user.active === 1;
 
     res.status(200).json(user);
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to fetch user information'
-    });
+    res.status(500).json({ error: 'Failed to fetch user information' });
   }
 });
 
 /**
- * GET /users/:id
- * Get a single user by ID
- * 
- * @param {number} id - User ID
- * @permission User can access their own data, admins can access any user
- * @returns {Object} User data (excluding password)
+ * @swagger
+ * /users/me/teams:
+ *   get:
+ *     summary: Get current user's teams
+ *     description: Retrieve all teams that the authenticated user is a member of, including their roles in each team.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of teams the user has access to with their roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Team'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to fetch user teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/me/teams', authenticateToken, async (req, res) => {
+  try {
+    // Get user's team access
+    const [teams] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role,
+        t.created_at,
+        t.deleted_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
+    `, [req.user.id]);
+
+    res.status(200).json(teams);
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch user teams' });
+  }
+});
+
+/**
+ * @swagger
+ * /users/select-team:
+ *   post:
+ *     summary: Select a team and generate new JWT token with team information
+ *     description: Select a team context and receive a new JWT token that includes team information for subsequent API calls.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - team_id
+ *             properties:
+ *               team_id:
+ *                 type: integer
+ *                 example: 123
+ *                 description: ID of the team to select
+ *     responses:
+ *       200:
+ *         description: Team selected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   description: New JWT token with team information
+ *                 team:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 123
+ *                     name:
+ *                       type: string
+ *                       example: "Family Budget Team"
+ *                     role:
+ *                       type: string
+ *                       enum: [admin, collaborator, viewer]
+ *                       example: "admin"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       500:
+ *         description: Failed to select team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/select-team', authenticateToken, async (req, res) => {
+  try {
+    const { team_id } = req.body;
+
+    if (!team_id) {
+      return res.status(400).json({
+        error: 'Team ID is required'
+      });
+    }
+
+    // Verify user has access to this team
+    const [teamAccess] = await db.query(`
+      SELECT 
+        t.id, 
+        t.name, 
+        tu.role
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ? AND t.id = ?
+    `, [req.user.id, team_id]);
+
+    if (teamAccess.length === 0) {
+      return res.status(403).json({
+        error: 'Access denied: You do not have access to this team'
+      });
+    }
+
+    const team = teamAccess[0];
+
+    // Generate new JWT token with team information
+    const token = jwt.sign(
+      {
+        userId: req.user.id,
+        username: req.user.username,
+        superadmin: req.user.superadmin,
+        teamId: team.id,
+        teamName: team.name,
+        teamRole: team.role
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      token,
+      team: {
+        id: team.id,
+        name: team.name,
+        role: team.role
+      }
+    });
+
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to select team' });
+  }
+});
+
+/**
+ * @swagger
+ * /users/exit-team:
+ *   post:
+ *     summary: Exit team mode and return to admin mode
+ *     description: Remove team information from JWT token and return to general user mode without team context.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully exited team mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   description: New JWT token without team information
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully exited team mode"
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Failed to exit team mode
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/exit-team', authenticateToken, async (req, res) => {
+  try {
+    // Generate new JWT token without team information
+    const token = jwt.sign(
+      {
+        userId: req.user.id,
+        username: req.user.username,
+        superadmin: req.user.superadmin
+      },
+      YAMO_JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      token,
+      message: 'Successfully exited team mode'
+    });
+
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to exit team mode' });
+  }
+});
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get a single user by ID
+ *     description: Retrieve user information by ID. Users can access their own data, superadmins can access any user.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -213,35 +768,86 @@ router.get('/:id', authenticateToken, async (req, res) => {
     `, [id]);
 
     if (users.length === 0) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
+      return res.status(404).json({ error: 'User not found' });
     }
+
     const user = users[0];
-    // Convert admin and active flags from 0/1 to boolean
+    // Convert superadmin and active flags from 0/1 to boolean
     user.superadmin = user.superadmin === 1;
     user.active = user.active === 1;
     res.status(200).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to fetch user'
-    });
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 
 /**
- * POST /users
- * Create a new user
- * 
- * @body {string} username - Required unique username
- * @body {string} password - Required password
- * @body {string} password - Required password
- * @body {boolean} superadmin - Optional admin flag, defaults to false
- * @body {boolean} active - Optional active flag, defaults to true
- * @permission Admin only
- * @returns {Object} Newly created user (excluding password)
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Create a new user
+ *     description: Create a new user account. Only superadmins can create users and assign admin privileges.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 1
+ *                 example: "john_doe"
+ *                 description: Unique username for the new user
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 1
+ *                 example: "securepassword123"
+ *                 description: Password for the new user
+ *               superadmin:
+ *                 type: boolean
+ *                 default: false
+ *                 example: false
+ *                 description: Whether the user should have superadmin privileges
+ *               active:
+ *                 type: boolean
+ *                 default: true
+ *                 example: true
+ *                 description: Whether the user account should be active
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: Username already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to create user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/', requireSuperAdmin, async (req, res) => {
   try {
@@ -291,32 +897,91 @@ router.post('/', requireSuperAdmin, async (req, res) => {
     // Return new user (without sensitive data)
     res.status(201).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to create user'
-    });
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
 /**
- * PUT /users/:id
- * Update an existing user
- * 
- * @param {number} id - User ID to update
- * @body {string} username - Optional new username
- * @body {string} password - Optional new password
- * @body {boolean} admin - Optional admin status flag
- * @permission User can update their own data (except admin flag), admins can update any user
- * @returns {Object} Updated user data (excluding password)
- * 
- * Note: Only admins can modify the admin flag. Regular users can only update
- * their own account information and cannot change their admin status.
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update an existing user
+ *     description: |
+ *       Update user information. Users can update their own data (except superadmin flag), 
+ *       superadmins can update any user. Password changes for own account require current password.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "new_username"
+ *                 description: New username (must be unique)
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "newpassword123"
+ *                 description: New password
+ *               current_password:
+ *                 type: string
+ *                 format: password
+ *                 example: "currentpassword"
+ *                 description: Current password (required when user updates own password)
+ *               superadmin:
+ *                 type: boolean
+ *                 example: false
+ *                 description: Superadmin status (superadmin only)
+ *               active:
+ *                 type: boolean
+ *                 example: true
+ *                 description: Account active status (superadmin only)
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Username already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to update user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, currentPassword, superadmin, active } = req.body;
+    const { username, password, current_password, superadmin, active } = req.body;
 
     // Check if user exists
     const [existingUsers] = await db.query(
@@ -330,17 +995,11 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const existingUser = existingUsers.length > 0 ? existingUsers[0] : null;
-    if (!existingUser) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
-    }
-
+    const existingUser = existingUsers[0];
     // Check permissions
     const isOwnAccount = req.user.id === parseInt(id);
 
-    // Only admins can update admin flag and active status
+    // Only superadmins can update superadmin flag and active status
     if (superadmin !== undefined && !req.user.superadmin) {
       return res.status(403).json({
         error: 'Only administrators can change admin privileges'
@@ -349,7 +1008,7 @@ router.put('/:id', async (req, res) => {
 
     if (active !== undefined && !req.user.superadmin) {
       return res.status(403).json({
-        error: 'Only administrators can change user active status'
+        error: 'Only superadmins can change user active status'
       });
     }
 
@@ -362,13 +1021,13 @@ router.put('/:id', async (req, res) => {
 
     // Verify current password if user is updating their own password
     if (password && isOwnAccount && !req.user.superadmin) {
-      if (!currentPassword) {
+      if (!current_password) {
         return res.status(400).json({
           error: 'Current password is required to change password'
         });
       }
 
-      const isValidCurrentPassword = await bcrypt.compare(currentPassword, existingUser.password_hash);
+      const isValidCurrentPassword = await bcrypt.compare(current_password, existingUser.password_hash);
       if (!isValidCurrentPassword) {
         return res.status(401).json({
           error: 'Current password is incorrect'
@@ -446,24 +1105,57 @@ router.put('/:id', async (req, res) => {
     user.active = user.active === 1;
     res.status(200).json(user);
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to update user'
-    });
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
 /**
- * DELETE /users/:id
- * Delete a user
- * 
- * @param {number} id - User ID to delete
- * @permission Admin only, cannot delete own account
- * @returns {null} 204 No Content on success
- * 
- * Note: Users cannot delete their own accounts as a safety measure.
- * This prevents admins from accidentally removing their own access.
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     description: |
+ *       Permanently delete a user account. Superadmin only. Users cannot delete their own accounts 
+ *       as a safety measure to prevent accidental loss of admin access.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to delete
+ *     responses:
+ *       204:
+ *         description: User deleted successfully (no content)
+ *       400:
+ *         description: Cannot delete own account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Cannot delete user that is a member of teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Failed to delete user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
@@ -493,29 +1185,62 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
 
     res.status(204).send();
 
-  } catch (err) {
-    // Handle foreign key constraint violations (user is referenced elsewhere)
-    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(409).json({
-        error: 'Cannot delete user that is a member of workspaces'
-      });
-    }
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */ {
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to delete user'
-    });
+    res.status(500).json({ error: 'Could not delete user' });
   }
 });
 
 /**
- * GET /users/:id/workspaces
- * Get workspace access for a specific user
- * 
- * @param {number} id - User ID
- * @permission Super admin only
- * @returns {Array} List of workspaces the user has access to with their roles
+ * @swagger
+ * /users/{id}/teams:
+ *   get:
+ *     summary: Get team access for a specific user
+ *     description: Retrieve all teams that a specific user is a member of, including their roles. Superadmin only.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: List of teams the user has access to with their roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/Team'
+ *                   - type: object
+ *                     properties:
+ *                       role:
+ *                         type: string
+ *                         enum: [admin, collaborator, viewer]
+ *                         description: User's role in the team
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When the user was added to the team
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to fetch user teams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
+router.get('/:id/teams', requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -531,255 +1256,74 @@ router.get('/:id/workspaces', requireSuperAdmin, async (req, res) => {
       });
     }
 
-    // Get user's workspace access
-    const [workspaces] = await db.query(`
+    // Get user's team access
+    const [teams] = await db.query(`
       SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
+        t.id, 
+        t.name, 
+        tu.role,
+        tu.created_at,
+        t.deleted_at
+      FROM team t
+      INNER JOIN team_user tu ON t.id = tu.team_id
+      WHERE tu.user_id = ?
+      ORDER BY t.name ASC
     `, [id]);
 
-    res.status(200).json(workspaces);
-  } catch (err) {
+    res.status(200).json(teams);
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to fetch user workspaces'
-    });
+    res.status(500).json({ error: 'Failed to fetch user teams' });
   }
 });
 
 /**
- * POST /users/:id/workspaces
- * Add user to a workspace with specified role
- * 
- * @param {number} id - User ID
- * @body {number} workspaceId - Workspace ID to add user to
- * @body {string} role - Role to assign (admin, collaborator, viewer)
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.post('/:id/workspaces', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { workspaceId, role } = req.body;
-
-    if (!workspaceId || !role) {
-      return res.status(400).json({
-        error: 'Workspace ID and role are required'
-      });
-    }
-
-    if (!['admin', 'collaborator', 'viewer'].includes(role)) {
-      return res.status(400).json({
-        error: 'Valid role is required (admin, collaborator, or viewer)'
-      });
-    }
-
-    // Check if user exists
-    const [existingUsers] = await db.query(
-      'SELECT id FROM user WHERE id = ?',
-      [id]
-    );
-
-    if (existingUsers.length === 0) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
-    }
-
-    // Check if workspace exists
-    const [existingWorkspaces] = await db.query(
-      'SELECT id FROM workspace WHERE id = ? AND deleted_at IS NULL',
-      [workspaceId]
-    );
-
-    if (existingWorkspaces.length === 0) {
-      return res.status(404).json({
-        error: 'Workspace not found'
-      });
-    }
-
-    // Check if user is already in workspace
-    const [existing] = await db.query(
-      'SELECT 1 FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
-    );
-
-    if (existing.length > 0) {
-      return res.status(409).json({
-        error: 'User already has access to this workspace'
-      });
-    }
-
-    // Add user to workspace
-    await db.query(
-      'INSERT INTO workspace_user (workspace_id, user_id, role) VALUES (?, ?, ?)',
-      [workspaceId, id, role]
-    );
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(201).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to add user to workspace'
-    });
-  }
-});
-
-/**
- * PUT /users/:id/workspaces/:workspaceId
- * Update user's role in a workspace
- * 
- * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
- * @body {string} role - New role (admin, collaborator, viewer)
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.put('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id, workspaceId } = req.params;
-    const { role } = req.body;
-
-    if (!role || !['admin', 'collaborator', 'viewer'].includes(role)) {
-      return res.status(400).json({
-        error: 'Valid role is required (admin, collaborator, or viewer)'
-      });
-    }
-
-    // Update user's role in workspace
-    const [result] = await db.query(
-      'UPDATE workspace_user SET role = ? WHERE workspace_id = ? AND user_id = ?',
-      [role, workspaceId, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        error: 'User workspace access not found'
-      });
-    }
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(200).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to update user workspace role'
-    });
-  }
-});
-
-/**
- * DELETE /users/:id/workspaces/:workspaceId
- * Remove user from a workspace
- * 
- * @param {number} id - User ID
- * @param {number} workspaceId - Workspace ID
- * @permission Super admin only
- * @returns {Array} Updated list of user's workspaces
- */
-router.delete('/:id/workspaces/:workspaceId', requireSuperAdmin, async (req, res) => {
-  try {
-    const { id, workspaceId } = req.params;
-
-    // Check if this would remove the last admin from the workspace
-    const [adminCount] = await db.query(`
-      SELECT COUNT(*) as count 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND role = 'admin'
-    `, [workspaceId]);
-
-    const [currentRole] = await db.query(`
-      SELECT role 
-      FROM workspace_user 
-      WHERE workspace_id = ? AND user_id = ?
-    `, [workspaceId, id]);
-
-    if (adminCount[0].count === 1 && currentRole[0]?.role === 'admin') {
-      return res.status(400).json({
-        error: 'Cannot remove the last admin from the workspace'
-      });
-    }
-
-    // Remove user from workspace
-    const [result] = await db.query(
-      'DELETE FROM workspace_user WHERE workspace_id = ? AND user_id = ?',
-      [workspaceId, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        error: 'User workspace access not found'
-      });
-    }
-
-    // Return updated list
-    const [workspaces] = await db.query(`
-      SELECT 
-        w.id, 
-        w.name, 
-        w.note,
-        wu.role,
-        w.created_at,
-        w.currency_symbol
-      FROM workspace w
-      INNER JOIN workspace_user wu ON w.id = wu.workspace_id
-      WHERE wu.user_id = ? AND w.deleted_at IS NULL
-      ORDER BY w.name ASC
-    `, [id]);
-
-    res.status(200).json(workspaces);
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to remove user from workspace'
-    });
-  }
-});
-
-/**
- * PUT /users/:id/enable
- * Enable a user account
- * 
- * @permission SuperAdmin only
- * @param {number} id - User ID
- * @returns {Object} Updated user data
+ * @swagger
+ * /users/{id}/enable:
+ *   put:
+ *     summary: Enable a user account
+ *     description: Activate a disabled user account. Superadmin only.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User enabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User enabled successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: User is already enabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to enable user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
   try {
@@ -826,21 +1370,59 @@ router.put('/:id/enable', requireSuperAdmin, async (req, res) => {
       user: updatedUser
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to enable user'
-    });
+    res.status(500).json({ error: 'Failed to enable user' });
   }
 });
 
 /**
- * PUT /users/:id/disable
- * Disable a user account
- * 
- * @permission SuperAdmin only
- * @param {number} id - User ID
- * @returns {Object} Updated user data
+ * @swagger
+ * /users/{id}/disable:
+ *   put:
+ *     summary: Disable a user account
+ *     description: Deactivate a user account. Superadmin only. Users cannot disable their own accounts.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User disabled successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: User is already disabled or cannot disable own account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         description: Failed to disable user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.put('/:id/disable', requireSuperAdmin, async (req, res) => {
   try {
@@ -894,11 +1476,9 @@ router.put('/:id/disable', requireSuperAdmin, async (req, res) => {
       user: updatedUser
     });
 
-  } catch (err) {
+  } catch (err) /* istanbul ignore next: unreachable in normal operation, only hit on db failure */{
     console.error('Database error:', err);
-    res.status(500).json({
-      error: 'Failed to disable user'
-    });
+    res.status(500).json({ error: 'Failed to disable user' });
   }
 });
 

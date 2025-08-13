@@ -1,8 +1,8 @@
 /**
  * Test Utilities
- * 
+ *
  * Common utilities and helpers for testing API endpoints.
- * 
+ *
  * Token Caching Optimization:
  * - The loginUser function now caches JWT tokens to avoid expensive bcrypt operations
  * - Use initializeTokenCache() at the beginning of test suites for best performance
@@ -13,6 +13,7 @@
 const request = require('supertest');
 const app = require('../../src/app');
 const db = require('../../src/db');
+const { executeScript } = require('./sql-utils');
 
 /**
  * Test user credentials
@@ -24,20 +25,32 @@ const TEST_USERS = {
     id: 1,
     superadmin: true
   },
-  TESTUSER1: {
-    username: 'testuser1',
+  ADMIN: {
+    username: 'admin',
     password: 'password123',
     id: 2,
     superadmin: false
   },
-  TESTUSER2: {
-    username: 'testuser2',
+  COLLABORATOR: {
+    username: 'collaborator',
     password: 'password123',
     id: 3,
     superadmin: false
   },
+  VIEWER: {
+    username: 'viewer',
+    password: 'password123',
+    id: 4,
+    superadmin: false
+  },
+  NOACCESS: {
+    username: 'noaccess',
+    password: 'password123',
+    id: 5,
+    superadmin: false
+  },
   REGULARUSER: {
-    username: 'regularuser',
+    username: 'viewer',
     password: 'password123',
     id: 4,
     superadmin: false
@@ -45,25 +58,25 @@ const TEST_USERS = {
 };
 
 /**
- * Test workspace data
+ * Test book data
  */
-const TEST_WORKSPACES = {
-  WORKSPACE1: {
+const TEST_BOOKS = {
+  BOOK1: {
     id: 1,
-    name: 'Test Workspace 1',
-    note: 'Main testing workspace',
+    name: 'Test Book 1',
+    note: 'Main testing book',
     currency_symbol: '$'
   },
-  WORKSPACE2: {
+  BOOK2: {
     id: 2,
-    name: 'Test Workspace 2',
-    note: 'Secondary testing workspace',
+    name: 'Test Book 2',
+    note: 'Secondary testing book',
     currency_symbol: '€'
   },
-  SEARCH_WORKSPACE: {
+  SEARCH_BOOK: {
     id: 3,
-    name: 'Search Test Workspace',
-    note: 'Workspace for search testing',
+    name: 'Search Test Book',
+    note: 'Book for search testing',
     currency_symbol: '£'
   }
 };
@@ -87,12 +100,10 @@ async function loginUser(user = TEST_USERS.SUPERADMIN) {
     return tokenCache.get(cacheKey);
   }
 
-  const response = await request(app)
-    .post('/api/users/login')
-    .send({
-      username: user.username,
-      password: user.password
-    });
+  const response = await request(app).post('/api/users/login').send({
+    username: user.username,
+    password: user.password
+  });
 
   if (response.status !== 200) {
     throw new Error(`Login failed for ${user.username}: ${response.text}`);
@@ -123,9 +134,10 @@ async function initializeTokenCache() {
 
   // Get tokens for all common test users
   tokens.superadmin = await loginUser(TEST_USERS.SUPERADMIN);
-  tokens.testuser1 = await loginUser(TEST_USERS.TESTUSER1);
-  tokens.testuser2 = await loginUser(TEST_USERS.TESTUSER2);
-  tokens.regularuser = await loginUser(TEST_USERS.REGULARUSER);
+  tokens.admin = await loginUser(TEST_USERS.ADMIN);
+  tokens.collaborator = await loginUser(TEST_USERS.COLLABORATOR);
+  tokens.viewer = await loginUser(TEST_USERS.VIEWER);
+  tokens.noaccess = await loginUser(TEST_USERS.NOACCESS);
 
   return tokens;
 }
@@ -137,15 +149,19 @@ async function initializeTokenCache() {
  */
 async function getOrInitializeTokens() {
   // Check if we have tokens in cache
-  if (tokenCache.has('superadmin') &&
-    tokenCache.has('testuser1') &&
-    tokenCache.has('testuser2') &&
-    tokenCache.has('regularuser')) {
+  if (
+    tokenCache.has('superadmin') &&
+    tokenCache.has('admin') &&
+    tokenCache.has('collaborator') &&
+    tokenCache.has('viewer') &&
+    tokenCache.has('noaccess')
+  ) {
     return {
       superadmin: tokenCache.get('superadmin'),
-      testuser1: tokenCache.get('testuser1'),
-      testuser2: tokenCache.get('testuser2'),
-      regularuser: tokenCache.get('regularuser')
+      admin: tokenCache.get('admin'),
+      collaborator: tokenCache.get('collaborator'),
+      viewer: tokenCache.get('viewer'),
+      noaccess: tokenCache.get('noaccess')
     };
   }
 
@@ -171,91 +187,44 @@ function authenticatedRequest(token) {
  * Reset database to clean state between tests
  */
 async function resetDatabase() {
-  // NOTE: We don't clear token cache here because JWT tokens remain valid
-  // even after database reset, since they're signed with the JWT secret
-  // and don't depend on database state
-
   try {
-    // Temporarily disable foreign key checks to handle circular references
-    await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+    // Use a clean_up.sql script instead of manual DELETE statements
+    const fs = require('fs').promises;
+    const path = require('path');
 
-    // Clear all data but keep schema - order matters due to foreign key constraints
-    const tables = [
-      'transaction',    // references account, category
-      'total',          // references account
-      'category',       // references category (self), workspace  
-      'account',        // references workspace
-      'workspace_user', // references workspace, user
-      'workspace',      // referenced by account, category, workspace_user
-      'user'           // referenced by workspace_user
-    ];
+    // Read and execute the cleanup script
+    const cleanupPath = path.join(__dirname, '../../db/cleanup.sql');
+    const cleanupSql = await fs.readFile(cleanupPath, 'utf8');
 
-    // Delete in dependency order
-    for (const table of tables) {
-      await db.execute(`DELETE FROM ${table}`);
-      await db.execute(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
-    }
+    // Execute the cleanup script using shared utility
+    await executeScript(db, cleanupSql, 'cleanup', true);
 
-    // Re-enable foreign key checks
-    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+    // Re-insert test data
+    const seedsPath = path.join(__dirname, '../../db/test_seeds.sql');
+    const seedsSql = await fs.readFile(seedsPath, 'utf8');
+
+    // Execute the seeds script using shared utility
+    await executeScript(db, seedsSql, 'seed', true);
   } catch (error) {
-    // Make sure to re-enable foreign key checks even if there's an error
-    await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+    console.error('Error during database reset:', error);
     throw error;
   }
 
-  // Re-insert test data
-  const fs = require('fs').promises;
-  const path = require('path');
-  const schemaPath = path.join(__dirname, '../../db/test_schema.sql');
-  const schema = await fs.readFile(schemaPath, 'utf8');
-
-  // Extract and execute only INSERT statements - parse the same way as global setup
-  const statements = schema
-    .split('\n')
-    .filter(line => !line.trim().startsWith('--') && line.trim().length > 0)
-    .join('\n')
-    .split(';')
-    .map(stmt => stmt.trim())
-    .filter(stmt => stmt.length > 0);
-
-  const insertStatements = statements
-    .filter(stmt => stmt.toUpperCase().startsWith('INSERT'));
-
-  for (const statement of insertStatements) {
-    await db.execute(statement);
-  }
-
   // Wait a bit to ensure all operations are committed
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
 /**
  * Create a test user
  * @param {Object} userData - User data
  * @param {string} token - Admin token
- * @returns {Promise<Object>} Created user
+ * @returns {Promise<Object>
  */
 async function createTestUser(userData, token) {
   const response = await request(app)
     .post('/api/users')
     .set('Authorization', `Bearer ${token}`)
     .send(userData);
-
-  return response.body;
-}
-
-/**
- * Create a test workspace
- * @param {Object} workspaceData - Workspace data
- * @param {string} token - Admin token
- * @returns {Promise<Object>} Created workspace
- */
-async function createTestWorkspace(workspaceData, token) {
-  const response = await request(app)
-    .post('/api/workspaces')
-    .set('Authorization', `Bearer ${token}`)
-    .send(workspaceData);
 
   return response.body;
 }
@@ -291,19 +260,19 @@ function validateUserObject(user) {
 }
 
 /**
- * Validate workspace object structure
- * @param {Object} workspace - Workspace object
+ * Validate book object structure
+ * @param {Object} book - Book object
  */
-function validateWorkspaceObject(workspace) {
-  expect(workspace).toHaveProperty('id');
-  expect(workspace).toHaveProperty('name');
-  expect(workspace).toHaveProperty('note');
-  expect(workspace).toHaveProperty('currency_symbol');
-  expect(workspace).toHaveProperty('created_at');
+function validateBookObject(book) {
+  expect(book).toHaveProperty('id');
+  expect(book).toHaveProperty('name');
+  expect(book).toHaveProperty('note');
+  expect(book).toHaveProperty('currency_symbol');
+  expect(book).toHaveProperty('created_at');
 
-  expect(typeof workspace.id).toBe('number');
-  expect(typeof workspace.name).toBe('string');
-  expect(typeof workspace.currency_symbol).toBe('string');
+  expect(typeof book.id).toBe('number');
+  expect(typeof book.name).toBe('string');
+  expect(typeof book.currency_symbol).toBe('string');
 }
 
 /**
@@ -314,27 +283,62 @@ function generateRandomData() {
   return {
     username: `testuser_${timestamp}`,
     password: 'password123',
-    workspaceName: `Test Workspace ${timestamp}`,
+    bookName: `Test Book ${timestamp}`,
     accountName: `Test Account ${timestamp}`,
     categoryName: `Test Category ${timestamp}`
   };
 }
 
+// Add custom Jest matchers
+beforeAll(() => {
+  // Custom matcher to check if a string is a valid JWT token
+  expect.extend({
+    toHaveValidJWT(received) {
+      if (typeof received !== 'string') {
+        return {
+          message: () => `Expected ${received} to be a string (JWT token)`,
+          pass: false
+        };
+      }
+
+      // JWT tokens have 3 parts separated by dots
+      const parts = received.split('.');
+      const pass = parts.length === 3;
+
+      return {
+        message: () =>
+          pass
+            ? `Expected ${received} not to be a valid JWT token`
+            : `Expected ${received} to be a valid JWT token (should have 3 parts separated by dots)`,
+        pass
+      };
+    }
+  });
+});
+
 module.exports = {
+  // Test data
   TEST_USERS,
-  TEST_WORKSPACES,
+  TEST_BOOKS,
+
+  // Auth utilities
   loginUser,
   clearTokenCache,
   initializeTokenCache,
   getOrInitializeTokens,
   authenticatedRequest,
+
+  // Database utilities
   resetDatabase,
+
+  // Test helpers
   createTestUser,
-  createTestWorkspace,
   validateApiResponse,
   validateUserObject,
-  validateWorkspaceObject,
+  validateBookObject,
   generateRandomData,
+
+  // Core app components
   app,
   db
 };

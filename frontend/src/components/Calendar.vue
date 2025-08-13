@@ -5,7 +5,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useTransactionsStore } from '../stores/transactions'
-import { useWorkspacesStore } from '../stores/workspaces'
+import { useBooksStore } from '../stores/books'
 import { formatCurrency } from '../utils/utilities'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -20,8 +20,8 @@ const props = defineProps({
 
 const emit = defineEmits(['show-transaction', 'update-transaction'])
 
-// Get workspace store to access week_start setting
-const workspacesStore = useWorkspacesStore()
+// Get book store to access week_start setting
+const booksStore = useBooksStore()
 const transactionsStore = useTransactionsStore()
 
 const accountId = computed(() => props.account?.id)
@@ -41,12 +41,12 @@ const selectedDate = computed(() => moment().format('YYYY-MM-DD'))
 
 // Helper function to convert week_start setting to day index
 const getFirstDayIndex = computed(() => {
-  // Default to Monday (1) if no current workspace or setting
-  if (!workspacesStore.currentWorkspace) return 1
+  // Default to Monday (1) if no current book or setting
+  if (!booksStore.currentBook) return 1
 
   // Convert week_start string to numerical index for FullCalendar
   // FullCalendar uses: 0=Sunday, 1=Monday, 2=Tuesday, etc.
-  return workspacesStore.currentWorkspace.week_start === 'sunday' ? 0 : 1
+  return booksStore.currentBook.week_start === 'sunday' ? 0 : 1
 })
 
 const calendarOptions = computed(() => {
@@ -66,7 +66,7 @@ const calendarOptions = computed(() => {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: props.rangeType === 'weekly' ? 'dayGridWeek' : 'dayGridMonth',
     initialDate: props.selectedDate,
-    firstDay: getFirstDayIndex.value, // Use workspace setting for first day of week
+    firstDay: getFirstDayIndex.value, // Use book setting for first day of week
     dateClick: handleDateClick,
     editable: true, // Enable drag-and-drop
     eventDrop: handleEventDrop, // Add drop handler
@@ -100,8 +100,8 @@ async function updateView() {
   }
 }
 
-// Watch for changes to first day setting from workspace
-watch(() => workspacesStore.currentWorkspace?.week_start, () => {
+// Watch for changes to first day setting from book
+watch(() => booksStore.currentBook?.week_start, () => {
   if (calendarRef.value) {
     const api = calendarRef.value.getApi()
     api.setOption('firstDay', getFirstDayIndex.value)
@@ -113,12 +113,12 @@ watch(() => props.rangeType, updateView)
 
 function formatAmount(amount, isExpense) {
   const signedAmount = isExpense ? -amount : amount
-  return formatCurrency(signedAmount, workspacesStore.currentWorkspace.currency_symbol)
+  return formatCurrency(signedAmount, booksStore.currentBook.currency_symbol)
 }
 
 function handleDateClick(arg) {
   // Only allow creating transactions if user has write permission
-  if (!workspacesStore.hasWritePermission) return;
+  if (!booksStore.hasWritePermission) return;
 
   const transaction = {
     ...emptyTransaction,
@@ -133,14 +133,14 @@ async function handleEventClick(info) {
   if (transaction) {
     emit('show-transaction', {
       transaction,
-      editing: workspacesStore.hasWritePermission // Only allow editing if user has permission
+      editing: booksStore.hasWritePermission // Only allow editing if user has permission
     })
   }
 }
 
 async function handleEventDrop(info) {
   // Prevent dragging if user doesn't have write permission
-  if (!workspacesStore.hasWritePermission) {
+  if (!booksStore.hasWritePermission) {
     info.revert();
     return;
   }
