@@ -5,7 +5,8 @@ import FlowView from '../pages/FlowView.vue'
 import LoginView from '../pages/LoginView.vue'
 import AdminView from '../pages/admin/AdminView.vue'
 import AdminUsersView from '../pages/admin/AdminUsersView.vue'
-import TransactionsView from '../pages/transactions/TransactionsView.vue'
+import ReportsView from '../pages/reports/reportsView.vue'
+import TransactionsView from '../pages/TransactionsView.vue'
 
 
 const routes = [
@@ -52,7 +53,18 @@ const routes = [
     }
   },
   {
-    path: '/transactions',
+    path: '/reports',
+    component: ReportsView,
+    name: 'reports',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: false,
+      public: false
+    },
+  },
+  {
+    // Transactions feed would hold the following actions: CRUD for transactions, filtering, comment on transactions/ collaborative work
+    path: '/workspace/:workspaceId/transactions',
     component: TransactionsView,
     name: 'transactions',
     meta: {

@@ -1,16 +1,16 @@
+<!-- Transform this section into the transactions of TRANSACTIONS view
+ Similar to an excel sheet we should be able to sum transactions, filter by transactions of month and be able to
+ review expenses and incomes in order to create transactions -->
 <template>
   <WorkspaceLayout>
     <div class="container p-3">
       <div class="bg-body-secondary rounded-3 shadow-sm p-3">
         <!-- Header -->
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-          <h2 class="mb-0 text-light-emphasis fs-4">Transactions</h2>
-          <button class="btn btn-info d-flex align-items-center gap-1" type="button">
-            <i class="bi bi-plus-lg"></i>
-            <span>Create</span>
-          </button>
+          <h2 class="mb-0 text-light-emphasis fs-4">Transactions Reports</h2>
         </div>
         <!-- Filters -->
+         <!-- TODO make filters mobile friendly  -->
         <form class="row g-2 d-flex align-items-center flex-columns p-4 mb-4 bg-light rounded-4 ">
           <div class="col-12 col-md-6 m-0">
             <div class="form-floating">
@@ -98,9 +98,12 @@
                     {{ transaction.note }}
                   </template>
                   <template v-else-if="col.key === 'actions'">
+                    <!-- TODO: Edit transaction from this button -->
                     <button class="btn btn-sm btn-info me-1" aria-label="Edit">
                       <i class="bi bi-pencil"></i>
                     </button>
+                    <!-- TODO:  Implement more actions inline modal for deleting
+                     transaction, duplicate transaction, copy on next month, mark as exercised-->
                     <button class="btn btn-sm btn-outline-info" aria-label="More">
                       <i class="bi bi-three-dots-vertical"></i>
                     </button>
@@ -156,16 +159,15 @@ import { onMounted, ref, watch, computed } from 'vue';
 import draggable from 'vuedraggable';
 import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities';
 import WorkspaceLayout from '../../layouts/WorkspaceLayout.vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useWorkspacesStore } from '../../stores/workspaces';
 import { useTransactionsStore } from '../../stores/transactions';
 import { useAccountsStore } from '../../stores/accounts';
 
 // ----------------- use* Instances -----------------
-const router = useRouter();
 const route = useRoute();
 const workspacesStore = useWorkspacesStore();
-const transactionsStore = useTransactionsStore();
+const reportsStore = useTransactionsStore();
 const accountsStore = useAccountsStore();
 
 // ----------------- State -----------------
@@ -203,7 +205,7 @@ const headers = ref([...columnsnames]);
 // Fetch transactions with pagination, sorting, and filtering
 async function fetchPaginatedTransactions() {
   const workspaceID = workspacesStore.currentWorkspace.id;
-  const { transactions: transactionsList, total: totalCount } = await transactionsStore.fetchTransactionsByWorkspace(
+  const { transactions: reportsList, total: totalCount } = await reportsStore.fetchTransactionsByWorkspace(
     workspaceID,
     {
       page: page.value,
@@ -214,8 +216,8 @@ async function fetchPaginatedTransactions() {
       search: searchQuery.value || ''
     }
   );
-  transactions.value = transactionsList;
-  total.value = totalCount || transactionsList.length;
+  transactions.value = reportsList;
+  total.value = totalCount || reportsList.length;
 }
 
 // Watchers for filters
@@ -236,11 +238,11 @@ function resetFilters() {
 // ----------------- Synchronous Functions -----------------
 function getColumnsStorageKey() {
   const wsId = workspacesStore?.currentWorkspace?.id;
-  return wsId ? `transactions_columns_order_${wsId}` : 'transactions_columns_order_default';
+  return wsId ? `reports_columns_order_${wsId}` : 'reports_columns_order_default';
 }
 function getSortStorageKey() {
   const wsId = workspacesStore?.currentWorkspace?.id;
-  return wsId ? `transactions_sort_${wsId}` : 'transactions_sort_default';
+  return wsId ? `reports_sort_${wsId}` : 'reports_sort_default';
 }
 
 function initColumns() {

@@ -41,8 +41,15 @@
           </li>
           <li class="nav-item ">
            <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
-              :to="{ path: '/transactions', query: { workspaceId: workspace.id } }">
-              <i class="bi bi-list-columns-reverse"></i>
+              :to="{ path: '/reports', query: { workspaceId: workspace.id } }">
+              <i class="bi bi-file-spreadsheet"></i>
+              Reports
+            </RouterLink>
+          </li>
+          <li class="nav-item ">
+           <RouterLink v-if="workspace" class="nav-link link-body-emphasis" active-class="active"
+              :to="{ path: `/workspace/${workspace.id}/transactions` }">
+              <i class="bi bi-list-columns-reverse me-1"></i>
               Transactions
             </RouterLink>
           </li>
