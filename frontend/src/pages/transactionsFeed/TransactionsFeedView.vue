@@ -16,20 +16,40 @@
 
                 <!-- Search Form -->
                 <div class="mb-4">
-                    <div class="form-floating">
-                        <input 
-                            type="text" 
-                            class="form-control bg-body-tertiary text-light-emphasis" 
-                            id="searchDescription" 
-                            placeholder="Search by description..." 
-                            v-model="searchQuery"
+                    <div class="row g-2">
+                        <!-- Search Input -->
+                        <div class="col-12 col-md-6">
+                            <div class="form-floating">
+                                <input 
+                                    type="text" 
+                                    class="form-control bg-body-tertiary text-light-emphasis" 
+                                    id="searchDescription" 
+                                    placeholder="Search by description..." 
+                                    v-model="searchQuery"
+                                >
+                                <label for="searchDescription" class="text-light-emphasis">
+                                    <i class="bi bi-search me-1"></i>
+                                    Search by description...
+                                </label>
+                            </div>
+                        </div>
+                        <!-- TODO : Include a DATE RANGE filter that takes an start and end dates and then filter all the transactions between them  -->
+                    </div>
+                    
+                    <!-- Active Search Display -->
+                    <div v-if="searchQuery.trim()" class="mt-2">
+                        <button 
+                            type="button" 
+                            class="btn btn-outline-secondary btn-sm"
+                            @click="clearSearch"
                         >
-                        <label for="searchDescription" class="text-light-emphasis">
-                            <i class="bi bi-search me-1"></i>
-                            Search by description...
-                        </label>
+                            <i class="bi bi-x-circle me-1"></i>
+                            Clear Search
+                        </button>
                     </div>
                 </div>
+
+
 
                 <!-- Loading state for transactions -->
                 <div v-if="loading" class="text-center py-4">
@@ -117,7 +137,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed } from 'vue';
+import { onMounted, ref, watch, computed, nextTick } from 'vue';
 import BookLayout from '../../layouts/BookLayout.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../../stores/books';
@@ -139,20 +159,28 @@ const searchQuery = ref('');
 const bookCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
 
 const filteredTransactions = computed(() => {
-    if (!searchQuery.value.trim()) {
-        return transactions.value;
+    let filtered = transactions.value;
+    
+    // Filter by description search
+    if (searchQuery.value.trim()) {
+        const query = searchQuery.value.toLowerCase();
+        filtered = filtered.filter(transaction => 
+            transaction.description?.toLowerCase().includes(query)
+        );
     }
     
-    const query = searchQuery.value.toLowerCase();
-    return transactions.value.filter(transaction => 
-        transaction.description?.toLowerCase().includes(query)
-    );
+    return filtered;
 });
+
 
 // Methods
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString();
+}
+
+function clearSearch() {
+    searchQuery.value = '';
 }
 
 async function fetchTransactions() {
@@ -213,6 +241,12 @@ onMounted(async () => {
     const isBookValid = await validateAndSetBook();
     if (isBookValid) {
         await fetchTransactions();
+    }
+});
+// Watchers
+watch(transactions, (newTransactions) => {
+    if (newTransactions.length) {
+        console.log('Fetched transactions:', newTransactions);
     }
 });
 </script>
