@@ -15,7 +15,7 @@
         <div class="bg-body-secondary rounded-3 shadow-sm p-3">
           <!-- Header -->
           <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-            <h2 class="mb-0 text-light-emphasis fs-4">Transactions</h2>
+            <h2 class="mb-0 text-light-emphasis fs-4">Transactions Report</h2>
             <button class="btn btn-info d-flex align-items-center gap-1" type="button">
               <i class="bi bi-plus-lg"></i>
               <span>Create</span>

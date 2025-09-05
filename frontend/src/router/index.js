@@ -8,7 +8,9 @@ import AdminUsersView from '../pages/admin/AdminUsersView.vue'
 import AdminUserEditView from '../pages/admin/AdminUserEditView.vue'
 import AdminTeamsView from '../pages/admin/AdminTeamsView.vue'
 import AdminTeamEditView from '../pages/admin/AdminTeamEditView.vue'
-import TransactionsView from '../pages/transactions/TransactionsView.vue'
+import TransactionsView from '../pages/reports/TransactionsView.vue'
+import TransactionsFeedView from '../pages/transactionsFeed/TransactionsFeedView.vue'
+
 import NotFoundView from '../pages/NotFoundView.vue'
 
 
@@ -101,9 +103,19 @@ const routes = [
     }
   },
   {
-    path: '/transactions',
+    path: '/reports',
     component: TransactionsView,
-    name: 'transactions',
+    name: 'Reports',
+    meta: {
+      requiresAuth: true,
+      requiresSuperAdmin: false,
+      public: false
+    }
+  },
+  {
+    path: '/transactions_feed',
+    component: TransactionsFeedView,
+    name: 'Transactions Feed',
     meta: {
       requiresAuth: true,
       requiresSuperAdmin: false,

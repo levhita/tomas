@@ -45,9 +45,18 @@
                 <RouterLink 
                   class="nav-link" 
                   active-class="active"
-                  :to="{ path: '/transactions', query: { bookId: book.id } }">
+                  :to="{ path: '/reports', query: { bookId: book.id } }">
                   <i class="bi bi-list-columns-reverse me-1"></i>
-                  Transactions
+                  Reports
+                </RouterLink>
+              </li>
+              <li class="nav-item">
+                <RouterLink 
+                  class="nav-link" 
+                  active-class="active"
+                  :to="{ path: '/transactions_feed', query: { bookId: book.id } }">
+                  <i class="bi bi-receipt me-1"></i>
+                  Transactions Feed 
                 </RouterLink>
               </li>
             </ul>
