@@ -127,18 +127,42 @@
                                         </span>
                                     </small>
                                 </div>
+
+                                <!-- Edit Button -->
+                                <div class="mt-2">
+                                    <button 
+                                        type="button" 
+                                        class="btn btn-outline-primary btn-sm w-100"
+                                        @click="editTransaction(transaction)"
+                                    >
+                                        <i class="bi bi-pencil me-1"></i>
+                                        Edit Transaction
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Transaction Modal -->
+        <TransactionModal 
+            v-model="showModal" 
+            :transaction="currentTransaction" 
+            :is-editing="isEditing"
+            :focus-on="modalFocusTarget" 
+            @save="saveTransaction" 
+            @delete="deleteTransaction"
+            @duplicate="duplicateTransaction" 
+        />
     </BookLayout>
 </template>
 
 <script setup>
 import { onMounted, ref, watch, computed, nextTick } from 'vue';
 import BookLayout from '../../layouts/BookLayout.vue';
+import TransactionModal from '../../components/modals/TransactionModal.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../../stores/books';
 import { useTransactionsStore } from '../../stores/transactions';
@@ -154,6 +178,12 @@ const transactionsStore = useTransactionsStore();
 const transactions = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
+
+// Modal state for transaction editing
+const showModal = ref(false);
+const currentTransaction = ref({});
+const isEditing = ref(false);
+const modalFocusTarget = ref('description');
 
 // Computed properties
 const bookCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
@@ -181,6 +211,67 @@ function formatDate(dateString) {
 
 function clearSearch() {
     searchQuery.value = '';
+}
+
+function editTransaction(transaction) {
+    // Check permissions before allowing edit
+    if (!booksStore.hasWritePermission) {
+        // Convert to readonly view if no write permission
+        showTransactionModal({ transaction, editing: false });
+        return;
+    }
+    
+    showTransactionModal({ transaction, editing: true });
+}
+
+function showTransactionModal({ transaction, editing, focusOn = 'description' }) {
+    // If trying to edit but no permission, either show readonly or prevent
+    if (editing && !booksStore.hasWritePermission) {
+        // We can either show as readonly or return without showing
+        editing = false; // Convert to readonly view
+    }
+
+    currentTransaction.value = transaction;
+    isEditing.value = editing;
+    modalFocusTarget.value = focusOn;
+    showModal.value = true;
+}
+
+async function saveTransaction(transaction) {
+    try {
+        if (isEditing.value) {
+            await transactionsStore.updateTransaction(transaction.id, transaction);
+        } else {
+            await transactionsStore.addTransaction(transaction);
+        }
+        showModal.value = false;
+        // Refresh transactions to show updated data
+        await fetchTransactions();
+    } catch (error) {
+        console.error('Failed to save transaction:', error);
+    }
+}
+
+async function deleteTransaction(id) {
+    try {
+        await transactionsStore.deleteTransaction(id);
+        showModal.value = false;
+        // Refresh transactions to show updated data
+        await fetchTransactions();
+    } catch (error) {
+        console.error('Failed to delete transaction:', error);
+    }
+}
+
+async function duplicateTransaction(transaction) {
+    try {
+        await transactionsStore.addTransaction(transaction);
+        showModal.value = false;
+        // Refresh transactions to show new duplicate
+        await fetchTransactions();
+    } catch (error) {
+        console.error('Failed to duplicate transaction:', error);
+    }
 }
 
 async function fetchTransactions() {
