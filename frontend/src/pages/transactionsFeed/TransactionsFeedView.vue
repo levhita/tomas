@@ -248,7 +248,7 @@ async function saveTransaction(transaction) {
         // Refresh transactions to show updated data
         await fetchTransactions();
     } catch (error) {
-        console.error('Failed to save transaction:', error);
+        // Error handled silently - transaction save failed
     }
 }
 
@@ -259,7 +259,7 @@ async function deleteTransaction(id) {
         // Refresh transactions to show updated data
         await fetchTransactions();
     } catch (error) {
-        console.error('Failed to delete transaction:', error);
+        // Error handled silently - transaction delete failed
     }
 }
 
@@ -270,7 +270,7 @@ async function duplicateTransaction(transaction) {
         // Refresh transactions to show new duplicate
         await fetchTransactions();
     } catch (error) {
-        console.error('Failed to duplicate transaction:', error);
+        // Error handled silently - transaction duplicate failed
     }
 }
 
@@ -289,7 +289,7 @@ async function fetchTransactions() {
         );
         transactions.value = result.transactions || [];
     } catch (error) {
-        console.error('Error fetching transactions:', error);
+        // Error handled silently - fallback to empty array
         transactions.value = [];
     } finally {
         loading.value = false;
@@ -334,10 +334,5 @@ onMounted(async () => {
         await fetchTransactions();
     }
 });
-// Watchers
-watch(transactions, (newTransactions) => {
-    if (newTransactions.length) {
-        console.log('Fetched transactions:', newTransactions);
-    }
-});
+
 </script>
