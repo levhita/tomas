@@ -14,6 +14,23 @@
                     <p class="text-muted mb-0">{{ booksStore.currentBook.name }}</p>
                 </div>
 
+                <!-- Search Form -->
+                <div class="mb-4">
+                    <div class="form-floating">
+                        <input 
+                            type="text" 
+                            class="form-control bg-body-tertiary text-light-emphasis" 
+                            id="searchDescription" 
+                            placeholder="Search by description..." 
+                            v-model="searchQuery"
+                        >
+                        <label for="searchDescription" class="text-light-emphasis">
+                            <i class="bi bi-search me-1"></i>
+                            Search by description...
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Loading state for transactions -->
                 <div v-if="loading" class="text-center py-4">
                     <div class="spinner-border" role="status">
@@ -31,7 +48,7 @@
                 <!-- Transaction Cards Grid -->
                 <div v-else class="row g-3">
                     <div 
-                        v-for="transaction in transactions" 
+                        v-for="transaction in filteredTransactions" 
                         :key="transaction.id"
                         class="col-12 col-sm-6 col-lg-4 col-xl-3"
                     >
@@ -116,9 +133,21 @@ const transactionsStore = useTransactionsStore();
 // State
 const transactions = ref([]);
 const loading = ref(false);
+const searchQuery = ref('');
 
 // Computed properties
 const bookCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
+
+const filteredTransactions = computed(() => {
+    if (!searchQuery.value.trim()) {
+        return transactions.value;
+    }
+    
+    const query = searchQuery.value.toLowerCase();
+    return transactions.value.filter(transaction => 
+        transaction.description?.toLowerCase().includes(query)
+    );
+});
 
 // Methods
 function formatDate(dateString) {
