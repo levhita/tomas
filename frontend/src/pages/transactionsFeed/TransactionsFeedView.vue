@@ -15,39 +15,13 @@
                 </div>
 
                 <!-- Search Form -->
-                <div class="mb-4">
-                    <div class="row g-2">
-                        <!-- Search Input -->
-                        <div class="col-12 col-md-6">
-                            <div class="form-floating">
-                                <input 
-                                    type="text" 
-                                    class="form-control bg-body-tertiary text-light-emphasis" 
-                                    id="searchDescription" 
-                                    placeholder="Search by description..." 
-                                    v-model="searchQuery"
-                                >
-                                <label for="searchDescription" class="text-light-emphasis">
-                                    <i class="bi bi-search me-1"></i>
-                                    Search by description...
-                                </label>
-                            </div>
-                        </div>
-                        <!-- TODO : Include a DATE RANGE filter that takes an start and end dates and then filter all the transactions between them  -->
-                    </div>
-                    
-                    <!-- Active Search Display -->
-                    <div v-if="searchQuery.trim()" class="mt-2">
-                        <button 
-                            type="button" 
-                            class="btn btn-outline-secondary btn-sm"
-                            @click="clearSearch"
-                        >
-                            <i class="bi bi-x-circle me-1"></i>
-                            Clear Search
-                        </button>
-                    </div>
-                </div>
+                <SearchForm 
+                    v-model="searchQuery"
+                    placeholder="Search by description..."
+                    search-input-id="searchOverTransactions"
+                    @clear-search="handleClearSearch"
+                    @clear-all="handleClearAllFilters"
+                />
 
 
 
@@ -163,6 +137,7 @@
 import { onMounted, ref, watch, computed, nextTick } from 'vue';
 import BookLayout from '../../layouts/BookLayout.vue';
 import TransactionModal from '../../components/modals/TransactionModal.vue';
+import SearchForm from '../../components/inputs/SearchForm.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../../stores/books';
 import { useTransactionsStore } from '../../stores/transactions';
@@ -178,6 +153,8 @@ const transactionsStore = useTransactionsStore();
 const transactions = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
+const startDate = ref('');
+const endDate = ref('');
 
 // Modal state for transaction editing
 const showModal = ref(false);
@@ -206,11 +183,20 @@ const filteredTransactions = computed(() => {
 // Methods
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return date.toDateString();
 }
 
 function clearSearch() {
     searchQuery.value = '';
+}
+
+function handleClearSearch() {
+    clearSearch();
+}
+
+
+function handleClearAllFilters() {
+    clearSearch();
 }
 
 function editTransaction(transaction) {
