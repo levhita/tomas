@@ -320,5 +320,4 @@ onMounted(async () => {
         await fetchTransactions();
     }
 });
-
 </script>
