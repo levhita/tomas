@@ -2,3 +2,4 @@
 api/.env.remote
 api/.env.test
 node_modules
+api/.env.local
