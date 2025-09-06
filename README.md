@@ -8,6 +8,14 @@ Personal and Home finance projection and expense tracking application.
 - 📊 Monthly reports and summaries
 - 💰 Multiple account management
 - 🏷️ Category organization
+- 📱 Card-based transaction feed view
+
+## Documentation
+
+### Feature Documentation
+- [Transaction Feed View](features_documentation/transactions/TransactionsFeedView.md) - Card-based transaction browsing interface
+- [Transaction Visual Language](features_documentation/transactions/visual_language.md) - UI/UX guidelines for transaction interfaces
+- [Implementation Guide](features_documentation/transactions/TransactionsFeedView-Implementation.md) - Developer implementation details
 
 ## Tech Stack
 

@@ -15,39 +15,13 @@
                 </div>
 
                 <!-- Search Form -->
-                <div class="mb-4">
-                    <div class="row g-2">
-                        <!-- Search Input -->
-                        <div class="col-12 col-md-6">
-                            <div class="form-floating">
-                                <input 
-                                    type="text" 
-                                    class="form-control bg-body-tertiary text-light-emphasis" 
-                                    id="searchDescription" 
-                                    placeholder="Search by description..." 
-                                    v-model="searchQuery"
-                                >
-                                <label for="searchDescription" class="text-light-emphasis">
-                                    <i class="bi bi-search me-1"></i>
-                                    Search by description...
-                                </label>
-                            </div>
-                        </div>
-                        <!-- TODO : Include a DATE RANGE filter that takes an start and end dates and then filter all the transactions between them  -->
-                    </div>
-                    
-                    <!-- Active Search Display -->
-                    <div v-if="searchQuery.trim()" class="mt-2">
-                        <button 
-                            type="button" 
-                            class="btn btn-outline-secondary btn-sm"
-                            @click="clearSearch"
-                        >
-                            <i class="bi bi-x-circle me-1"></i>
-                            Clear Search
-                        </button>
-                    </div>
-                </div>
+                <SearchForm 
+                    v-model="searchQuery"
+                    placeholder="Search by description..."
+                    search-input-id="searchOverTransactions"
+                    @clear-search="handleClearSearch"
+                    @clear-all="handleClearAllFilters"
+                />
 
 
 
@@ -127,18 +101,43 @@
                                         </span>
                                     </small>
                                 </div>
+
+                                <!-- Edit Button -->
+                                <div class="mt-2">
+                                    <button 
+                                        type="button" 
+                                        class="btn btn-outline-primary btn-sm w-100"
+                                        @click="editTransaction(transaction)"
+                                    >
+                                        <i class="bi bi-pencil me-1"></i>
+                                        Edit Transaction
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Transaction Modal -->
+        <TransactionModal 
+            v-model="showModal" 
+            :transaction="currentTransaction" 
+            :is-editing="isEditing"
+            :focus-on="modalFocusTarget" 
+            @save="saveTransaction" 
+            @delete="deleteTransaction"
+            @duplicate="duplicateTransaction" 
+        />
     </BookLayout>
 </template>
 
 <script setup>
 import { onMounted, ref, watch, computed, nextTick } from 'vue';
 import BookLayout from '../../layouts/BookLayout.vue';
+import TransactionModal from '../../components/modals/TransactionModal.vue';
+import SearchForm from '../../components/inputs/SearchForm.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBooksStore } from '../../stores/books';
 import { useTransactionsStore } from '../../stores/transactions';
@@ -154,6 +153,14 @@ const transactionsStore = useTransactionsStore();
 const transactions = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
+const startDate = ref('');
+const endDate = ref('');
+
+// Modal state for transaction editing
+const showModal = ref(false);
+const currentTransaction = ref({});
+const isEditing = ref(false);
+const modalFocusTarget = ref('description');
 
 // Computed properties
 const bookCurrencySymbol = computed(() => booksStore.currentBook?.currency_symbol || '$');
@@ -176,11 +183,81 @@ const filteredTransactions = computed(() => {
 // Methods
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return date.toDateString();
 }
 
 function clearSearch() {
     searchQuery.value = '';
+}
+
+function handleClearSearch() {
+    clearSearch();
+}
+
+
+function handleClearAllFilters() {
+    clearSearch();
+}
+
+function editTransaction(transaction) {
+    // Check permissions before allowing edit
+    if (!booksStore.hasWritePermission) {
+        // Convert to readonly view if no write permission
+        showTransactionModal({ transaction, editing: false });
+        return;
+    }
+    
+    showTransactionModal({ transaction, editing: true });
+}
+
+function showTransactionModal({ transaction, editing, focusOn = 'description' }) {
+    // If trying to edit but no permission, either show readonly or prevent
+    if (editing && !booksStore.hasWritePermission) {
+        // We can either show as readonly or return without showing
+        editing = false; // Convert to readonly view
+    }
+
+    currentTransaction.value = transaction;
+    isEditing.value = editing;
+    modalFocusTarget.value = focusOn;
+    showModal.value = true;
+}
+
+async function saveTransaction(transaction) {
+    try {
+        if (isEditing.value) {
+            await transactionsStore.updateTransaction(transaction.id, transaction);
+        } else {
+            await transactionsStore.addTransaction(transaction);
+        }
+        showModal.value = false;
+        // Refresh transactions to show updated data
+        await fetchTransactions();
+    } catch (error) {
+        // Error handled silently - transaction save failed
+    }
+}
+
+async function deleteTransaction(id) {
+    try {
+        await transactionsStore.deleteTransaction(id);
+        showModal.value = false;
+        // Refresh transactions to show updated data
+        await fetchTransactions();
+    } catch (error) {
+        // Error handled silently - transaction delete failed
+    }
+}
+
+async function duplicateTransaction(transaction) {
+    try {
+        await transactionsStore.addTransaction(transaction);
+        showModal.value = false;
+        // Refresh transactions to show new duplicate
+        await fetchTransactions();
+    } catch (error) {
+        // Error handled silently - transaction duplicate failed
+    }
 }
 
 async function fetchTransactions() {
@@ -198,7 +275,7 @@ async function fetchTransactions() {
         );
         transactions.value = result.transactions || [];
     } catch (error) {
-        console.error('Error fetching transactions:', error);
+        // Error handled silently - fallback to empty array
         transactions.value = [];
     } finally {
         loading.value = false;
@@ -241,12 +318,6 @@ onMounted(async () => {
     const isBookValid = await validateAndSetBook();
     if (isBookValid) {
         await fetchTransactions();
-    }
-});
-// Watchers
-watch(transactions, (newTransactions) => {
-    if (newTransactions.length) {
-        console.log('Fetched transactions:', newTransactions);
     }
 });
 </script>
