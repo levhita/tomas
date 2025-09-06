@@ -15,7 +15,7 @@
         <div class="bg-body-secondary rounded-3 shadow-sm p-3">
           <!-- Header -->
           <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-            <h2 class="mb-0 text-light-emphasis fs-4">Transactions</h2>
+            <h2 class="mb-0 text-light-emphasis fs-4">Transactions Report</h2>
             <button class="btn btn-info d-flex align-items-center gap-1" type="button">
               <i class="bi bi-plus-lg"></i>
               <span>Create</span>
@@ -56,46 +56,39 @@
           <div class="table-responsive">
             <table class="table align-middle mb-0">
               <thead class="bg-info bg-opacity-10">
-                <draggable
-                  tag="tr"
-                  :list="columns"
-                  item-key="key"
-                  :move="onMove"
-                  @end="saveColumnOrder"
-                >
-                  <template #item="{ element }">
-                    <th
-                      :class="element.thClass"
-                      scope="col"
-                      style="cursor: grab;"
+                <tr>
+                  <th
+                    v-for="element in columns"
+                    :key="element.key"
+                    :class="element.thClass"
+                    scope="col"
+                  >
+                    <span
+                      v-if="element.key !== 'select' && element.key !== 'actions'"
+                      class="d-inline-flex align-items-center user-select-none"
+                      @click="handleSort(element.key)"
+                      style="cursor:pointer;"
                     >
-                      <span
-                        v-if="element.key !== 'select' && element.key !== 'actions'"
-                        class="d-inline-flex align-items-center user-select-none"
-                        @click="handleSort(element.key)"
-                        style="cursor:pointer;"
-                      >
-                        {{ element.label }}
-                        <i
-                          v-if="sortKey === element.key"
-                          :class="[
-                            'bi',
-                            sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down',
-                            'ms-1',
-                            'text-info'
-                          ]"
-                        ></i>
-                        <i
-                          v-else
-                          class="bi bi-arrow-down-up ms-1 text-info opacity-75"
-                        ></i>
-                      </span>
-                      <span v-else>
-                        {{ element.label }}
-                      </span>
-                    </th>
-                  </template>
-                </draggable>
+                      {{ element.label }}
+                      <i
+                        v-if="sortKey === element.key"
+                        :class="[
+                          'bi',
+                          sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down',
+                          'ms-1',
+                          'text-info'
+                        ]"
+                      ></i>
+                      <i
+                        v-else
+                        class="bi bi-arrow-down-up ms-1 text-info opacity-75"
+                      ></i>
+                    </span>
+                    <span v-else>
+                      {{ element.label }}
+                    </span>
+                  </th>
+                </tr>
               </thead>
               
               <tbody>
@@ -113,7 +106,7 @@
                       </span>
                     </template>
                     <template v-else-if="col.key === 'account_name'">
-                      {{ formatAccounts(transaction.account_id) }}
+                      {{ transaction.account_name }}
                     </template>
                     <template v-else-if="col.key === 'category_name'">
                       <span class="badge bg-info text-white">{{ transaction.category_name }}</span>
@@ -185,8 +178,7 @@
 
 <script setup>
 // ----------------- Imports -----------------
-import { onMounted, ref, watch, computed } from 'vue';
-import draggable from 'vuedraggable';
+import { onMounted, ref, watch, computed, onUnmounted } from 'vue';
 import { formatCurrency, formatTransactionType, colorByType } from '../../utils/utilities';
 import BookLayout from '../../layouts/BookLayout.vue';
 import { useRouter, useRoute } from 'vue-router';
@@ -222,14 +214,7 @@ const defaultColumns = [
   { key: 'note', label: 'Note', thClass: 'text-light-emphasis text-center sortable', tdClass: 'text-light-emphasis text-center' },
   { key: 'actions', label: 'Actions', thClass: 'text-light-emphasis text-end', tdClass: 'text-end' },
 ];
-const columns = ref([]);
-
-const columnsNames = columns.value.map(col => ({
-  ...col,
-  thClass: col.thClass || 'text-light-emphasis text-nowrap',
-  tdClass: col.tdClass || 'text-light-emphasis text-nowrap'
-}));
-const headers = ref([...columnsNames]);
+const columns = ref([...defaultColumns]);
 
 // Fetch transactions with pagination, sorting, and filtering
 async function fetchPaginatedTransactions() {
@@ -266,42 +251,9 @@ function resetFilters() {
 
 
 // ----------------- Synchronous Functions -----------------
-function getColumnsStorageKey() {
-  const bookId = booksStore?.currentBook?.id;
-  return bookId ? `transactions_columns_order_${bookId}` : 'transactions_columns_order_default';
-}
-
 function getSortStorageKey() {
   const bookId = booksStore?.currentBook?.id;
   return bookId ? `transactions_sort_${bookId}` : 'transactions_sort_default';
-}
-
-function initColumns() {
-  const saved = localStorage.getItem(getColumnsStorageKey());
-  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
-}
-initColumns();
-
-// Save column order per workspace
-function saveColumnOrder() {
-  localStorage.setItem(getColumnsStorageKey(), JSON.stringify(columns.value));
-}
-
-function onMove(evt) {
-  // Prevent moving the first or last column (select/actions)
-  if (
-    evt.draggedContext.element.key === 'select' ||
-    evt.draggedContext.element.key === 'actions'
-  ) {
-    return false;
-  }
-  if (
-    evt.relatedContext.element.key === 'select' ||
-    evt.relatedContext.element.key === 'actions'
-  ) {
-    return false;
-  }
-  return true;
 }
 
 function formatAccounts(accountId) {
@@ -337,10 +289,6 @@ function handleLimitChange() {
 }
 
 // Column order and sort preferences restoration
-function restoreColumnOrder() {
-  const saved = localStorage.getItem(getColumnsStorageKey());
-  columns.value = saved ? JSON.parse(saved) : [...defaultColumns];
-}
 function restoreSortPreferences() {
   const saved = localStorage.getItem(getSortStorageKey());
   if (saved) {
@@ -391,9 +339,10 @@ onMounted(async () => {
   const isBookValid = await validateAndSetBook();
   if (isBookValid) {
     restoreSortPreferences();
-    restoreColumnOrder();
     await fetchPaginatedTransactions();
   }
   booksStore.fetchBookAccounts(); // Fetch accounts for the current book
 });
+
+
 </script>
